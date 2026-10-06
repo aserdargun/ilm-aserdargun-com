@@ -598,18 +598,18 @@ export function TouchControls() {
           const rect = e.currentTarget.getBoundingClientRect();
           const cx = rect.left + rect.width / 2;
           const cy = rect.top + rect.height / 2;
-          applyStick(e.clientX - cx, e.clientY - cy, rect.width / 2);
+          applyStick(e.currentTarget, e.clientX - cx, e.clientY - cy, rect.width / 2);
         }}
         onPointerMove={(e) => {
           if (stickPointer.current !== e.pointerId) return;
           const rect = e.currentTarget.getBoundingClientRect();
           const cx = rect.left + rect.width / 2;
           const cy = rect.top + rect.height / 2;
-          applyStick(e.clientX - cx, e.clientY - cy, rect.width / 2);
+          applyStick(e.currentTarget, e.clientX - cx, e.clientY - cy, rect.width / 2);
         }}
-        onPointerUp={() => {
+        onPointerUp={(e) => {
           stickPointer.current = null;
-          input.setStick(0, 0);
+          applyStick(e.currentTarget, 0, 0, 1);
         }}
       >
         <div className="stick-knob" />
@@ -672,16 +672,29 @@ export function TouchControls() {
 
 const stickPointer: { current: number | null } = { current: null };
 
-function applyStick(dx: number, dy: number, max: number): void {
+/**
+ * Turn a pointer offset from the stick centre into movement intent, and move the
+ * visible knob to match. Without the knob offset the stick still steers but
+ * gives no travel feedback, so a diagonal drag looks identical to no drag.
+ */
+function applyStick(stick: HTMLElement, dx: number, dy: number, max: number): void {
   const length = Math.hypot(dx, dy);
   const clamped = Math.min(1, length / Math.max(1, max));
   if (length === 0) {
     input.setStick(0, 0);
+    stick.style.setProperty('--knob-x', '0px');
+    stick.style.setProperty('--knob-y', '0px');
     return;
   }
+  const nx = dx / length;
+  const ny = dy / length;
   // Screen y grows downward, so pushing the stick up must invert it to give a
-  // positive (forward) intent, matching the keyboard convention.
-  input.setStick((dx / length) * clamped, (-dy / length) * clamped);
+  // positive (forward) intent, matching the keyboard convention. The knob is
+  // drawn in screen space, so it keeps the un-inverted sign.
+  input.setStick(nx * clamped, -ny * clamped);
+  const travel = clamped * max;
+  stick.style.setProperty('--knob-x', `${(nx * travel).toFixed(1)}px`);
+  stick.style.setProperty('--knob-y', `${(ny * travel).toFixed(1)}px`);
 }
 
 /** Reset handler wired from the 3D player's R key. */

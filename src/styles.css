@@ -481,6 +481,24 @@ button {
   }
 }
 
+/*
+ * Mirror of `hud-in` for the tool strip, sliding in from the right. This has to
+ * be a separate keyframe rather than `animation-direction: reverse`: reversed,
+ * the animation settles on its `from` state and the strip stays at opacity 0 —
+ * invisible, yet still laid out and still swallowing taps meant for the touch
+ * buttons underneath it.
+ */
+@keyframes hud-in-end {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 .hud-label {
   display: block;
   font-size: 0.62rem;
@@ -505,7 +523,7 @@ button {
   border-radius: var(--r-pill);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  animation: hud-in var(--base) var(--ease) both reverse;
+  animation: hud-in-end var(--base) var(--ease) both;
 }
 
 .tool {
@@ -549,7 +567,7 @@ button {
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
   font-size: 0.9rem;
-  animation: hud-in var(--base) var(--ease) both reverse;
+  animation: hud-in-end var(--base) var(--ease) both;
 }
 
 kbd {
@@ -1260,10 +1278,15 @@ select {
   top: 50%;
   width: 54px;
   height: 54px;
-  margin: -27px 0 0 -27px;
   border-radius: 50%;
   background: rgba(79, 214, 208, 0.5);
   border: 1px solid var(--accent);
+  /* Driven by applyStick() through --knob-x/--knob-y so the knob tracks the
+     finger; the short transition only shows on the snap back to centre. */
+  transform: translate(calc(-50% + var(--knob-x, 0px)), calc(-50% + var(--knob-y, 0px)));
+  transition: transform 90ms ease-out;
+  will-change: transform;
+  pointer-events: none;
 }
 
 .touch-look {
@@ -1388,12 +1411,18 @@ select {
     min-height: 28px;
   }
 
-  /* Keep the prompt clear of the on-screen controls. */
+  /*
+   * Keep the prompt and the tool strip clear of the on-screen controls. The
+   * touch-button column is three 72px buttons plus gaps, i.e. ~235px tall and
+   * anchored to the same 1.25rem bottom inset as this row, so anything under
+   * ~16rem lands underneath it. This row grows upward from the bottom edge, so
+   * raising the padding lifts both the strip and the prompt above the buttons.
+   */
   .hud-bottom {
     flex-direction: column-reverse;
     align-items: flex-end;
     gap: 0.6rem;
-    padding-bottom: 9rem;
+    padding-bottom: 17rem;
   }
 
   .prompt {

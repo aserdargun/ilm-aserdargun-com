@@ -36,4 +36,35 @@ describe('touch and mobile readiness', () => {
     expect(screens).toMatch(/className="stick"/);
     expect(screens).toMatch(/className="touch-btn"/);
   });
+
+  it('never settles a HUD element on its hidden keyframe', () => {
+    // `animation-direction: reverse` with fill `both` parks the element on the
+    // `from` state, which is opacity 0. The strip and the prompt then stay
+    // invisible while still laid out over the touch buttons.
+    expect(css).not.toMatch(/animation:[^;]*reverse/);
+  });
+
+  it('fades the tool strip in from its own keyframe', () => {
+    expect(css).toMatch(/@keyframes hud-in-end/);
+    expect(css).toMatch(/\.hud-tools\s*\{[^}]*animation:\s*hud-in-end[^}]*\}/);
+    expect(css).toMatch(/\.prompt\s*\{[^}]*animation:\s*hud-in-end[^}]*\}/);
+  });
+
+  it('lifts the bottom HUD clear of the touch-button column on phones', () => {
+    // Three 72px buttons plus gaps and a 1.25rem inset need ~16rem of clearance;
+    // at the old 9rem the strip overlapped the action button.
+    const phone = css.slice(css.indexOf('@media (max-width: 680px)'));
+    const block = phone.slice(phone.indexOf('.hud-bottom'), phone.indexOf('.prompt'));
+    const padding = block.match(/padding-bottom:\s*([\d.]+)rem/);
+    expect(padding).not.toBeNull();
+    expect(Number(padding![1])).toBeGreaterThanOrEqual(16);
+  });
+
+  it('gives the virtual stick visible travel feedback', () => {
+    const screens = readFileSync('src/ui/Screens.tsx', 'utf8');
+    expect(css).toMatch(/--knob-x/);
+    expect(css).toMatch(/\.stick-knob\s*\{[^}]*transform:/);
+    expect(screens).toMatch(/--knob-x/);
+    expect(screens).toMatch(/--knob-y/);
+  });
 });
