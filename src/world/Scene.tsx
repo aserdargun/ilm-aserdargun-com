@@ -62,10 +62,14 @@ if (import.meta.env.DEV) {
 }
 
 export function GameCanvas() {
+  const quality = useGame().settings.quality;
+  // A 3x phone at full resolution is three million pixels a frame; capping the
+  // ratio keeps the fill rate survivable and the memory footprint small.
+  const dprCap = quality === 'low' ? 1.25 : quality === 'medium' ? 1.5 : 1.75;
   return (
     <Canvas
-      shadows={false}
-      dpr={[1, 1.75]}
+      shadows={quality === 'high'}
+      dpr={[1, dprCap]}
       gl={{ antialias: true, powerPreference: 'high-performance' }}
       camera={{ fov: 58, near: 0.1, far: 900, position: [0, 8, 26] }}
       onCreated={({ gl }) => {

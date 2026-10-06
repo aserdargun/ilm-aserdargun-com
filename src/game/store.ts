@@ -58,9 +58,23 @@ export interface GameState {
 
 const SETTINGS_KEY = 'ilm.settings.v1';
 
+/**
+ * Phones render three times as many pixels per CSS pixel, and iOS caps how
+ * much memory a tab may hold. Both mean a device-class check has to happen
+ * before the first frame rather than being left to the player.
+ */
+function isHandheld(): boolean {
+  if (typeof window === 'undefined') return false;
+  const coarse = window.matchMedia?.('(pointer: coarse)').matches ?? false;
+  const narrow = Math.min(window.innerWidth, window.innerHeight) <= 480;
+  const touchPoints = (navigator.maxTouchPoints ?? 0) > 1;
+  return (coarse && narrow) || (touchPoints && narrow);
+}
+
 function loadSettings(): Settings {
+  const handheld = isHandheld();
   const fallback: Settings = {
-    quality: 'high',
+    quality: handheld ? 'low' : 'high',
     reducedMotion:
       typeof window !== 'undefined' &&
       typeof window.matchMedia === 'function' &&
@@ -76,7 +90,10 @@ function loadSettings(): Settings {
     if (typeof parsed !== 'object' || parsed === null) return fallback;
     const p = parsed as Partial<Settings>;
     return {
-      quality: p.quality === 'low' || p.quality === 'high' ? p.quality : fallback.quality,
+      // A handheld that once stored "high" keeps it: an explicit choice wins.
+      quality: p.quality === 'low' || p.quality === 'high' || p.quality === 'medium'
+        ? p.quality
+        : fallback.quality,
       reducedMotion: typeof p.reducedMotion === 'boolean' ? p.reducedMotion : fallback.reducedMotion,
       master: typeof p.master === 'number' ? clamp01(p.master) : fallback.master,
       music: typeof p.music === 'number' ? clamp01(p.music) : fallback.music,

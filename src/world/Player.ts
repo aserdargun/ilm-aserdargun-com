@@ -173,8 +173,11 @@ export function usePlayerController(
 
     // Camera orbits behind the player, pulled in whenever something solid is
     // in the way so the character is never hidden by world geometry.
-    let distance = options.reducedMotion ? 7.2 : 7.8;
-    const height = options.reducedMotion ? 3.9 : 3.4;
+    // A tall, narrow viewport puts the character closer to the lens for the
+    // same distance, so pull back further to keep the framing readable.
+    const portrait = typeof window !== 'undefined' && window.innerHeight > window.innerWidth;
+    let distance = (options.reducedMotion ? 7.2 : 7.8) * (portrait ? 1.28 : 1);
+    const height = (options.reducedMotion ? 3.9 : 3.4) * (portrait ? 1.15 : 1);
     const dirX = Math.sin(yaw);
     const dirZ = Math.cos(yaw);
     const targetX = current.position.x;

@@ -39,6 +39,8 @@ const MOVE_KEYS: Record<string, [number, number]> = {
 class InputState {
   private held = new Set<string>();
   private edges = new Set<ActionKey>();
+  /** Actions queued by on-screen controls, consumed like key presses. */
+  private queued: ActionKey[] = [];
   /** Accumulated look delta in radians, drained each frame. */
   lookDeltaX = 0;
   lookDeltaY = 0;
@@ -103,13 +105,32 @@ class InputState {
     return this.held.has(code);
   }
 
+  /** Queued jump from the on-screen button. */
+  jump(): void {
+    this.queueAction('jump');
+  }
+
+  cycleTool(): void {
+    this.queueAction('cycleTool');
+  }
+
   /** Holding Shift sprints; without it the player walks. */
   get sprinting(): boolean {
     return this.held.has('ShiftLeft') || this.held.has('ShiftRight');
   }
 
+  /** Queues a one-shot action from an on-screen button. */
+  queueAction(action: ActionKey): void {
+    this.queued.push(action);
+  }
+
   /** Consumes a one-shot action. Returns true exactly once per press. */
   consume(action: ActionKey): boolean {
+    const queuedAt = this.queued.indexOf(action);
+    if (queuedAt >= 0) {
+      this.queued.splice(queuedAt, 1);
+      return true;
+    }
     if (!this.edges.has(action)) return false;
     this.edges.delete(action);
     return true;
@@ -117,6 +138,7 @@ class InputState {
 
   clearEdges(): void {
     this.edges.clear();
+    this.queued.length = 0;
   }
 
   addLook(dx: number, dy: number): void {

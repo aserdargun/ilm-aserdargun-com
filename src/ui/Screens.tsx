@@ -579,6 +579,7 @@ function ControlLegend() {
  * Only mounted when the device actually reports touch, so desktop is untouched.
  */
 export function TouchControls() {
+  const t = useT();
   const stickRef = useRef<HTMLDivElement>(null);
   const lookId = useRef<number | null>(null);
   const last = useRef({ x: 0, y: 0 });
@@ -634,9 +635,10 @@ export function TouchControls() {
         <button
           type="button"
           className="touch-btn"
-          onPointerDown={() => {
-            input.addLook(0, 0);
-            window.dispatchEvent(new CustomEvent('ilm:interact'));
+          aria-label={t('onboard.interact')}
+          onPointerDown={(e) => {
+            e.preventDefault();
+            input.queueAction('interact');
           }}
         >
           E
@@ -644,11 +646,24 @@ export function TouchControls() {
         <button
           type="button"
           className="touch-btn"
-          onPointerDown={() => {
-            window.dispatchEvent(new CustomEvent('ilm:jump'));
+          aria-label={t('onboard.jump')}
+          onPointerDown={(e) => {
+            e.preventDefault();
+            input.jump();
           }}
         >
           ↑
+        </button>
+        <button
+          type="button"
+          className="touch-btn"
+          aria-label={t('onboard.tool')}
+          onPointerDown={(e) => {
+            e.preventDefault();
+            input.cycleTool();
+          }}
+        >
+          ⟳
         </button>
       </div>
     </div>
