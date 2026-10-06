@@ -1,0 +1,10 @@
+node_modules
+dist
+.DS_Store
+*.local
+.vite
+coverage
+test-results
+
+# Blender review renders (regenerate with render_preview.py)
+tools/blender/preview
