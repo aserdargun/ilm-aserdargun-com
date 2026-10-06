@@ -31,12 +31,7 @@ export function PuzzlePanel({ stageId, onClose }: { stageId: string; onClose: ()
   const stage = STAGE_BY_ID[stageId];
   const state = game.stageStates[stageId] ?? (stage ? initialStageState(stage) : undefined);
 
-  if (!stage || !state) return null;
-
-  const evaluation = evaluateStage(stage, state);
-  const complete = game.progression.completedStages.includes(stageId);
-  const lang = game.lang;
-
+  // Hooks run unconditionally; only the rendering below depends on the data.
   const set = useCallback(
     (patch: Partial<StageRuntimeState>) => patchStageState(stageId, patch),
     [stageId],
@@ -49,6 +44,12 @@ export function PuzzlePanel({ stageId, onClose }: { stageId: string; onClose: ()
       onClose();
     }
   }, [stageId, onClose]);
+
+  if (!stage || !state) return null;
+
+  const evaluation = evaluateStage(stage, state);
+  const complete = game.progression.completedStages.includes(stageId);
+  const lang = game.lang;
 
   return (
     <div className="panel-scrim" role="dialog" aria-modal="true" aria-label={stage.title[lang]}>
@@ -169,6 +170,18 @@ function ConnectionControls({ stage, state, set, lang, t }: ControlProps) {
   // opening channel), and matching sources to targets by kind (everything else).
   if (data.links) return <LinkNodes stage={stage} state={state} set={set} lang={lang} t={t} />;
 
+  return <MatchNodes stage={stage} state={state} set={set} />;
+}
+
+/** Matching sources onto targets by kind — every system except the opening. */
+function MatchNodes({ stage, state, set }: { stage: StageDefinition; state: StageRuntimeState; set: SetFn }) {
+  const lang = useGame().lang;
+  const data = stage.data as {
+    scouts?: { id: string; kind: string }[];
+    seals?: { id: string; kind: string }[];
+    routes?: { id: string; accepts: string }[];
+    targets?: { id: string; accepts: string }[];
+  };
   const sources = data.scouts ?? data.seals ?? [];
   const targets = data.routes ?? data.targets ?? [];
   const [held, setHeld] = useState<string | null>(null);

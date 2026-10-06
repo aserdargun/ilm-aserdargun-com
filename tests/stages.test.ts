@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { STAGES, type StageDefinition } from '../src/game/stages';
 import { evaluateStage, initialStageState } from '../src/game/puzzleRuntime';
 import { solveStage } from './helpers/solver';
-import type { StageRuntimeState } from '../src/game/stages';
 
 /**
  * Every stage must be completable.

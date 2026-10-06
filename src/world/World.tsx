@@ -408,7 +408,6 @@ function UnfinishedTapestry({
   restoredCount?: number;
   visible?: boolean;
 }) {
-  if (!visible) return null;
   const panels = useMemo(
     () =>
       Array.from({ length: 14 }, (_, i) => ({
@@ -417,6 +416,7 @@ function UnfinishedTapestry({
       })),
     [],
   );
+  if (!visible) return null;
   return (
     <group>
       {/* the crossbeam the tapestry hangs from */}
