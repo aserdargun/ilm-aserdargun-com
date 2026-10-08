@@ -41,6 +41,8 @@ export const tr: Translations = {
   'onboard.jumpBody': 'Boşluk tuşuna bas.',
   'onboard.tool': 'Aleti değiştir',
   'onboard.toolBody': 'Sopa kiplerini sırayla değiştirmek için Q tuşuna bas.',
+  'onboard.home': 'Ana merkeze dön',
+  'onboard.homeBody': 'Ana merkezdeki platforma dönmek için ana düğmeye dokun.',
   'onboard.done': 'Başla',
 
   // ---- Başlık bilgileri ------------------------------------------------

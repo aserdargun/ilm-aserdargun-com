@@ -50,14 +50,79 @@ describe('touch and mobile readiness', () => {
     expect(css).toMatch(/\.prompt\s*\{[^}]*animation:\s*hud-in-end[^}]*\}/);
   });
 
-  it('lifts the bottom HUD clear of the touch-button column on phones', () => {
-    // Three 72px buttons plus gaps and a 1.25rem inset need ~16rem of clearance;
-    // at the old 9rem the strip overlapped the action button.
+  it('keeps the bottom HUD out of the middle of a phone screen', () => {
+    // The row used to be lifted with ~17rem of bottom padding to clear the
+    // action column, which parked the staff strip across the character on an
+    // 844pt viewport. Lifting is only ever right when the target is above the
+    // controls; a phone has no such row, so the lift has to be gone.
     const phone = css.slice(css.indexOf('@media (max-width: 680px)'));
     const block = phone.slice(phone.indexOf('.hud-bottom'), phone.indexOf('.prompt'));
-    const padding = block.match(/padding-bottom:\s*([\d.]+)rem/);
-    expect(padding).not.toBeNull();
-    expect(Number(padding![1])).toBeGreaterThanOrEqual(16);
+    const lift = block.match(/padding-bottom:\s*([\d.]+)rem/);
+    if (lift) expect(Number(lift[1])).toBeLessThan(4);
+    expect(phone).toMatch(/\.hud\s*\{[^}]*justify-content:\s*flex-start/);
+  });
+
+  it('tucks the staff strip into the empty band above the stick', () => {
+    const phone = css.slice(css.indexOf('@media (max-width: 680px)'));
+    const block = phone.slice(phone.indexOf('.hud-tools'), phone.indexOf('.tool {'));
+    expect(block).toMatch(/position:\s*absolute/);
+    // Clears the 128px stick and lands beside, never under, the action column.
+    expect(block).toMatch(/bottom:\s*calc\([^;]*128px/);
+    expect(block).toMatch(/grid-template-columns:\s*repeat\(2/);
+    expect(block).toMatch(/width:\s*min\(/);
+  });
+
+  it('puts the HUD above the touch layer so its buttons take the tap', () => {
+    // The look-drag surface is a full-height pointer target. If it sits above
+    // the HUD it swallows every press meant for the staff strip, and the strip
+    // still looks tappable.
+    const zIndexOf = (selector: string) => {
+      const at = css.indexOf(`${selector} {`);
+      expect(at, `missing ${selector}`).toBeGreaterThan(-1);
+      const rule = css.slice(at, css.indexOf('}', at));
+      return Number(rule.match(/z-index:\s*(\d+)/)?.[1] ?? 0);
+    };
+    expect(zIndexOf('.hud')).toBeGreaterThan(zIndexOf('.touch-layer'));
+    expect(zIndexOf('.hud')).toBeLessThan(zIndexOf('.screen'));
+  });
+
+  it('stops the look-drag surface above the on-screen controls', () => {
+    const at = css.indexOf('.touch-look {');
+    const rule = css.slice(at, css.indexOf('}', at));
+    const top = Number(rule.match(/top:\s*(\d+)%/)?.[1] ?? 100);
+    const height = Number(rule.match(/height:\s*(\d+)%/)?.[1] ?? 100);
+    // Anything past ~70% of the layer reaches the control band.
+    expect(top + height).toBeLessThanOrEqual(70);
+  });
+
+  it('tracks the iOS viewport so the canvas never outgrows the screen', () => {
+    // Safari's collapsing address bar makes a plain 100% taller than what is
+    // on screen, which pushes the home row under the URL bar.
+    expect(css).toMatch(/@supports \(height:\s*100dvh\)/);
+    expect(css).toMatch(/height:\s*100dvh/);
+  });
+
+  it('sends the bottom-right touch button home instead of cycling the tool', () => {
+    const screens = readFileSync('src/ui/Screens.tsx', 'utf8');
+    const from = screens.indexOf('className="touch-buttons"');
+    const column = screens.slice(from, screens.indexOf('</div>\n  );', from));
+    expect(column).toMatch(/input\.home\(\)/);
+    expect(column).not.toMatch(/cycleTool/);
+    // A desktop key still exists, and the spawn point is shared.
+    expect(input).toMatch(/KeyH:\s*'home'/);
+    expect(scene).toMatch(/const SPAWN/);
+    expect(scene).toMatch(/createPlayerState\(new THREE\.Vector3\(\.\.\.SPAWN\)\)/);
+  });
+
+  it('does not strand the Weaver when a thumb slides off the stick', () => {
+    // The stick is 128px across and thumbs are not. Without pointer capture a
+    // drag that leaves the circle stops delivering moves, so the release never
+    // reaches the element and the Weaver walks off on their own — and on iOS a
+    // cancelled pointer (call, notification, app switcher) does the same.
+    const screens = readFileSync('src/ui/Screens.tsx', 'utf8');
+    expect(screens).toMatch(/setPointerCapture/);
+    expect(screens).toMatch(/releasePointerCapture/);
+    expect(screens.match(/onPointerCancel/g)?.length).toBeGreaterThanOrEqual(2);
   });
 
   it('gives the virtual stick visible travel feedback', () => {

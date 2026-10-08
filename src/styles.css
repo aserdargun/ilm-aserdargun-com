@@ -74,6 +74,21 @@ body,
   margin: 0;
 }
 
+/*
+ * On iOS the address bar collapses and re-expands, so a plain `height: 100%`
+ * resolves against whichever viewport happened to be current — the canvas ends
+ * up taller than what is on screen and the home button row falls under the URL
+ * bar. `dvh` tracks the real one. Kept behind @supports so older engines still
+ * get the plain 100% rather than losing the height entirely.
+ */
+@supports (height: 100dvh) {
+  html,
+  body,
+  #root {
+    height: 100dvh;
+  }
+}
+
 body {
   background: var(--ink-900);
   color: var(--text);
@@ -441,7 +456,14 @@ button {
   padding-top: max(clamp(0.75rem, 2vw, 1.25rem), env(safe-area-inset-top, 0px));
   padding-bottom: max(clamp(0.75rem, 2vw, 1.25rem), env(safe-area-inset-bottom, 0px));
   pointer-events: none;
-  z-index: 10;
+  /*
+   * Above `.touch-layer` (15) so the HUD's own buttons win the hit test, below
+   * `.screen` (20) and the puzzle panel (30). The layer itself stays
+   * pointer-transparent, so only the controls actually take taps — this is
+   * what stops the look-drag area from swallowing presses meant for the staff
+   * strip and the objective buttons.
+   */
+  z-index: 18;
 }
 
 .hud button,
@@ -1630,12 +1652,18 @@ select {
   pointer-events: none;
 }
 
+/*
+ * Camera-drag surface. Deliberately stops short of the bottom third: on a
+ * phone the stick, the action column and the staff strip all live there, and a
+ * drag that started under them would rotate the camera instead of moving the
+ * Weaver. The right half is left because the left half is thumb territory.
+ */
 .touch-look {
   position: absolute;
   right: 0;
-  top: 25%;
+  top: 18%;
   width: 55%;
-  height: 50%;
+  height: 42%;
   pointer-events: auto;
   touch-action: none;
 }
@@ -1753,17 +1781,46 @@ select {
   }
 
   /*
-   * Keep the prompt and the tool strip clear of the on-screen controls. The
-   * touch-button column is three 72px buttons plus gaps, i.e. ~235px tall and
-   * anchored to the same 1.25rem bottom inset as this row, so anything under
-   * ~16rem lands underneath it. This row grows upward from the bottom edge, so
-   * raising the padding lifts both the strip and the prompt above the buttons.
+   * This row used to be lifted by 17rem of padding so it would clear the
+   * touch-button column. On an 844pt phone that parked the staff strip across
+   * the middle of the screen, on top of the character — the one thing a
+   * third-person game cannot afford to hide. Nothing at the bottom works: the
+   * stick and the action column already own that band. So the row stops
+   * lifting, the prompt moves up under the objective card where it is read
+   * once instead of watched, and the staff strip drops into the empty band
+   * directly above the stick — thumb-reachable and below the sightline.
    */
+  .hud {
+    justify-content: flex-start;
+  }
+
   .hud-bottom {
-    flex-direction: column-reverse;
-    align-items: flex-end;
-    gap: 0.6rem;
-    padding-bottom: 17rem;
+    display: block;
+    margin-top: 0.5rem;
+    padding-bottom: 0;
+  }
+
+  .hud-tools {
+    position: absolute;
+    left: max(1.25rem, env(safe-area-inset-left, 0px) + 0.5rem);
+    /* The stick is 128px tall and sits on the same inset, so adding its height
+       plus 0.5rem parks the strip in the gap the stick leaves behind. */
+    bottom: calc(max(1.25rem, env(safe-area-inset-bottom, 0px) + 0.75rem) + 128px + 0.5rem);
+    /* Two columns keep all four modes legible without a horizontal scroll,
+       and stop well short of the action column on the right. */
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: min(190px, calc(100% - 6.5rem));
+    border-radius: var(--r-md);
+  }
+
+  .tool {
+    min-height: 42px;
+    padding: 0.3rem 0.35rem;
+    font-size: 0.68rem;
+    line-height: 1.15;
+    text-align: center;
+    border-radius: var(--r-sm);
   }
 
   .prompt {

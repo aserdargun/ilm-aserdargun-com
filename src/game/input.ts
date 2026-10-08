@@ -6,7 +6,7 @@
  * edges so a key press is never missed between frames.
  */
 
-export type ActionKey = 'interact' | 'jump' | 'cycleTool' | 'pause' | 'resetPuzzle';
+export type ActionKey = 'interact' | 'jump' | 'cycleTool' | 'pause' | 'resetPuzzle' | 'home';
 
 const ACTION_BINDINGS: Record<string, ActionKey> = {
   KeyE: 'interact',
@@ -15,6 +15,7 @@ const ACTION_BINDINGS: Record<string, ActionKey> = {
   KeyQ: 'cycleTool',
   Escape: 'pause',
   KeyR: 'resetPuzzle',
+  KeyH: 'home',
 };
 
 /**
@@ -114,6 +115,11 @@ class InputState {
     this.queueAction('cycleTool');
   }
 
+  /** Queued recall to the hub from the on-screen home button. */
+  home(): void {
+    this.queueAction('home');
+  }
+
   /** Holding Shift sprints; without it the player walks. */
   get sprinting(): boolean {
     return this.held.has('ShiftLeft') || this.held.has('ShiftRight');
@@ -176,3 +182,19 @@ export const touch: TouchState = {
   stickOrigin: { x: 0, y: 0 },
   lookId: null,
 };
+
+/**
+ * Whether this device is driven by touch rather than a pointer and a keyboard.
+ *
+ * Lives here because both the on-screen controls and the HUD layout need the
+ * same answer: the controls are only mounted when it is true, and the HUD only
+ * moves out of the way when it is true. Probed once — the hardware cannot
+ * change under a live session.
+ */
+export function isTouchDevice(): boolean {
+  if (typeof window === 'undefined') return false;
+  return (
+    'ontouchstart' in window ||
+    (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0)
+  );
+}

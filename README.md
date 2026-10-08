@@ -184,7 +184,8 @@ than in the model, precisely so it can keep reacting to progress.
 | Etkileşim / Interact | `E` | `E` button (bottom-right) |
 | Sıçra / Jump | `Space` | `↑` button |
 | Koş / Sprint | Hold `Shift` | — |
-| Aleti değiştir / Switch tool | `Q` | Tap the tool bar |
+| Aleti değiştir / Switch tool | `Q` | Tap the tool bar (2×2, above the stick) |
+| Ana merkeze dön / Go home | `H` | `⌂` button (bottom-right) |
 | Bulmacayı sıfırla / Reset puzzle | `R` | `Bulmacayı sıfırla` |
 | Duraklat / Pause | `Esc` | `Duraklat` |
 
@@ -421,7 +422,7 @@ Details that carry weight:
 | `save` | 19 | Schema validation, corrupt/version recovery, reconciliation, language independence |
 | `i18n` | 11 | Key parity, no empty strings, no untranslated prose, Turkish diacritics |
 | `nav` | 8 | Walkable world, island discs, span crossing, boundary containment |
-| `touch` | 9 | Virtual stick, drag-to-look, tap targets sized for a phone |
+| `touch` | 14 | Staff strip clear of the sightline, home button, pointer capture, tap targets sized for a phone |
 | `audio` | 12 | Chord voicing has a third, tremolo depth is proportional, no phase inversion, headroom |
 | `playtime` | 5 | The stated playtime estimate is derived, not guessed |
 

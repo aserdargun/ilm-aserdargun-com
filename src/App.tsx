@@ -13,7 +13,7 @@ import {
 } from './ui/Screens';
 import { hydrateLang } from './i18n';
 import { closeStage, setScreen, useGame } from './game/store';
-import { input } from './game/input';
+import { input, isTouchDevice } from './game/input';
 import { STAGE_BY_ID } from './game/stages';
 import './styles.css';
 
@@ -35,14 +35,6 @@ function hasWebGL(): boolean {
   } catch {
     return false;
   }
-}
-
-function isTouchDevice(): boolean {
-  if (typeof window === 'undefined') return false;
-  return (
-    'ontouchstart' in window ||
-    (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0)
-  );
 }
 
 export default function App() {

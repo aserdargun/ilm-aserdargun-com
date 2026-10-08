@@ -30,6 +30,8 @@ export interface PlayerControllerOptions {
   onCycleTool: () => void;
   onPause: () => void;
   onReset: () => void;
+  /** Recall to the hub spawn; wired to the on-screen home button and H. */
+  onHome: () => void;
   enabled: boolean;
 }
 
@@ -106,6 +108,7 @@ export function usePlayerController(
       if (input.consume('cycleTool')) options.onCycleTool();
       if (input.consume('pause')) options.onPause();
       if (input.consume('resetPuzzle')) options.onReset();
+      if (input.consume('home')) options.onHome();
     } else {
       input.clearEdges();
     }

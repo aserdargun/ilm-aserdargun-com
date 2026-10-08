@@ -18,7 +18,7 @@ import {
 } from '../game/store';
 import { LANGS, type RegionId } from '../types/catalog';
 import { audio, applyAudioSettings } from '../game/audio';
-import { input } from '../game/input';
+import { input, isTouchDevice } from '../game/input';
 
 // ---------------------------------------------------------------------------
 // Title
@@ -535,15 +535,13 @@ export function LanguageSwitch({ compact = false }: { compact?: boolean }) {
 
 function ControlLegend() {
   const t = useT();
-  const touch =
-    typeof window !== 'undefined' &&
-    ('ontouchstart' in window ||
-      (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0));
+  const touch = isTouchDevice();
   const rows = touch
     ? [
         [t('onboard.moveBody'), t('onboard.move')],
         [t('onboard.lookBody'), t('onboard.look')],
         [t('onboard.interactBody'), t('onboard.interact')],
+        [t('onboard.homeBody'), t('onboard.home')],
       ]
     : [
         ['W A S D', t('onboard.move')],
@@ -551,6 +549,7 @@ function ControlLegend() {
         ['E', t('onboard.interact')],
         ['Space', t('onboard.jump')],
         ['Q', t('onboard.tool')],
+        ['H', t('onboard.home')],
         ['R', t('puzzle.reset')],
         ['Esc', t('hud.pause')],
       ];
@@ -595,6 +594,10 @@ export function TouchControls() {
         className="stick"
         onPointerDown={(e) => {
           stickPointer.current = e.pointerId;
+          // Capture, or a thumb that slides off the 128px circle before
+          // lifting leaves the Weaver walking on their own: the move stream
+          // stops, so `onPointerUp` never arrives to zero the stick.
+          e.currentTarget.setPointerCapture(e.pointerId);
           const rect = e.currentTarget.getBoundingClientRect();
           const cx = rect.left + rect.width / 2;
           const cy = rect.top + rect.height / 2;
@@ -609,6 +612,19 @@ export function TouchControls() {
         }}
         onPointerUp={(e) => {
           stickPointer.current = null;
+          if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+          }
+          applyStick(e.currentTarget, 0, 0, 1);
+        }}
+        // iOS cancels the pointer when a call, a notification or the app
+        // switcher interrupts the gesture. Without this the knob stays
+        // pushed over and the Weaver keeps walking after the UI is back.
+        onPointerCancel={(e) => {
+          stickPointer.current = null;
+          if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+          }
           applyStick(e.currentTarget, 0, 0, 1);
         }}
       >
@@ -619,6 +635,9 @@ export function TouchControls() {
         className="touch-look"
         onPointerDown={(e) => {
           lookId.current = e.pointerId;
+          // Same reason as the stick: the drag routinely leaves this surface,
+          // and without capture the camera freezes mid-turn until the next tap.
+          e.currentTarget.setPointerCapture(e.pointerId);
           last.current = { x: e.clientX, y: e.clientY };
         }}
         onPointerMove={(e) => {
@@ -626,8 +645,17 @@ export function TouchControls() {
           input.addLook((e.clientX - last.current.x) * 0.006, (e.clientY - last.current.y) * 0.005);
           last.current = { x: e.clientX, y: e.clientY };
         }}
-        onPointerUp={() => {
+        onPointerUp={(e) => {
           lookId.current = null;
+          if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+          }
+        }}
+        onPointerCancel={(e) => {
+          lookId.current = null;
+          if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+          }
         }}
       />
 
@@ -657,13 +685,13 @@ export function TouchControls() {
         <button
           type="button"
           className="touch-btn"
-          aria-label={t('onboard.tool')}
+          aria-label={t('onboard.home')}
           onPointerDown={(e) => {
             e.preventDefault();
-            input.cycleTool();
+            input.home();
           }}
         >
-          ⟳
+          ⌂
         </button>
       </div>
     </div>

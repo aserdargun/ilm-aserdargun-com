@@ -48,6 +48,13 @@ import {
 
 const INTERACT_RANGE = 5.2;
 
+/**
+ * Where the player arrives and where the home button sends them back: the hub
+ * dais, facing the world. Kept as one constant so spawning and recalling can
+ * never drift apart.
+ */
+const SPAWN: [number, number, number] = [0, 0, 16];
+
 // Warm the authored models before the first render so the opening frame does
 // not stall while the GLB files stream in.
 preloadModels(ALL_MODEL_NAMES);
@@ -121,7 +128,7 @@ function nextObjectiveStage(game: ReturnType<typeof useGame>): string | null {
 function SceneContents() {
   const game = useGame();
   const cameraYaw = useRef(0);
-  const player = useRef<PlayerState>(createPlayerState(new THREE.Vector3(0, 0, 16)));
+  const player = useRef<PlayerState>(createPlayerState(new THREE.Vector3(...SPAWN)));
   const stagePositions = useMemo(() => buildStagePositions(), []);
   const regionMeta = useMemo(() => allRegionMeta(), []);
 
@@ -144,6 +151,14 @@ function SceneContents() {
         const id = targetRef.current;
         if (!id) return;
         window.dispatchEvent(new CustomEvent('ilm:reset-stage', { detail: id }));
+      },
+      onHome: () => {
+        // The hub is the one place the player can always find their way back
+        // from, so home means "put me back on the dais, facing the world" —
+        // a fresh state plus a camera that is no longer looking at a wall.
+        player.current = createPlayerState(new THREE.Vector3(...SPAWN));
+        cameraYaw.current = 0;
+        input.setStick(0, 0);
       },
     }),
     [],
@@ -349,6 +364,7 @@ function SceneContents() {
         onCycleTool={callbacks.onCycleTool}
         onPause={callbacks.onPause}
         onReset={callbacks.onReset}
+        onHome={callbacks.onHome}
       />
       <Spark companionTarget={player} reducedMotion={game.settings.reducedMotion} />
     </>
@@ -687,6 +703,7 @@ function PlayerRig({
   onCycleTool: () => void;
   onPause: () => void;
   onReset: () => void;
+  onHome: () => void;
 }) {
   const mesh = usePlayerController(state, {
     cameraYaw,

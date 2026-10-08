@@ -41,6 +41,8 @@ export const en = {
   'onboard.jumpBody': 'Press Space.',
   'onboard.tool': 'Switch tool',
   'onboard.toolBody': 'Press Q to cycle the staff modes.',
+  'onboard.home': 'Go home',
+  'onboard.homeBody': 'Tap the home button to return to the hub dais.',
   'onboard.done': 'Begin',
 
   // ---- HUD ------------------------------------------------------------
