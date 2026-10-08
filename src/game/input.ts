@@ -42,12 +42,21 @@ class InputState {
   private edges = new Set<ActionKey>();
   /** Actions queued by on-screen controls, consumed like key presses. */
   private queued: ActionKey[] = [];
+  /** Held by the on-screen sprint button, as Shift would be. */
+  private virtualSprint = false;
   /** Accumulated look delta in radians, drained each frame. */
   lookDeltaX = 0;
   lookDeltaY = 0;
   /** Virtual stick from the on-screen joystick, -1..1. */
   stickX = 0;
   stickY = 0;
+  /**
+   * Right-hand camera stick, -1..1. Held rather than accumulated: the camera
+   * keeps turning for as long as the thumb rests off-centre, so this is read
+   * every frame instead of being drained.
+   */
+  lookStickX = 0;
+  lookStickY = 0;
   enabled = true;
 
   private onKeyDown = (event: KeyboardEvent) => {
@@ -120,9 +129,19 @@ class InputState {
     this.queueAction('home');
   }
 
+  /**
+   * Sprint from the on-screen button. Held, not queued, so releasing the thumb
+   * drops straight back to a walk the same way letting go of Shift does.
+   */
+  setSprint(active: boolean): void {
+    this.virtualSprint = active;
+  }
+
   /** Holding Shift sprints; without it the player walks. */
   get sprinting(): boolean {
-    return this.held.has('ShiftLeft') || this.held.has('ShiftRight');
+    return (
+      this.virtualSprint || this.held.has('ShiftLeft') || this.held.has('ShiftRight')
+    );
   }
 
   /** Queues a one-shot action from an on-screen button. */
@@ -163,9 +182,45 @@ class InputState {
     this.stickX = x;
     this.stickY = y;
   }
+
+  setLookStick(x: number, y: number): void {
+    this.lookStickX = x;
+    this.lookStickY = y;
+  }
+
+  /**
+   * Releases every held on-screen control. Called when the touch layer unmounts
+   * so a thumb that was still down as the screen paused cannot leave the player
+   * sprinting or spinning the camera into the next stage.
+   */
+  releaseTouch(): void {
+    this.stickX = 0;
+    this.stickY = 0;
+    this.lookStickX = 0;
+    this.lookStickY = 0;
+    this.virtualSprint = false;
+  }
 }
 
 export const input = new InputState();
+
+/**
+ * Fraction of a stick ring that still reads as centred. A resting thumb always
+ * reports a pixel or two of drift, and without this the character walks off on
+ * its own; the ring is still large enough that the far edge is reachable
+ * without lifting the thumb.
+ */
+export const STICK_DEAD_ZONE = 0.14;
+
+/**
+ * Maps a 0..1 deflection onto the intent it should report, where everything
+ * inside the dead zone is zero and the far edge of the ring is still exactly 1.
+ * A plain subtraction would leave full deflection stuck at 1 - deadZone.
+ */
+export function rescaleDeadZone(raw: number): number {
+  if (raw <= STICK_DEAD_ZONE) return 0;
+  return (raw - STICK_DEAD_ZONE) / (1 - STICK_DEAD_ZONE);
+}
 
 /**
  * Touch state for the virtual joystick and look-drag. Kept separate so the

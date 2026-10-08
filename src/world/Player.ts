@@ -25,6 +25,8 @@ export interface PlayerControllerOptions {
   jumpVelocity?: number;
   /** Camera yaw, owned by the camera rig. */
   cameraYaw: React.MutableRefObject<number>;
+  /** How far the camera is tilted from its resting framing, in radians. */
+  cameraPitch: React.MutableRefObject<number>;
   reducedMotion: boolean;
   onInteract: () => void;
   onCycleTool: () => void;
@@ -37,6 +39,21 @@ export interface PlayerControllerOptions {
 
 const GRAVITY = -26;
 const RADIUS = 0.55;
+
+/**
+ * How fast the right-hand camera stick turns and tilts the camera at full
+ * deflection, in radians per second.
+ */
+const LOOK_STICK_YAW_RATE = 2.6;
+const LOOK_STICK_PITCH_RATE = 1.15;
+
+/**
+ * How far the camera may be pushed from its resting framing. The upper bound
+ * keeps it from dropping below the ground plane; the lower bound stops it
+ * rising so far that the world becomes a plan view.
+ */
+const PITCH_MIN = -0.66;
+const PITCH_MAX = 0.34;
 
 /**
  * Third-person player with camera-relative movement, gravity, jump, and
@@ -99,6 +116,20 @@ export function usePlayerController(
 
     const look = input.consumeLook();
     options.cameraYaw.current -= look.x;
+    // Dragging down tilts the view toward the character's feet, and pushing
+    // the camera stick up tilts it the other way. Both feed the same clamp, so
+    // neither can drive the lens through the ground.
+    options.cameraPitch.current += look.y;
+    if (options.enabled) {
+      // The stick is held rather than accumulated, so this is a rate scaled by
+      // the frame: it turns the same amount per second at 30fps as at 120fps.
+      options.cameraYaw.current -= input.lookStickX * LOOK_STICK_YAW_RATE * dt;
+      options.cameraPitch.current -= input.lookStickY * LOOK_STICK_PITCH_RATE * dt;
+    }
+    options.cameraPitch.current = Math.min(
+      PITCH_MAX,
+      Math.max(PITCH_MIN, options.cameraPitch.current),
+    );
     if (!options.reducedMotion) {
       options.cameraYaw.current = clampAngle(options.cameraYaw.current);
     }
@@ -200,9 +231,17 @@ export function usePlayerController(
       if (needed > 0 && needed < distance) distance = Math.max(4.6, needed);
     }
 
-    camera.position.x += (targetX + dirX * distance - camera.position.x) * (1 - Math.exp(-9 * dt));
-    camera.position.y += (targetY + height - camera.position.y) * (1 - Math.exp(-9 * dt));
-    camera.position.z += (targetZ + dirZ * distance - camera.position.z) * (1 - Math.exp(-9 * dt));
+    // Orbit the resting framing by the pitch offset. At an offset of zero this
+    // reproduces the old height/distance pair exactly, so the camera only
+    // departs from the framing it had when the player never touched the stick.
+    const restAngle = Math.atan2(height, distance);
+    const orbitAngle = Math.max(0.04, restAngle + options.cameraPitch.current);
+    const orbitX = Math.cos(orbitAngle) * distance;
+    const orbitY = Math.sin(orbitAngle) * distance;
+
+    camera.position.x += (targetX + dirX * orbitX - camera.position.x) * (1 - Math.exp(-9 * dt));
+    camera.position.y += (targetY + orbitY - camera.position.y) * (1 - Math.exp(-9 * dt));
+    camera.position.z += (targetZ + dirZ * orbitX - camera.position.z) * (1 - Math.exp(-9 * dt));
     camera.lookAt(targetX, targetY + 0.6, targetZ);
   });
 

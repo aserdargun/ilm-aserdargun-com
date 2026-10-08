@@ -1619,10 +1619,10 @@ select {
   pointer-events: none;
 }
 
+/* Two sticks, one per thumb, each anchored to the corner it is steered from. */
 .stick {
   position: absolute;
   /* Clear of the home indicator on notched phones. */
-  left: max(1.25rem, env(safe-area-inset-left, 0px) + 0.5rem);
   bottom: max(1.25rem, env(safe-area-inset-bottom, 0px) + 0.75rem);
   width: 128px;
   height: 128px;
@@ -1633,6 +1633,21 @@ select {
   -webkit-backdrop-filter: blur(10px);
   pointer-events: auto;
   touch-action: none;
+}
+
+.stick-move {
+  left: max(1.25rem, env(safe-area-inset-left, 0px) + 0.5rem);
+}
+
+/*
+ * The camera stick is slightly smaller than the walking one: it shares the right
+ * thumb with nothing else, and a smaller ring is easier to hold off-centre
+ * without the thumb reaching the edge of its own travel.
+ */
+.stick-look {
+  right: max(1.25rem, env(safe-area-inset-right, 0px) + 0.5rem);
+  width: 118px;
+  height: 118px;
 }
 
 .stick-knob {
@@ -1652,44 +1667,96 @@ select {
   pointer-events: none;
 }
 
-/*
- * Camera-drag surface. Deliberately stops short of the bottom third: on a
- * phone the stick, the action column and the staff strip all live there, and a
- * drag that started under them would rotate the camera instead of moving the
- * Weaver. The right half is left because the left half is thumb territory.
- */
-.touch-look {
-  position: absolute;
-  right: 0;
-  top: 18%;
-  width: 55%;
-  height: 42%;
-  pointer-events: auto;
-  touch-action: none;
+/* The camera knob wears the copper of the action buttons, not the walking teal. */
+.stick-look .stick-knob {
+  background: rgba(201, 138, 82, 0.55);
+  border-color: var(--sandstone);
 }
 
+/*
+ * Sprint takes the empty bottom band between the two sticks: close enough to the
+ * walking stick that the same thumb can hold it while it keeps steering, and
+ * clear of both rings so neither thumb is ever covering the other control.
+ */
+.sprint-btn {
+  position: absolute;
+  left: calc(max(1.25rem, env(safe-area-inset-left, 0px) + 0.5rem) + 128px + 0.5rem);
+  bottom: max(1.25rem, env(safe-area-inset-bottom, 0px) + 0.75rem);
+}
+
+/*
+ * The action cluster sits above the camera stick, clear of the arc its thumb
+ * sweeps, and narrow enough to stay well left of the staff strip on the other
+ * side of the screen.
+ */
 .touch-buttons {
   position: absolute;
   right: max(1.25rem, env(safe-area-inset-right, 0px) + 0.5rem);
-  bottom: max(1.25rem, env(safe-area-inset-bottom, 0px) + 0.75rem);
+  bottom: calc(max(1.25rem, env(safe-area-inset-bottom, 0px) + 0.75rem) + 118px + 0.6rem);
   display: grid;
-  gap: 0.6rem;
+  grid-template-columns: 64px 64px;
+  grid-template-areas:
+    'interact .'
+    'jump home';
+  gap: 0.5rem;
   pointer-events: auto;
 }
 
+.touch-btn-interact {
+  grid-area: interact;
+}
+.touch-btn-jump {
+  grid-area: jump;
+}
+.touch-buttons .touch-btn:last-child {
+  grid-area: home;
+}
+
+/*
+ * Glass, not a filled disc: the scene stays readable through the controls, so a
+ * thumb resting on one does not hide the thing it is pointing at.
+ */
 .touch-btn {
-  width: 72px;
-  height: 72px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   font: inherit;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.05rem;
+  background: var(--glass-soft);
+  border: 1px solid var(--hairline-strong);
+  backdrop-filter: blur(12px) saturate(1.2);
+  -webkit-backdrop-filter: blur(12px) saturate(1.2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  cursor: pointer;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.touch-btn-glyph {
   font-size: 1.25rem;
   font-weight: 700;
-  background: rgba(201, 138, 82, 0.8);
-  color: var(--ink-900);
-  border: 1px solid var(--sandstone);
-  cursor: pointer;
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  line-height: 1;
+}
+
+.touch-btn-caption {
+  font-size: 0.5rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  line-height: 1.1;
+  color: var(--text-soft);
+  text-transform: uppercase;
+}
+
+/* The held state has to be visible: the finger covering the button is not proof. */
+.touch-btn.is-active {
+  background: var(--accent-glow);
+  border-color: var(--accent);
+  color: #ffffff;
 }
 
 /* ------------------------------------------------------------ transitions */
@@ -1807,10 +1874,12 @@ select {
        plus 0.5rem parks the strip in the gap the stick leaves behind. */
     bottom: calc(max(1.25rem, env(safe-area-inset-bottom, 0px) + 0.75rem) + 128px + 0.5rem);
     /* Two columns keep all four modes legible without a horizontal scroll,
-       and stop well short of the action column on the right. */
+       and stop well short of the action cluster on the right. That cluster is
+       136px wide and sits on the same inset, so 10.5rem of reserved space
+       keeps the two apart on the narrowest phones rather than only on a 390. */
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    width: min(190px, calc(100% - 6.5rem));
+    width: min(190px, calc(100% - 10.5rem));
     border-radius: var(--r-md);
   }
 

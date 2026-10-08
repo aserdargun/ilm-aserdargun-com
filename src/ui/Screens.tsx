@@ -18,7 +18,7 @@ import {
 } from '../game/store';
 import { LANGS, type RegionId } from '../types/catalog';
 import { audio, applyAudioSettings } from '../game/audio';
-import { input, isTouchDevice } from '../game/input';
+import { input, isTouchDevice, rescaleDeadZone } from '../game/input';
 
 // ---------------------------------------------------------------------------
 // Title
@@ -540,6 +540,7 @@ function ControlLegend() {
     ? [
         [t('onboard.moveBody'), t('onboard.move')],
         [t('onboard.lookBody'), t('onboard.look')],
+        [t('onboard.sprintBody'), t('onboard.sprint')],
         [t('onboard.interactBody'), t('onboard.interact')],
         [t('onboard.homeBody'), t('onboard.home')],
       ]
@@ -574,113 +575,131 @@ function ControlLegend() {
 }
 
 /**
- * Touch controls: a virtual stick, drag-to-look and large action buttons.
- * Only mounted when the device actually reports touch, so desktop is untouched.
+ * Touch controls: two thumb sticks, a held sprint button and three action
+ * buttons. Only mounted when the device actually reports touch, so desktop is
+ * untouched.
+ *
+ * The left stick walks and the right stick turns the camera, each anchored to
+ * the corner its thumb actually rests in. Sprint sits in the bottom band between
+ * them, close enough to the walking stick to hold with the same thumb. The action
+ * buttons stack above the camera stick, out of the arc it needs to sweep.
  */
 export function TouchControls() {
   const t = useT();
-  const stickRef = useRef<HTMLDivElement>(null);
-  const lookId = useRef<number | null>(null);
-  const last = useRef({ x: 0, y: 0 });
+  const [sprinting, setSprinting] = useState(false);
+  // Both sticks can be under a thumb at once, so each needs its own owner, but
+  // one ref holds both: a stick is identified by name in the handlers below.
+  const sticks = useRef<Record<string, number | null>>({ move: null, look: null });
 
   useEffect(() => {
-    return () => input.setStick(0, 0);
+    // A thumb still down as the player pauses must not leave the character
+    // sprinting, or the camera still turning, on the way into the menu.
+    return () => input.releaseTouch();
   }, []);
+
+  /*
+   * Pointer capture means every later event for this finger still targets the
+   * stick, so a thumb that slides off the ring — or a pointer iOS cancels for
+   * an incoming call — still delivers its release. Without it the intent stays
+   * pushed over and the Weaver keeps walking on its own.
+   */
+  const stickHandlers = (name: string, apply: (x: number, y: number) => void) => ({
+    onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => {
+      sticks.current[name] = e.pointerId;
+      // Reported before the capture, and never allowed to throw, so the stick
+      // still responds even where capture is refused.
+      applyStick(e.currentTarget, e.clientX, e.clientY, apply);
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch {
+        /* capture is an improvement here, not a requirement */
+      }
+    },
+    onPointerMove: (e: React.PointerEvent<HTMLDivElement>) => {
+      if (sticks.current[name] !== e.pointerId) return;
+      applyStick(e.currentTarget, e.clientX, e.clientY, apply);
+    },
+    onPointerUp: (e: React.PointerEvent<HTMLDivElement>) => {
+      if (sticks.current[name] !== e.pointerId) return;
+      sticks.current[name] = null;
+      releaseCapture(e.currentTarget, e.pointerId);
+      centreStick(e.currentTarget, apply);
+    },
+    onPointerCancel: (e: React.PointerEvent<HTMLDivElement>) => {
+      sticks.current[name] = null;
+      releaseCapture(e.currentTarget, e.pointerId);
+      centreStick(e.currentTarget, apply);
+    },
+  });
 
   return (
     <div className="touch-layer">
       <div
-        ref={stickRef}
-        className="stick"
-        onPointerDown={(e) => {
-          stickPointer.current = e.pointerId;
-          // Capture, or a thumb that slides off the 128px circle before
-          // lifting leaves the Weaver walking on their own: the move stream
-          // stops, so `onPointerUp` never arrives to zero the stick.
-          e.currentTarget.setPointerCapture(e.pointerId);
-          const rect = e.currentTarget.getBoundingClientRect();
-          const cx = rect.left + rect.width / 2;
-          const cy = rect.top + rect.height / 2;
-          applyStick(e.currentTarget, e.clientX - cx, e.clientY - cy, rect.width / 2);
-        }}
-        onPointerMove={(e) => {
-          if (stickPointer.current !== e.pointerId) return;
-          const rect = e.currentTarget.getBoundingClientRect();
-          const cx = rect.left + rect.width / 2;
-          const cy = rect.top + rect.height / 2;
-          applyStick(e.currentTarget, e.clientX - cx, e.clientY - cy, rect.width / 2);
-        }}
-        onPointerUp={(e) => {
-          stickPointer.current = null;
-          if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-            e.currentTarget.releasePointerCapture(e.pointerId);
-          }
-          applyStick(e.currentTarget, 0, 0, 1);
-        }}
-        // iOS cancels the pointer when a call, a notification or the app
-        // switcher interrupts the gesture. Without this the knob stays
-        // pushed over and the Weaver keeps walking after the UI is back.
-        onPointerCancel={(e) => {
-          stickPointer.current = null;
-          if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-            e.currentTarget.releasePointerCapture(e.pointerId);
-          }
-          applyStick(e.currentTarget, 0, 0, 1);
-        }}
+        className="stick stick-move"
+        {...stickHandlers('move', (x, y) => input.setStick(x, y))}
       >
         <div className="stick-knob" />
       </div>
 
       <div
-        className="touch-look"
+        className="stick stick-look"
+        {...stickHandlers('look', (x, y) => input.setLookStick(x, y))}
+      >
+        <div className="stick-knob" />
+      </div>
+
+      <button
+        type="button"
+        className={`touch-btn sprint-btn${sprinting ? ' is-active' : ''}`}
+        aria-label={t('onboard.sprint')}
+        aria-pressed={sprinting}
         onPointerDown={(e) => {
-          lookId.current = e.pointerId;
-          // Same reason as the stick: the drag routinely leaves this surface,
-          // and without capture the camera freezes mid-turn until the next tap.
-          e.currentTarget.setPointerCapture(e.pointerId);
-          last.current = { x: e.clientX, y: e.clientY };
-        }}
-        onPointerMove={(e) => {
-          if (lookId.current !== e.pointerId) return;
-          input.addLook((e.clientX - last.current.x) * 0.006, (e.clientY - last.current.y) * 0.005);
-          last.current = { x: e.clientX, y: e.clientY };
-        }}
-        onPointerUp={(e) => {
-          lookId.current = null;
-          if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-            e.currentTarget.releasePointerCapture(e.pointerId);
+          e.preventDefault();
+          setSprinting(true);
+          input.setSprint(true);
+          try {
+            e.currentTarget.setPointerCapture(e.pointerId);
+          } catch {
+            /* capture only guarantees the release event arrives here */
           }
         }}
-        onPointerCancel={(e) => {
-          lookId.current = null;
-          if (e.currentTarget.hasPointerCapture(e.pointerId)) {
-            e.currentTarget.releasePointerCapture(e.pointerId);
-          }
-        }}
-      />
+        onPointerUp={releaseSprint(setSprinting)}
+        onPointerCancel={releaseSprint(setSprinting)}
+        onLostPointerCapture={releaseSprint(setSprinting)}
+      >
+        <span className="touch-btn-glyph" aria-hidden="true">
+          »
+        </span>
+        <span className="touch-btn-caption">{t('onboard.sprint')}</span>
+      </button>
 
       <div className="touch-buttons">
         <button
           type="button"
-          className="touch-btn"
+          className="touch-btn touch-btn-interact"
           aria-label={t('onboard.interact')}
           onPointerDown={(e) => {
             e.preventDefault();
             input.queueAction('interact');
           }}
         >
-          E
+          <span className="touch-btn-glyph" aria-hidden="true">
+            E
+          </span>
         </button>
         <button
           type="button"
-          className="touch-btn"
+          className="touch-btn touch-btn-jump"
           aria-label={t('onboard.jump')}
           onPointerDown={(e) => {
             e.preventDefault();
             input.jump();
           }}
         >
-          ↑
+          <span className="touch-btn-glyph" aria-hidden="true">
+            ↑
+          </span>
+          <span className="touch-btn-caption">{t('onboard.jump')}</span>
         </button>
         <button
           type="button"
@@ -691,38 +710,69 @@ export function TouchControls() {
             input.home();
           }}
         >
-          ⌂
+          <span className="touch-btn-glyph" aria-hidden="true">
+            ⌂
+          </span>
+          <span className="touch-btn-caption">{t('onboard.homeShort')}</span>
         </button>
       </div>
     </div>
   );
 }
 
-const stickPointer: { current: number | null } = { current: null };
+/** Releasing sprint clears both the input state and the rendered state. */
+function releaseSprint(setSprinting: (value: boolean) => void) {
+  return () => {
+    input.setSprint(false);
+    setSprinting(false);
+  };
+}
+
+function releaseCapture(node: HTMLElement, pointerId: number): void {
+  if (node.hasPointerCapture(pointerId)) node.releasePointerCapture(pointerId);
+}
 
 /**
- * Turn a pointer offset from the stick centre into movement intent, and move the
+ * Turn a pointer offset from the stick centre into an intent, and move the
  * visible knob to match. Without the knob offset the stick still steers but
  * gives no travel feedback, so a diagonal drag looks identical to no drag.
+ *
+ * Screen y grows downward, so a push upward is inverted to a positive intent,
+ * matching the keyboard convention. The knob is drawn in screen space, so it
+ * keeps the un-inverted sign.
  */
-function applyStick(stick: HTMLElement, dx: number, dy: number, max: number): void {
+function applyStick(
+  stick: HTMLElement,
+  clientX: number,
+  clientY: number,
+  apply: (x: number, y: number) => void,
+): void {
+  const rect = stick.getBoundingClientRect();
+  const max = rect.width / 2;
+  const dx = clientX - (rect.left + max);
+  const dy = clientY - (rect.top + max);
   const length = Math.hypot(dx, dy);
-  const clamped = Math.min(1, length / Math.max(1, max));
-  if (length === 0) {
-    input.setStick(0, 0);
-    stick.style.setProperty('--knob-x', '0px');
-    stick.style.setProperty('--knob-y', '0px');
+  // A resting thumb still reports a pixel or two of drift; anything inside the
+  // dead zone reads as centred rather than walking the character off on its own.
+  const magnitude = rescaleDeadZone(Math.min(1, length / Math.max(1, max)));
+
+  if (magnitude === 0) {
+    centreStick(stick, apply);
     return;
   }
   const nx = dx / length;
   const ny = dy / length;
-  // Screen y grows downward, so pushing the stick up must invert it to give a
-  // positive (forward) intent, matching the keyboard convention. The knob is
-  // drawn in screen space, so it keeps the un-inverted sign.
-  input.setStick(nx * clamped, -ny * clamped);
-  const travel = clamped * max;
+  apply(nx * magnitude, -ny * magnitude);
+  const travel = magnitude * max;
   stick.style.setProperty('--knob-x', `${(nx * travel).toFixed(1)}px`);
   stick.style.setProperty('--knob-y', `${(ny * travel).toFixed(1)}px`);
+}
+
+/** Drops the intent and returns the knob, without reading the layout again. */
+function centreStick(stick: HTMLElement, apply: (x: number, y: number) => void): void {
+  apply(0, 0);
+  stick.style.setProperty('--knob-x', '0px');
+  stick.style.setProperty('--knob-y', '0px');
 }
 
 /** Reset handler wired from the 3D player's R key. */

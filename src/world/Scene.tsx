@@ -128,6 +128,7 @@ function nextObjectiveStage(game: ReturnType<typeof useGame>): string | null {
 function SceneContents() {
   const game = useGame();
   const cameraYaw = useRef(0);
+  const cameraPitch = useRef(0);
   const player = useRef<PlayerState>(createPlayerState(new THREE.Vector3(...SPAWN)));
   const stagePositions = useMemo(() => buildStagePositions(), []);
   const regionMeta = useMemo(() => allRegionMeta(), []);
@@ -358,6 +359,7 @@ function SceneContents() {
       <PlayerRig
         state={player}
         cameraYaw={cameraYaw}
+        cameraPitch={cameraPitch}
         enabled={game.screen === 'playing'}
         reducedMotion={game.settings.reducedMotion}
         onInteract={callbacks.onInteract}
@@ -691,12 +693,14 @@ function StageConsole({
 function PlayerRig({
   state,
   cameraYaw,
+  cameraPitch,
   enabled,
   reducedMotion,
   ...rest
 }: {
   state: React.MutableRefObject<PlayerState>;
   cameraYaw: React.MutableRefObject<number>;
+  cameraPitch: React.MutableRefObject<number>;
   enabled: boolean;
   reducedMotion: boolean;
   onInteract: () => void;
@@ -707,6 +711,7 @@ function PlayerRig({
 }) {
   const mesh = usePlayerController(state, {
     cameraYaw,
+    cameraPitch,
     reducedMotion,
     enabled,
     ...rest,

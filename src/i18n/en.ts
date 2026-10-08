@@ -32,9 +32,11 @@ export const en = {
 
   // ---- Onboarding -----------------------------------------------------
   'onboard.move': 'Move',
-  'onboard.moveBody': 'W A S D, or the arrow keys. On a touchscreen, use the stick.',
+  'onboard.moveBody': 'Walk by dragging the bottom-left stick.',
   'onboard.look': 'Look',
-  'onboard.lookBody': 'Drag anywhere on the scene to turn the camera.',
+  'onboard.lookBody': 'Turn the camera with the bottom-right stick.',
+  'onboard.sprint': 'Sprint',
+  'onboard.sprintBody': 'Hold to run.',
   'onboard.interact': 'Interact',
   'onboard.interactBody': 'Press E when a prompt appears. On a touchscreen, tap the action button.',
   'onboard.jump': 'Jump',
@@ -43,6 +45,7 @@ export const en = {
   'onboard.toolBody': 'Press Q to cycle the staff modes.',
   'onboard.home': 'Go home',
   'onboard.homeBody': 'Tap the home button to return to the hub dais.',
+  'onboard.homeShort': 'Home',
   'onboard.done': 'Begin',
 
   // ---- HUD ------------------------------------------------------------

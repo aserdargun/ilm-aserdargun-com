@@ -32,9 +32,11 @@ export const tr: Translations = {
 
   // ---- Tanıtım --------------------------------------------------------
   'onboard.move': 'Hareket',
-  'onboard.moveBody': 'W A S D ya da yön tuşları. Dokunmatik ekranda çubuğu kullan.',
+  'onboard.moveBody': 'Sol alttaki çubuğu sürerek yürü.',
   'onboard.look': 'Bak',
-  'onboard.lookBody': 'Kamerayı döndürmek için sahnenin herhangi bir yerini sürükle.',
+  'onboard.lookBody': 'Sağ alttaki çubukla kamerayı döndür.',
+  'onboard.sprint': 'Hızlan',
+  'onboard.sprintBody': 'Basılı tutarak koş.',
   'onboard.interact': 'Etkileşim',
   'onboard.interactBody': 'İşaret çıktığında E tuşuna bas. Dokunmatik ekranda eylem düğmesine dokun.',
   'onboard.jump': 'Sıçra',
@@ -43,6 +45,7 @@ export const tr: Translations = {
   'onboard.toolBody': 'Sopa kiplerini sırayla değiştirmek için Q tuşuna bas.',
   'onboard.home': 'Ana merkeze dön',
   'onboard.homeBody': 'Ana merkezdeki platforma dönmek için ana düğmeye dokun.',
+  'onboard.homeShort': 'Ana',
   'onboard.done': 'Başla',
 
   // ---- Başlık bilgileri ------------------------------------------------
