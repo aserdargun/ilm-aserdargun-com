@@ -9,7 +9,10 @@ import {
   useT,
 } from '../game/store';
 import { buildScene, cellTruths, evaluateStage, initialStageState } from '../game/puzzleRuntime';
-import { STAGE_BY_ID, type StageDefinition, type StageRuntimeState } from '../game/stages';
+import { STAGE_BY_ID, type StageDefinition, type StageRuntimeState, type StageSystem } from '../game/stages';
+import { cellLabel, lookup, sensorLabel } from '../game/labels';
+import { hintFor, LESSONS, type StageLesson } from '../game/lessons';
+import { APPLICATIONS } from '../catalog/applications';
 import { audio } from '../game/audio';
 import type { Lang } from '../types/catalog';
 import type { TranslationKey } from '../i18n/en';
@@ -23,6 +26,15 @@ type TFn = (key: TranslationKey) => string;
  * Each system gets its own controls, but they all read and write the same
  * serializable stage state, so a puzzle in progress survives a reload and a
  * language switch alike.
+ *
+ * The panel is where the teaching happens, in three moves:
+ *
+ * 1. A collapsible lesson card states the idea, names the trap, and gives one
+ *    first action — so the board is never faced without a reason to start.
+ * 2. Every id the player sees is resolved through `game/labels`, so the
+ *    interface speaks in nouns rather than `arm-2` and `warp-c`.
+ * 3. Solving does not close the panel. It swaps to a debrief that names what
+ *    was just applied, then sends the player back to the world.
  */
 
 export function PuzzlePanel({ stageId, onClose }: { stageId: string; onClose: () => void }) {
@@ -30,6 +42,8 @@ export function PuzzlePanel({ stageId, onClose }: { stageId: string; onClose: ()
   const t = useT();
   const stage = STAGE_BY_ID[stageId];
   const state = game.stageStates[stageId] ?? (stage ? initialStageState(stage) : undefined);
+  const [lessonOpen, setLessonOpen] = useState(true);
+  const [solvedNow, setSolvedNow] = useState(false);
 
   // Hooks run unconditionally; only the rendering below depends on the data.
   const set = useCallback(
@@ -41,22 +55,25 @@ export function PuzzlePanel({ stageId, onClose }: { stageId: string; onClose: ()
     const solved = commitStage(stageId);
     if (solved) {
       audio.chime();
-      onClose();
+      // Stay open: the debrief is the payoff for solving, not a bonus screen.
+      setSolvedNow(true);
     }
-  }, [stageId, onClose]);
+  }, [stageId]);
 
   if (!stage || !state) return null;
 
   const evaluation = evaluateStage(stage, state);
   const complete = game.progression.completedStages.includes(stageId);
   const lang = game.lang;
+  const lesson = LESSONS[stageId];
+  const counterpart = counterpartFor(stage, lang);
 
   return (
     <div className="panel-scrim" role="dialog" aria-modal="true" aria-label={stage.title[lang]}>
-      <div className="panel">
+      <div className={`panel ${solvedNow ? 'panel-debrief' : ''}`}>
         <header className="panel-head">
           <div>
-            <p className="panel-system">{stage.system}</p>
+            <p className="panel-system">{t(SYSTEM_KEY[stage.system])}</p>
             <h2>{stage.title[lang]}</h2>
             <p className="panel-objective">{stage.objective[lang]}</p>
           </div>
@@ -65,39 +82,224 @@ export function PuzzlePanel({ stageId, onClose }: { stageId: string; onClose: ()
           </button>
         </header>
 
-        {complete && (
+        {complete && !solvedNow && (
           <p className="panel-solved" role="status">
             ✓ {t('puzzle.solved')}
           </p>
         )}
 
-        <div className="panel-body">
-          <SystemControls stage={stage} state={state} set={set} lang={lang} t={t} />
-        </div>
+        {solvedNow ? (
+          <Debrief stage={stage} lesson={lesson} counterpart={counterpart} onClose={onClose} t={t} lang={lang} />
+        ) : (
+          <>
+            {lesson && (
+              <LessonCard
+                lesson={lesson}
+                counterpart={counterpart}
+                open={lessonOpen}
+                onToggle={() => setLessonOpen((v) => !v)}
+                t={t}
+                lang={lang}
+              />
+            )}
 
-        {!evaluation.solved && evaluation.failures.length > 0 && (
-          <p className="panel-hintline" role="status">
-            {failureMessage(evaluation.failures, lang)}
-          </p>
+            <div className="panel-body">
+              <SystemControls stage={stage} state={state} set={set} lang={lang} t={t} />
+            </div>
+
+            {!evaluation.solved && evaluation.failures.length > 0 && (
+              <p className="panel-hintline" role="status">
+                {failureMessage(evaluation.failures, lang)}
+                {lesson && (
+                  <span className="hint-why">
+                    {t('hint.why')}: {lesson.misconception[lang]}
+                  </span>
+                )}
+              </p>
+            )}
+
+            <footer className="panel-foot">
+              <HintRow stageId={stageId} stage={stage} lang={lang} />
+              <div className="panel-actions">
+                <button type="button" className="btn ghost" onClick={() => resetStage(stageId)}>
+                  {t('puzzle.reset')}
+                </button>
+                <button
+                  type="button"
+                  className="btn primary"
+                  onClick={onApply}
+                  disabled={!evaluation.solved}
+                >
+                  {t('puzzle.apply')}
+                </button>
+              </div>
+            </footer>
+          </>
         )}
-
-        <footer className="panel-foot">
-          <HintRow stageId={stageId} stage={stage} lang={lang} />
-          <div className="panel-actions">
-            <button type="button" className="btn ghost" onClick={() => resetStage(stageId)}>
-              {t('puzzle.reset')}
-            </button>
-            <button
-              type="button"
-              className="btn primary"
-              onClick={onApply}
-              disabled={!evaluation.solved}
-            >
-              {t('puzzle.apply')}
-            </button>
-          </div>
-        </footer>
       </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Teaching layer
+// ---------------------------------------------------------------------------
+
+/** Imported lazily-shaped so the panel can read lessons without a second import. */
+const SYSTEM_KEY = {
+  connection: 'system.connection',
+  placement: 'system.placement',
+  allocation: 'system.allocation',
+  perception: 'system.perception',
+  evidence: 'system.evidence',
+  prediction: 'system.prediction',
+} as const satisfies Record<StageSystem, TranslationKey>;
+
+interface Counterpart {
+  code: string;
+  name: string;
+  url: string;
+}
+
+/** The real applications a stage stands for, for the "this is real" link. */
+function counterpartFor(stage: StageDefinition, lang: Lang): Counterpart[] {
+  return stage.appCodes
+    .map((code) => APPLICATIONS.find((a) => a.code === code))
+    .filter((a): a is (typeof APPLICATIONS)[number] => Boolean(a))
+    .map((a) => ({ code: a.code, name: a.name[lang], url: a.sourceUrl }));
+}
+
+/**
+ * The lesson, shown before the board. Open by default: the point of this panel
+ * is that the player learns the idea, not that they finish a puzzle.
+ */
+function LessonCard({
+  lesson,
+  counterpart,
+  open,
+  onToggle,
+  t,
+  lang,
+}: {
+  lesson: StageLesson;
+  counterpart: Counterpart[];
+  open: boolean;
+  onToggle: () => void;
+  t: TFn;
+  lang: Lang;
+}) {
+  return (
+    <section className={`lesson ${open ? 'lesson-open' : 'lesson-closed'}`}>
+      <button
+        type="button"
+        className="lesson-toggle"
+        onClick={onToggle}
+        aria-expanded={open}
+        aria-label={open ? t('lesson.hideLesson') : t('lesson.showLesson')}
+      >
+        <span className="lesson-toggle-icon" aria-hidden="true">
+          {open ? '▾' : '▸'}
+        </span>
+        <span className="lesson-toggle-label">{t('lesson.title')}</span>
+        {!open && <span className="lesson-toggle-hint">{lesson.principle[lang]}</span>}
+      </button>
+
+      {open && (
+        <div className="lesson-body">
+          <div className="lesson-row lesson-idea">
+            <span className="lesson-key">{t('lesson.principle')}</span>
+            <p>{lesson.principle[lang]}</p>
+          </div>
+          <div className="lesson-row lesson-trap">
+            <span className="lesson-key">{t('lesson.trap')}</span>
+            <p>{lesson.misconception[lang]}</p>
+          </div>
+          <div className="lesson-row lesson-start">
+            <span className="lesson-key">{t('lesson.firstMove')}</span>
+            <p>{lesson.firstMove[lang]}</p>
+          </div>
+          {counterpart.length > 0 && (
+            <div className="lesson-row lesson-real">
+              <span className="lesson-key">{t('lesson.counterpart')}</span>
+              <p className="lesson-links">
+                {counterpart.map((c) => (
+                  <a key={c.code} href={c.url} target="_blank" rel="noopener noreferrer">
+                    <span className="code">{c.code}</span> {c.name}
+                  </a>
+                ))}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/**
+ * Shown in place of the board once a stage is solved. Names the idea, the
+ * mistake it punishes, and where the same idea exists outside the game.
+ */
+function Debrief({
+  stage,
+  lesson,
+  counterpart,
+  onClose,
+  t,
+  lang,
+}: {
+  stage: StageDefinition;
+  lesson: StageLesson | undefined;
+  counterpart: Counterpart[];
+  onClose: () => void;
+  t: TFn;
+  lang: Lang;
+}) {
+  // The fault the stage was actually hiding. Naming it after the fact is the
+  // single most useful thing the debrief can say: the loudest thing was not it.
+  const fault = (stage.data as { trueFault?: string } | undefined)?.trueFault;
+
+  return (
+    <div className="debrief" role="status">
+      <h3 className="debrief-title">{t('debrief.title')}</h3>
+      <p className="debrief-stage">{stage.title[lang]}</p>
+
+      {lesson && (
+        <>
+          <div className="debrief-row">
+            <span className="lesson-key">{t('debrief.principle')}</span>
+            <p>{lesson.principle[lang]}</p>
+          </div>
+          <div className="debrief-row debrief-trap">
+            <span className="lesson-key">{t('debrief.trap')}</span>
+            <p>{lesson.misconception[lang]}</p>
+          </div>
+        </>
+      )}
+
+      {fault && (
+        <div className="debrief-row debrief-fault">
+          <span className="lesson-key">{t('debrief.fault')}</span>
+          <p>{lookup(fault, lang)}</p>
+        </div>
+      )}
+
+      {counterpart.length > 0 && (
+        <div className="debrief-row">
+          <span className="lesson-key">{t('debrief.counterpart')}</span>
+          <p className="lesson-links">
+            {counterpart.map((c) => (
+              <a key={c.code} href={c.url} target="_blank" rel="noopener noreferrer">
+                <span className="code">{c.code}</span> {c.name}
+              </a>
+            ))}
+          </p>
+        </div>
+      )}
+
+      <button type="button" className="btn primary big" onClick={onClose}>
+        {t('debrief.continue')}
+      </button>
     </div>
   );
 }
@@ -204,7 +406,8 @@ function MatchNodes({ stage, state, set }: { stage: StageDefinition; state: Stag
               className={`chip ${held === source.id ? 'chip-active' : ''}`}
               onClick={() => setHeld(held === source.id ? null : source.id)}
             >
-              {source.id} · {source.kind}
+              <span className="chip-name">{lookup(source.id, lang)}</span>
+              <span className="chip-kind">{lookup(source.kind, lang)}</span>
             </button>
           ))}
         </div>
@@ -213,20 +416,23 @@ function MatchNodes({ stage, state, set }: { stage: StageDefinition; state: Stag
         <div className="slots">
           {targets.map((target) => {
             const wired = state.assignments[target.id] ?? [];
+            const forbidden = target.accepts === 'none';
+            // A refusal is explained where it happens, not only after Apply.
+            const mismatch = !forbidden && wired.length > 0 && sources.find((s) => s.id === wired[0])?.kind !== target.accepts;
             return (
               <button
                 key={target.id}
                 type="button"
                 className={`slot ${wired.length ? 'slot-filled' : ''} ${
-                  target.accepts === 'none' ? 'slot-forbidden' : ''
-                }`}
+                  forbidden ? 'slot-forbidden' : ''
+                } ${mismatch ? 'slot-mismatch' : ''}`}
                 onClick={() => wire(target.id)}
               >
-                <span className="slot-label">{target.id}</span>
+                <span className="slot-label">{lookup(target.id, lang)}</span>
                 <span className="slot-sub">
-                  {wired.length ? wired[0] : `— (${target.accepts})`}
+                  {wired.length ? lookup(wired[0], lang) : lookup(target.accepts, lang)}
                 </span>
-                {target.accepts === 'none' && <span className="slot-warn">✕</span>}
+                {forbidden && <span className="slot-warn">✕</span>}
               </button>
             );
           })}
@@ -247,6 +453,7 @@ function LinkNodes({
   const links = data.links ?? [];
   const endpoints = [...new Set(links.flat())];
   const [held, setHeld] = useState<string | null>(null);
+  const nameOf = (id: string) => stage.items?.find((i) => i.id === id)?.label[lang] ?? lookup(id, lang);
 
   const wired = Object.entries(state.assignments).filter(([, v]) => v.length > 0);
 
@@ -270,7 +477,7 @@ function LinkNodes({
               else setHeld(held === id ? null : id);
             }}
           >
-            {id}
+            <span className="chip-name">{nameOf(id)}</span>
           </button>
         ))}
       </div>
@@ -278,7 +485,7 @@ function LinkNodes({
         {wired.map(([from, to]) => (
           <li key={from} className="seat">
             <strong>
-              {from} → {to[0]}
+              {nameOf(from)} → {nameOf(to[0])}
             </strong>
             <button
               type="button"
@@ -326,10 +533,10 @@ function PlacementControls({ stage, state, set, lang }: ControlProps) {
             <li key={id} className="order-item">
               <span className="order-index">{index + 1}</span>
               <span className="order-body">
-                <strong>{id}</strong>
-                <span className="muted"> → {step?.effect}</span>
+                <strong>{lookup(id, lang)}</strong>
+                <span className="muted"> — {step ? lookup(step.effect, lang) : ''}</span>
                 {step && step.requires.length > 0 && (
-                  <span className="muted"> ({step.requires.join(', ')})</span>
+                  <span className="muted"> ({step.requires.map((r) => lookup(r, lang)).join(', ')})</span>
                 )}
               </span>
               <span className="order-buttons">
@@ -350,10 +557,10 @@ function PlacementControls({ stage, state, set, lang }: ControlProps) {
 
 // --- Allocation ------------------------------------------------------------
 
-function AllocationControls({ stage, state, set, lang }: ControlProps) {
+function AllocationControls({ stage, state, set, lang, t }: ControlProps) {
   const data = stage.data as {
-    lanes?: { id: string; capacity: number; latency: number; costPerUnit: number }[];
-    work?: { id: string; size: number; tolerance: number }[];
+    lanes?: { id: string; kind: string; capacity: number; latency: number; costPerUnit: number }[];
+    work?: { id: string; kind: string; size: number; tolerance: number }[];
   };
   const lanes = data.lanes ?? [];
   const work = data.work ?? [];
@@ -370,6 +577,23 @@ function AllocationControls({ stage, state, set, lang }: ControlProps) {
     setHeld(null);
   };
 
+  // Readouts the player needs to reason: how full each lane is, and whether the
+  // lanes are still even. The puzzle is invisible without the second one.
+  const metrics = lanes.map((lane) => {
+    const items = state.assignments[lane.id] ?? [];
+    const load = items.reduce((sum, id) => sum + (work.find((w) => w.id === id)?.size ?? 0), 0);
+    return { lane, items, load, cost: load * lane.costPerUnit };
+  });
+  const loads = metrics.map((m) => m.load);
+  const heaviest = Math.max(0, ...loads);
+  const finished = Math.max(
+    ...metrics.map((m) => m.load + m.cost + (m.items.length ? m.lane.latency : 0)),
+    0,
+  );
+  const even = new Set(loads).size <= 1;
+  const overloaded = metrics.some((m) => m.items.length > m.lane.capacity);
+  const meterMax = Math.max(heaviest, 1);
+
   return (
     <div className="puzzle-grid">
       <div className="puzzle-col">
@@ -382,32 +606,44 @@ function AllocationControls({ stage, state, set, lang }: ControlProps) {
               className={`chip ${held === w.id ? 'chip-active' : ''}`}
               onClick={() => setHeld(held === w.id ? null : w.id)}
             >
-              {w.id} · {w.size}
+              <span className="chip-name">{lookup(w.id, lang)}</span>
+              <span className="chip-kind">{w.size}</span>
             </button>
           ))}
         </div>
+        <p className={`balance ${even ? 'balance-ok' : 'balance-warn'}`} role="status">
+          {even ? t('allocation.balanceOk') : t('allocation.balance')}
+        </p>
+        <p className="muted">
+          {t('allocation.finish')}: {finished}
+        </p>
       </div>
       <div className="puzzle-col">
         <div className="slots">
-          {lanes.map((lane) => {
-            const items = state.assignments[lane.id] ?? [];
-            const load = items.reduce((sum, id) => {
-              const unit = work.find((w) => w.id === id);
-              return sum + (unit?.size ?? 0);
-            }, 0);
+          {metrics.map(({ lane, items, load }) => {
+            const over = items.length > lane.capacity;
             return (
-              <div key={lane.id} className={`slot ${items.length ? 'slot-filled' : ''}`}>
+              <div
+                key={lane.id}
+                className={`slot slot-lane ${items.length ? 'slot-filled' : ''} ${
+                  over ? 'slot-over' : ''
+                }`}
+              >
                 <button type="button" className="slot-label" onClick={() => place(lane.id)}>
-                  {lane.id}
+                  {lookup(lane.id, lang)}
                 </button>
+                <span className="meter" aria-hidden="true">
+                  <span className="meter-fill" style={{ width: `${(load / meterMax) * 100}%` }} />
+                </span>
                 <span className="slot-sub">
-                  {items.length ? items.join(', ') : '—'} · {items.length}/{lane.capacity} ·{' '}
-                  {load + (items.length ? lane.latency : 0)}
+                  {items.length ? items.map((id) => lookup(id, lang)).join(', ') : '—'} ·{' '}
+                  {items.length}/{lane.capacity} · {load}
                 </span>
               </div>
             );
           })}
         </div>
+        {overloaded && <p className="muted">{t('puzzle.capacity')}</p>}
       </div>
     </div>
   );
@@ -442,7 +678,7 @@ function PerceptionControls({ stage, state, set, lang, t }: ControlProps) {
           {t('lens.observeTwice')}
         </button>
       </div>
-      <CellGrid stage={stage} state={state} set={set} t={t} columns={scene.width} />
+      <CellGrid stage={stage} state={state} set={set} t={t} columns={scene.width} lang={lang} />
     </div>
   );
 }
@@ -457,12 +693,14 @@ function CellGrid({
   set,
   t,
   columns,
+  lang,
 }: {
   stage: StageDefinition;
   state: StageRuntimeState;
   set: SetFn;
   t: TFn;
   columns: number;
+  lang: Lang;
 }) {
   const truths = useMemo(() => cellTruths(stage), [stage]);
   const marked = useMemo(() => {
@@ -497,7 +735,7 @@ function CellGrid({
               className={`cell cell-${verdict ?? 'unset'}`}
               aria-pressed={verdict !== undefined}
               onClick={() => cycle(cell.index)}
-              title={`${cell.index}`}
+              title={cellLabel(cell.index, lang)}
             >
               <span aria-hidden="true">{verdict === 'observed' ? '●' : verdict === 'assumed' ? '○' : '?'}</span>
               <span className="sr-only">
@@ -538,10 +776,10 @@ function EvidenceControls({ stage, state, set, lang, t }: ControlProps) {
             const voteKey = COUNCIL_KEY[seat.vote as keyof typeof COUNCIL_KEY] ?? 'council.abstain';
             return (
               <li key={seat.id} className="seat">
-                <strong>{seat.id}</strong> — {t(voteKey)}
+                <strong>{lookup(seat.id, lang)}</strong> — {t(voteKey)}
                 <span className="muted">
                   {' '}
-                  · {t('predict.assumption')}: {seat.assumes}
+                  · {t('predict.assumption')}: {lookup(seat.assumes, lang)}
                 </span>
                 {data.contradicted?.includes(seat.assumes) && (
                   <span className="tag-warn"> {t('predict.contradicted')}</span>
@@ -568,7 +806,7 @@ function EvidenceControls({ stage, state, set, lang, t }: ControlProps) {
                 })
               }
             >
-              ✕ {assumption}
+              <span className="chip-name">✕ {lookup(assumption, lang)}</span>
             </button>
           ))}
         </div>
@@ -598,7 +836,7 @@ function EvidenceControls({ stage, state, set, lang, t }: ControlProps) {
                 })
               }
             >
-              {s}
+              <span className="chip-name">{lookup(s, lang)}</span>
             </button>
           ))}
         </div>
@@ -629,8 +867,8 @@ function EvidenceControls({ stage, state, set, lang, t }: ControlProps) {
           return (
             <li key={record.id} className={`record ${isPacked ? 'record-packed' : ''}`}>
               <div className="record-main">
-                <strong>{record.id}</strong>
-                <span className="muted"> · {record.tags.join(', ')}</span>
+                <strong>{lookup(record.id, lang)}</strong>
+                <span className="muted"> · {record.tags.map((tag) => lookup(tag, lang)).join(', ')}</span>
               </div>
               <div className="record-tags">
                 <span className={`pill ${fresh ? 'pill-ok' : 'pill-warn'}`}>
@@ -674,9 +912,9 @@ function EvidenceControls({ stage, state, set, lang, t }: ControlProps) {
 
 function PredictionControls({ stage, state, set, lang, t }: ControlProps) {
   const data = stage.data as {
-    options?: { id: string; outcome: number }[];
+    options?: { id: string; outcome: number; label?: Localizedish }[];
     correct?: string;
-    branches?: { id: string; label: string; predicted: number }[];
+    branches?: { id: string; label?: Localizedish; predicted: number }[];
     actual?: number;
     verifyTarget?: string;
     decoyTarget?: string;
@@ -710,11 +948,13 @@ function PredictionControls({ stage, state, set, lang, t }: ControlProps) {
                 })
               }
             >
-              {id}
+              <span className="chip-name">{sensorLabel(id, lang)}</span>
             </button>
           ))}
         </div>
-        <p className="muted">{t('pdt.remaining')}: {sensors.length === 0 ? '—' : '?'}</p>
+        <p className="muted">
+          {t('pdt.remaining')}: {sensors.length === 0 ? '—' : '?'}
+        </p>
       </div>
     );
   }
@@ -734,12 +974,15 @@ function PredictionControls({ stage, state, set, lang, t }: ControlProps) {
             {t('lens.observeTwice')}
           </button>
         </div>
-        <CellGrid stage={stage} state={state} set={set} t={t} columns={scene.width} />
+        <CellGrid stage={stage} state={state} set={set} t={t} columns={scene.width} lang={lang} />
       </div>
     );
   }
 
-  const options = data.options ?? data.branches ?? [];
+  const options = (data.options ?? data.branches ?? []) as {
+    id: string;
+    label?: Localizedish;
+  }[];
 
   return (
     <div className="puzzle-col">
@@ -752,7 +995,13 @@ function PredictionControls({ stage, state, set, lang, t }: ControlProps) {
             className={`chip ${state.chosen === option.id ? 'chip-active' : ''}`}
             onClick={() => set({ chosen: option.id })}
           >
-            {'label' in option ? option.label : option.id}
+            <span className="chip-name">
+              {option.label
+                ? typeof option.label === 'string'
+                  ? option.label
+                  : option.label[lang]
+                : lookup(option.id, lang)}
+            </span>
           </button>
         ))}
       </div>
@@ -781,7 +1030,7 @@ function PredictionControls({ stage, state, set, lang, t }: ControlProps) {
                 set({ assignments: { ...state.assignments, __observed: [target as string] } })
               }
             >
-              {target}
+              <span className="chip-name">{lookup(target as string, lang)}</span>
             </button>
           ))}
         </div>
@@ -790,8 +1039,15 @@ function PredictionControls({ stage, state, set, lang, t }: ControlProps) {
   );
 }
 
+type Localizedish = string | { tr: string; en: string };
+
 // ---------------------------------------------------------------------------
 
+/**
+ * Hints are stage-specific. The old tiers were three generic sentences shared
+ * by all twenty-eight stages, which taught nothing; the third tier now restates
+ * the idea the stage exists to teach.
+ */
 function HintRow({
   stageId,
   stage,
@@ -813,8 +1069,9 @@ function HintRow({
     );
   }
 
+  const specific = hintFor(stageId, tier);
   const text =
-    tier === 1 ? t('hint.1') : tier === 2 ? `${t('hint.2')} ${stage.prompt[lang]}` : `${t('hint.3')} ${stage.objective[lang]}`;
+    specific?.[lang] ?? (tier === 3 ? stage.objective[lang] : `${t(`hint.${tier}` as TranslationKey)} ${stage.prompt[lang]}`);
 
   return (
     <div className="hint-row">

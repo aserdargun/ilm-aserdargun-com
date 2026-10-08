@@ -135,10 +135,44 @@ export const tr: Translations = {
   'council.agreementNotTruth':
     'Uzlaşı, uzlaşı olarak bildirilir; asla doğruluk olarak değil.',
 
+  // ---- Bulmaca sistemleri, oyuncuya adıyla ---------------------------
+  'system.connection': 'Bağlantı',
+  'system.placement': 'Sıralama',
+  'system.allocation': 'Dağıtım',
+  'system.perception': 'Algı',
+  'system.evidence': 'Kanıt',
+  'system.prediction': 'Tahmin',
+
   // ---- İpuçları (üç kademe) ------------------------------------------
   'hint.1': 'Buraya bak.',
   'hint.2': 'Bu ikisi şöyle ilişkili.',
   'hint.3': 'Sırada bunu dene.',
+  'hint.why': 'Neden',
+
+  // ---- Öğretim katmanı ------------------------------------------------
+  'lesson.title': 'Başlamadan önce',
+  'lesson.principle': 'Fikir',
+  'lesson.trap': 'Tuzak',
+  'lesson.firstMove': 'Nereden başla',
+  'lesson.show': 'Göster',
+  'lesson.hide': 'Gizle',
+  'lesson.showLesson': 'Dersi göster',
+  'lesson.hideLesson': 'Dersi gizle',
+  'lesson.counterpart': 'Gerçek dünyadaki karşılığı',
+
+  // ---- Sonuç değerlendirmesi ------------------------------------------
+  'debrief.title': 'Az önce öğrendiğin',
+  'debrief.principle': 'Uyguladığın fikir',
+  'debrief.trap': 'Bu sahnenin cezalandırdığı hata',
+  'debrief.counterpart': 'Bunun gerçekteki karşılığı',
+  'debrief.fault': 'Gerçekte olan arıza',
+  'debrief.continue': 'Devam et',
+
+  // ---- Dağıtım okumaları ------------------------------------------------
+  'allocation.balance': 'Kollar eşit değil',
+  'allocation.balanceOk': 'Hiçbir kol diğerinden fazla taşımıyor',
+  'allocation.finish': 'Bitiş',
+  'allocation.makespan': 'Darboğaz',
 
   // ---- Kıvılcım (yan yoldaş) -----------------------------------------
   'spark.intro': 'Sen son Örgücüsün. Ben Kıvılcım. Yani kıvılcım.',

@@ -201,7 +201,7 @@ touches progression or the puzzle currently open.
 | --- | --- | --- |
 | Puzzle systems | `src/systems/` | Six pure, deterministic, testable engines |
 | Catalog | `src/catalog/` | 33 typed application records + region art direction |
-| Game rules | `src/game/` | Stages, progression, save/load, input, audio, store |
+| Game rules | `src/game/` | Stages, lessons, labels, progression, save/load, input, audio, store |
 | Rendering | `src/world/` | Procedural geometry, player, camera, interaction |
 | Interface | `src/ui/` | Menus, HUD, journal, puzzle panel, endings |
 | Localisation | `src/i18n/` | Central TR/EN dictionaries with compile-time key parity |
@@ -212,6 +212,40 @@ rules, layouts and combinations rather than building thirty-three engines.
 
 Gameplay logic never reads translated text: systems manipulate ids and numbers
 only, so switching language cannot change a single puzzle outcome.
+
+### The teaching layer
+
+A stage already says what to do (`objective`) and where to start (`prompt`).
+What it does not say is the thing worth taking away, so `src/game/lessons.ts`
+gives **every one of the 28 stages** four bilingual fields:
+
+| Field | What it is |
+| --- | --- |
+| `principle` | The transferable idea, in one sentence |
+| `misconception` | The tempting belief the stage is built to punish |
+| `firstMove` | One concrete action that is *not* the answer |
+| `hints` | Three escalating nudges, replacing the old generic hint tiers |
+
+`misconception` is the one that matters. Naming the trap — "the widest lane does
+not finish the loom, it waits for the slowest arm" — is what turns a solved
+puzzle into a corrected belief. It is also what a failed attempt shows: the
+failure line now reads **why**, not just what went wrong.
+
+Three consequences in the panel:
+
+- The **lesson card** opens with the board and can be collapsed to a single line,
+  but collapsing keeps the idea on screen rather than hiding it.
+- **Hints are stage-specific.** The previous three tiers ("Look here." / "Try
+  this next.") were shared by all 28 stages and taught nothing.
+- **Solving does not close the panel.** It swaps the board for a debrief naming
+  the idea applied, the mistake punished, the fault that was actually there,
+  and a link to the real application the stage stands for.
+
+`src/game/labels.ts` is the other half. The systems work in stable ids — a stage
+is solved by matching `arm-2` to `warp-c` — but a player should never *read*
+those. Every id reachable from stage data is given a bilingual name there, in
+one dictionary kept deliberately separate from `stages.ts`, so the interface can
+improve without moving a single evaluator, solver or test contract.
 
 ### The six systems
 
@@ -370,7 +404,7 @@ Details that carry weight:
 
 ## Tests performed
 
-`npm run test` — **127 tests across 9 files, all passing.**
+`npm run test` — **183 tests across 15 files, all passing.**
 
 | Suite | Tests | What it proves |
 | --- | --- | --- |
@@ -379,14 +413,23 @@ Details that carry weight:
 | `allocation` | 13 | Lane capacity, kind mismatch, unassigned work, setup cost, trail evaporation, shared-information delay |
 | `perception` | 7 | Motion baseline requirement, low-light depth failure, occlusion, budget, weighted uncertainty |
 | `evidence` | 15 | Lantern capacity and crowding, stale vs incorrect records, false consensus, observe-act-verify, worker lifecycle |
+| `prediction` | — | Exercised through `stages` and `playthrough` |
+| `lessons` | 14 | **Every stage has a complete bilingual lesson**, three distinct hints per stage, Turkish never copies English, hint tiers clamp, and **every player-visible id is named** |
 | `catalog` | 16 | Exactly 33 codes, INF/NXT/STK absent, every URL verified, both languages complete, catalog ⇄ stage agreement, progression reachability |
 | `stages` | 31 | **Every one of the 28 stages is provably solvable**, none starts solved, each yields exactly its application codes |
+| `playthrough` | 8 | The whole journey runs through the real store and finishes |
 | `save` | 19 | Schema validation, corrupt/version recovery, reconciliation, language independence |
 | `i18n` | 11 | Key parity, no empty strings, no untranslated prose, Turkish diacritics |
+| `nav` | 8 | Walkable world, island discs, span crossing, boundary containment |
+| `touch` | 9 | Virtual stick, drag-to-look, tap targets sized for a phone |
+| `audio` | 12 | Chord voicing has a third, tremolo depth is proportional, no phase inversion, headroom |
+| `playtime` | 5 | The stated playtime estimate is derived, not guessed |
 
 Two real defects were found and fixed by these tests during development: an
 occlusion check that looked *behind* a cell instead of in front of it, and a set
-of fault signatures under which one diagnosis could never be isolated.
+of fault signatures under which one diagnosis could never be isolated. A third
+came from `lessons`: `hintFor` returned `undefined` for tier `0`, so a stale save
+asking for the weakest hint would have been shown nothing.
 
 ### Playability
 

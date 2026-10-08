@@ -660,12 +660,20 @@ kbd {
   flex-direction: column;
   width: min(860px, 100%);
   max-height: 90vh;
-  overflow-y: auto;
+  overflow: hidden;
   background: var(--glass-strong);
   border: 1px solid var(--hairline);
   border-radius: var(--r-xl);
   box-shadow: var(--shadow-lg);
   animation: card-in var(--base) var(--ease) both;
+}
+
+/* A column flexbox shrinks its children to fit, which silently cropped the
+   lesson card mid-sentence on a short viewport. Every part of the panel keeps
+   its natural height; only the board scrolls, so the lesson and the Apply
+   button stay reachable without the player hunting for them. */
+.panel > * {
+  flex-shrink: 0;
 }
 
 .panel-head {
@@ -705,7 +713,10 @@ kbd {
 }
 
 .panel-body {
-  flex: 1;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 1.4rem 1.75rem;
 }
 
@@ -742,6 +753,336 @@ kbd {
   font-size: 0.88rem;
   color: var(--text-muted);
   max-width: 44ch;
+}
+
+/* ------------------------------------------------------- teaching layer */
+
+/*
+ * The lesson card sits between the stage title and the board. It is deliberately
+ * quieter than the puzzle: a left rule, one tinted row for the trap, and no
+ * competing chrome. The idea and the mistake are the two things a player should
+ * still be able to recall after the panel closes.
+ */
+.lesson {
+  margin: 1rem 1.75rem 0;
+  background: linear-gradient(
+    100deg,
+    rgba(79, 214, 208, 0.07),
+    rgba(79, 214, 208, 0.01) 55%
+  );
+  border: 1px solid rgba(79, 214, 208, 0.18);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+.lesson-toggle {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  width: 100%;
+  padding: 0.7rem 1rem;
+  background: transparent;
+  border: 0;
+  color: var(--text-soft);
+  font: inherit;
+  font-size: 0.74rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+  transition: color var(--fast) var(--ease);
+}
+
+.lesson-toggle:hover {
+  color: var(--accent);
+}
+
+.lesson-toggle-icon {
+  color: var(--accent);
+  font-size: 0.8rem;
+}
+
+.lesson-toggle-label {
+  flex-shrink: 0;
+}
+
+/* Collapsed, the card still states the idea — a closed lesson that teaches
+   nothing is just a heading. */
+.lesson-toggle-hint {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.84rem;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lesson-body {
+  display: grid;
+  gap: 0.1rem;
+  padding: 0 1rem 0.85rem;
+  animation: card-in var(--base) var(--ease) both;
+}
+
+.lesson-row {
+  display: grid;
+  grid-template-columns: 8.5rem 1fr;
+  gap: 0.9rem;
+  align-items: start;
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--hairline);
+}
+
+.lesson-row p {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--text-soft);
+  line-height: 1.5;
+}
+
+.lesson-key {
+  font-size: 0.64rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding-top: 0.15rem;
+}
+
+/* The trap is the row worth noticing: it is the idea being corrected. */
+.lesson-trap p {
+  color: var(--text);
+}
+
+.lesson-trap .lesson-key {
+  color: var(--coral);
+}
+
+.lesson-start .lesson-key,
+.lesson-idea .lesson-key {
+  color: var(--accent);
+}
+
+.lesson-real .lesson-key {
+  color: var(--copper);
+}
+
+.lesson-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.lesson-links a {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.3rem 0.7rem 0.3rem 0.4rem;
+  background: var(--glass-soft);
+  border: 1px solid var(--hairline);
+  border-radius: var(--r-pill);
+  color: var(--text-soft);
+  font-size: 0.84rem;
+  text-decoration: none;
+  transition: all var(--fast) var(--ease);
+}
+
+.lesson-links a:hover {
+  border-color: var(--copper);
+  color: var(--text);
+  transform: translateY(-1px);
+}
+
+/* ---------------------------------------------------------------- debrief */
+
+/*
+ * The debrief replaces the board rather than stacking a banner on it. The screen
+ * the player leaves on should be the one that tells them what the puzzle was
+ * for, so the debrief takes the whole panel — including its title, which would
+ * otherwise repeat directly above the debrief heading.
+ */
+.panel-debrief .panel-head {
+  display: none;
+}
+
+.debrief {
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+  padding: 1.6rem 1.75rem 1.75rem;
+  animation: card-in var(--base) var(--ease) both;
+}
+
+.debrief-title {
+  margin: 0;
+  font-size: 0.7rem;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.debrief-stage {
+  margin: 0;
+  font-size: 1.35rem;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.debrief-row {
+  display: grid;
+  grid-template-columns: 11rem 1fr;
+  gap: 1rem;
+  align-items: start;
+  padding: 0.7rem 0;
+  border-top: 1px solid var(--hairline);
+}
+
+.debrief-row p {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.55;
+  color: var(--text-soft);
+}
+
+.debrief-trap .lesson-key {
+  color: var(--coral);
+}
+
+/* The fault is the answer the stage was hiding, so it gets its own weight. */
+.debrief-fault {
+  background: rgba(224, 121, 92, 0.08);
+  border-radius: var(--r-sm);
+  padding: 0.7rem 0.85rem;
+  border-top: 0;
+}
+
+.debrief-fault .lesson-key {
+  color: var(--coral);
+}
+
+.debrief-fault p {
+  color: var(--text);
+  font-weight: 650;
+}
+
+.debrief .btn.big {
+  align-self: flex-start;
+  margin-top: 0.4rem;
+}
+
+/* --------------------------------------------------- named chips & meters */
+
+/*
+ * A chip used to render `s-stone · energy`. It now renders a name with its
+ * kind as a quieter trailing detail, which is what lets the board be read
+ * without decoding identifiers.
+ */
+.chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.45rem;
+}
+
+.chip-name {
+  white-space: nowrap;
+}
+
+.chip-kind {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+.chip-active .chip-kind {
+  color: rgba(8, 12, 22, 0.72);
+}
+
+/* A thin load bar under each lane. The allocation puzzles are invisible
+   without a sense of "how full is this", so the number is never the only cue. */
+.slot-lane {
+  gap: 0.3rem;
+  cursor: default;
+}
+
+.meter {
+  display: block;
+  width: 100%;
+  height: 3px;
+  margin: 0.15rem 0 0.2rem;
+  background: var(--hairline);
+  border-radius: var(--r-pill);
+  overflow: hidden;
+}
+
+.meter-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+  border-radius: var(--r-pill);
+  transition: width var(--base) var(--ease);
+}
+
+.slot-over {
+  border-style: solid;
+  border-color: rgba(224, 121, 92, 0.55);
+}
+
+.slot-over .meter-fill {
+  background: var(--coral);
+}
+
+/* A wire that exists but is the wrong kind is refused at the socket, where the
+   mistake is made, rather than only at Apply. */
+.slot-mismatch {
+  border-color: rgba(224, 121, 92, 0.5);
+}
+
+.slot-mismatch .slot-sub {
+  color: var(--coral);
+}
+
+/* Whether the lanes are even is the question the puzzle is actually asking. */
+.balance {
+  margin: 0.8rem 0 0.2rem;
+  font-size: 0.84rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.balance::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.balance-ok {
+  color: var(--accent);
+}
+
+.balance-ok::before {
+  background: var(--accent);
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+.balance-warn {
+  color: var(--copper);
+}
+
+.balance-warn::before {
+  background: var(--copper);
+}
+
+/* Failure now explains itself rather than only stating that it failed. */
+.hint-why {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  line-height: 1.5;
 }
 
 .puzzle-grid {
@@ -1441,6 +1782,52 @@ select {
   .panel-hintline {
     margin-left: 1.1rem;
     margin-right: 1.1rem;
+  }
+
+  /* The label column stops paying for itself on a phone: stack the key above
+     the sentence instead of holding an 8.5rem gutter open. */
+  .lesson {
+    margin-left: 1.1rem;
+    margin-right: 1.1rem;
+  }
+
+  .lesson-row,
+  .debrief-row {
+    grid-template-columns: 1fr;
+    gap: 0.2rem;
+  }
+
+  .lesson-key {
+    padding-top: 0;
+  }
+
+  /*
+   * On a phone the lesson, the board and the footer together exceed the screen,
+   * and pinning them all would push Apply off the bottom with no way to reach
+   * it. Hand scrolling back to the whole panel instead: the lesson stays open
+   * at the top, and everything below it is one scroll away.
+   */
+  .panel {
+    overflow-y: auto;
+    max-height: 88vh;
+  }
+
+  .panel-body {
+    overflow-y: visible;
+    flex: 0 0 auto;
+  }
+
+  .debrief {
+    padding-left: 1.1rem;
+    padding-right: 1.1rem;
+  }
+
+  .debrief-stage {
+    font-size: 1.15rem;
+  }
+
+  .debrief .btn.big {
+    width: 100%;
   }
 
   .panel-foot {

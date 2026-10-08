@@ -133,10 +133,44 @@ export const en = {
   'council.notConverged': 'The council is split',
   'council.agreementNotTruth': 'Agreement is reported as agreement, never as correctness.',
 
+  // ---- Puzzle systems, named for the player --------------------------
+  'system.connection': 'Connection',
+  'system.placement': 'Sequence',
+  'system.allocation': 'Allocation',
+  'system.perception': 'Perception',
+  'system.evidence': 'Evidence',
+  'system.prediction': 'Prediction',
+
   // ---- Hints (three tiers) -------------------------------------------
   'hint.1': 'Look here.',
   'hint.2': 'This is how these two relate.',
   'hint.3': 'Try this next.',
+  'hint.why': 'Why',
+
+  // ---- Teaching layer -------------------------------------------------
+  'lesson.title': 'Before you start',
+  'lesson.principle': 'The idea',
+  'lesson.trap': 'The trap',
+  'lesson.firstMove': 'Where to start',
+  'lesson.show': 'Show',
+  'lesson.hide': 'Hide',
+  'lesson.showLesson': 'Show the lesson',
+  'lesson.hideLesson': 'Hide the lesson',
+  'lesson.counterpart': 'Real-world counterpart',
+
+  // ---- Debrief, shown once a stage is restored -----------------------
+  'debrief.title': 'What you just learned',
+  'debrief.principle': 'The idea you applied',
+  'debrief.trap': 'The mistake this stage punishes',
+  'debrief.counterpart': 'Where this lives for real',
+  'debrief.fault': 'The fault that was actually there',
+  'debrief.continue': 'Continue',
+
+  // ---- Allocation readouts -------------------------------------------
+  'allocation.balance': 'Lanes are uneven',
+  'allocation.balanceOk': 'No lane carries more than another',
+  'allocation.finish': 'Finishes at',
+  'allocation.makespan': 'Bottleneck',
 
   // ---- Spark (companion) --------------------------------------------
   'spark.intro': 'You are the last Weaver. I am Kıvılcım. That means spark.',
