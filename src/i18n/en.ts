@@ -178,15 +178,9 @@ export const en = {
   'allocation.makespan': 'Bottleneck',
 
   // ---- Spark (companion) --------------------------------------------
-  'spark.intro': 'You are the last Weaver. I am Kıvılcım. That means spark.',
-  'spark.introEn': 'You are the last Weaver. I am Spark. I would like that to be on the record.',
-  'spark.uncertain': 'I do not know yet. I want to be honest about that.',
-  'spark.wrong': 'I was wrong. That is allowed. Being wrong is how I learn.',
-  'spark.observe': 'Watch it twice. Things that do not move are easy to miss.',
-  'spark.consensus': 'Everyone agreed. That is not the same as being right.',
-  'spark.route': 'Follow the route they take. It is easier than guessing.',
-  'spark.reset': 'Reset it. Nothing you have already restored comes undone.',
-  'spark.solved': 'It worked. Look at what that changed.',
+  // Everything Spark says lives in `game/spark.ts`, grouped by the moment that
+  // triggers a line rather than by language. The keys that used to sit here
+  // were written in both languages and called from nowhere.
 
   // ---- Journal --------------------------------------------------------
   'journal.title': 'Journal',

@@ -180,15 +180,8 @@ export const tr: Translations = {
   'allocation.makespan': 'Darboğaz',
 
   // ---- Kıvılcım (yan yoldaş) -----------------------------------------
-  'spark.intro': 'Sen son Örgücüsün. Ben Kıvılcım. Yani kıvılcım.',
-  'spark.introEn': 'Sen son Örgücüsün. Ben Kıvılcım. Bunun kayıtlarda geçmesini isterim.',
-  'spark.uncertain': 'Henüz bilmiyorum. Bunu açıkça söylemeyi tercih ederim.',
-  'spark.wrong': 'Yanılmışım. Olabilir. Yanılmak benim öğrenme biçimim.',
-  'spark.observe': 'İki kez izle. Hareket etmeyen şeyler gözden kaçar.',
-  'spark.consensus': 'Herkes anlaştı. Bu, doğru olmakla aynı şey değil.',
-  'spark.route': 'Onların izlediği yolu izle. Tahmin etmekten kolay.',
-  'spark.reset': 'Sıfırla. Onardığın hiçbir şey geri alınmaz.',
-  'spark.solved': 'Oldu. Bunun neyi değiştirdiğine bak.',
+  // Söylediği her şey `game/spark.ts` içinde, dile göre değil anlara göre
+  // duruyor. Burada daha önce yazılmış ama hiç çağrılmamış anahtarlar vardı.
 
   // ---- Günlük ---------------------------------------------------------
   'journal.title': 'Günlük',

@@ -4,6 +4,8 @@ import { REGIONS, REGION_BY_ID } from '../catalog/regions';
 import { STAGE_BY_ID } from '../game/stages';
 import { objectivePosition } from '../game/objective';
 import {
+  advanceSpark,
+  clearNotice,
   continueGame,
   hasSave,
   resetStage,
@@ -88,10 +90,44 @@ export function TitleScreen() {
 // HUD
 // ---------------------------------------------------------------------------
 
+/** How long the region-restored notice stays up. */
+const NOTICE_MS = 4000;
+
 export function Hud() {
   const game = useGame();
   const t = useT();
   const lang = game.lang;
+  const sparkLine = game.sparkLine;
+
+  /**
+   * Drain the speech queue.
+   *
+   * A timer rather than a render-time check, because the store only holds one
+   * visible line: without something asking it to advance, the bubble showed one
+   * sentence and silently discarded everything Spark had queued behind it.
+   */
+  useEffect(() => {
+    if (!sparkLine) return;
+    const duration = Math.min(
+      9000,
+      Math.max(2600, sparkLine.text.length * 34),
+    );
+    const timer = window.setTimeout(() => advanceSpark(), duration);
+    return () => window.clearTimeout(timer);
+  }, [sparkLine]);
+
+  /**
+   * Dismiss the HUD notice on a timer.
+   *
+   * This used to be a `Date.now()` comparison inside render, which means the
+   * notice never left on its own — it only disappeared the next time anything
+   * else caused a re-render. The store now owns the dismissal.
+   */
+  useEffect(() => {
+    if (!game.notice) return;
+    const timer = window.setTimeout(() => clearNotice(), NOTICE_MS);
+    return () => window.clearTimeout(timer);
+  }, [game.notice]);
 
   const objective = objectivePosition(game.progression);
   const objectiveText = objective
@@ -166,13 +202,13 @@ export function Hud() {
         )}
       </div>
 
-      {game.sparkLine && Date.now() - game.sparkLine.at < 9000 && (
+      {sparkLine && (
         <div className="speech" role="status">
-          <strong>{lang === 'tr' ? 'Kıvılcım:' : 'Spark:'}</strong> {game.sparkLine.text}
+          <strong>{lang === 'tr' ? 'Kıvılcım:' : 'Spark:'}</strong> {sparkLine.text}
         </div>
       )}
 
-      {game.notice && Date.now() - game.notice.at < 4000 && (
+      {game.notice && (
         <div className="notice" role="status">
           {t(game.notice.key)}
         </div>
