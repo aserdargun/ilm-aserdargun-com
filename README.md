@@ -248,6 +248,43 @@ those. Every id reachable from stage data is given a bilingual name there, in
 one dictionary kept deliberately separate from `stages.ts`, so the interface can
 improve without moving a single evaluator, solver or test contract.
 
+### The vocabulary layer
+
+A lesson teaches an idea without naming what the subject calls it. A player can
+finish the loom stage understanding lane balance and never be told that
+*makespan* is the word for it — the concept is taught, the language is withheld,
+and the lesson does not survive leaving the game.
+
+`src/game/terms.ts` closes that gap. For **each of the 33 applications** it
+carries four terms from that application's own field, each bilingual:
+
+| Field | What it is |
+| --- | --- |
+| `term` | Canonical spelling the field uses, left untranslated |
+| `meaning` | What it means, stated without jargon |
+| `inWorld` | Where the player has already met it in this world |
+
+That is 132 terms, so every topic in the catalog has real vocabulary attached to
+it rather than a metaphor and a source link. The definition is the teachable
+part: *occupancy* alone teaches nothing, while "how much of the machine you
+actually managed to keep busy" is the same fact in a form a player can carry to
+the source application.
+
+Terms surface in two places, on purpose:
+
+- **In the lesson card**, under the stage's real-world counterpart, so the word
+  arrives at the moment the idea does. The lesson shows the definition only — it
+  sits under the board and the player is about to play.
+- **In the journal entry**, with the world line as well, because the journal is
+  the surface a player *re-reads* rather than acts from.
+
+The `term` string stays in the field's own spelling on purpose. Turkish prose is
+written as Turkish — the same rule the lessons and Spark follow, and
+`tests/terms.test.ts` fails on any entry whose Turkish column is a copy of the
+English one. But `kernel`, `warp` and `prefill` are not translated in Turkish
+technical writing either, and translating them would break the lookup back to
+the source rather than enable it.
+
 ### The six systems
 
 - **Bağlantı / Connection** — flow propagation across compatible nodes. A relay
@@ -405,7 +442,7 @@ Details that carry weight:
 
 ## Tests performed
 
-`npm run test` — **183 tests across 15 files, all passing.**
+`npm run test` — **237 tests across 17 files, all passing.**
 
 | Suite | Tests | What it proves |
 | --- | --- | --- |
@@ -416,21 +453,25 @@ Details that carry weight:
 | `evidence` | 15 | Lantern capacity and crowding, stale vs incorrect records, false consensus, observe-act-verify, worker lifecycle |
 | `prediction` | — | Exercised through `stages` and `playthrough` |
 | `lessons` | 14 | **Every stage has a complete bilingual lesson**, three distinct hints per stage, Turkish never copies English, hint tiers clamp, and **every player-visible id is named** |
+| `terms` | 16 | **Every one of the 33 applications carries four terms**, both languages written, Turkish never copies English, and the lesson card actually renders them |
 | `catalog` | 16 | Exactly 33 codes, INF/NXT/STK absent, every URL verified, both languages complete, catalog ⇄ stage agreement, progression reachability |
 | `stages` | 31 | **Every one of the 28 stages is provably solvable**, none starts solved, each yields exactly its application codes |
 | `playthrough` | 8 | The whole journey runs through the real store and finishes |
 | `save` | 19 | Schema validation, corrupt/version recovery, reconciliation, language independence |
 | `i18n` | 11 | Key parity, no empty strings, no untranslated prose, Turkish diacritics |
 | `nav` | 8 | Walkable world, island discs, span crossing, boundary containment |
-| `touch` | 14 | Staff strip clear of the sightline, home button, pointer capture, tap targets sized for a phone |
+| `touch` | 27 | Staff strip clear of the sightline, home button, pointer capture, tap targets sized for a phone |
 | `audio` | 12 | Chord voicing has a third, tremolo depth is proportional, no phase inversion, headroom |
+| `spark` | 20 | Every moment line exists in both languages and reaches the player |
 | `playtime` | 5 | The stated playtime estimate is derived, not guessed |
 
 Two real defects were found and fixed by these tests during development: an
 occlusion check that looked *behind* a cell instead of in front of it, and a set
 of fault signatures under which one diagnosis could never be isolated. A third
 came from `lessons`: `hintFor` returned `undefined` for tier `0`, so a stale save
-asking for the weakest hint would have been shown nothing.
+asking for the weakest hint would have been shown nothing. A fourth came from
+`terms`: the first draft carried English prose in the Turkish column of 128
+entries — invisible to any check that only counted keys.
 
 ### Playability
 
@@ -449,7 +490,7 @@ interface calls — through the whole journey and asserts it can be finished:
 - all 33 applications are discovered across the run
 - the finished journey reloads correctly from the save
 
-140 tests across 11 files pass.
+The full suite is 237 tests across 17 files.
 
 Measured in the browser through the real interface, not simulated:
 

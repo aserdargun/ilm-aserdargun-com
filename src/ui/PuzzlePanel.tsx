@@ -12,6 +12,7 @@ import { buildScene, cellTruths, evaluateStage, initialStageState } from '../gam
 import { STAGE_BY_ID, type StageDefinition, type StageRuntimeState, type StageSystem } from '../game/stages';
 import { cellLabel, lookup, sensorLabel } from '../game/labels';
 import { hintFor, LESSONS, type StageLesson } from '../game/lessons';
+import { termsFor } from '../game/terms';
 import { APPLICATIONS } from '../catalog/applications';
 import { audio } from '../game/audio';
 import type { Lang } from '../types/catalog';
@@ -96,6 +97,7 @@ export function PuzzlePanel({ stageId, onClose }: { stageId: string; onClose: ()
               <LessonCard
                 lesson={lesson}
                 counterpart={counterpart}
+                vocabulary={vocabularyFor(stage)}
                 open={lessonOpen}
                 onToggle={() => setLessonOpen((v) => !v)}
                 t={t}
@@ -170,12 +172,26 @@ function counterpartFor(stage: StageDefinition, lang: Lang): Counterpart[] {
 }
 
 /**
+ * The vocabulary of the applications this stage stands for.
+ *
+ * Placed inside the lesson rather than in the journal because that is where a
+ * player meets the word: right after reading what makespan means, they see
+ * that occupancy and coalesced access are the same kind of thing and can be
+ * looked up later. Kept to the stage's own applications so the list stays
+ * short enough to read before a puzzle rather than becoming a second lesson.
+ */
+function vocabularyFor(stage: StageDefinition) {
+  return stage.appCodes.flatMap((code) => termsFor(code).map((term) => ({ code, term })));
+}
+
+/**
  * The lesson, shown before the board. Open by default: the point of this panel
  * is that the player learns the idea, not that they finish a puzzle.
  */
 function LessonCard({
   lesson,
   counterpart,
+  vocabulary,
   open,
   onToggle,
   t,
@@ -183,6 +199,7 @@ function LessonCard({
 }: {
   lesson: StageLesson;
   counterpart: Counterpart[];
+  vocabulary: ReturnType<typeof vocabularyFor>;
   open: boolean;
   onToggle: () => void;
   t: TFn;
@@ -228,6 +245,22 @@ function LessonCard({
                   </a>
                 ))}
               </p>
+            </div>
+          )}
+          {vocabulary.length > 0 && (
+            <div className="lesson-row lesson-words">
+              <span className="lesson-key">{t('lesson.vocabulary')}</span>
+              <dl className="vocab">
+                {vocabulary.map(({ code, term }) => (
+                  <div className="vocab-item" key={`${code}-${term.term}`}>
+                    <dt>
+                      {term.term}
+                      <span className="vocab-code">{code}</span>
+                    </dt>
+                    <dd>{term.meaning[lang]}</dd>
+                  </div>
+                ))}
+              </dl>
             </div>
           )}
         </div>

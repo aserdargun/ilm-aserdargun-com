@@ -162,6 +162,7 @@ export const en = {
   'lesson.showLesson': 'Show the lesson',
   'lesson.hideLesson': 'Hide the lesson',
   'lesson.counterpart': 'Real-world counterpart',
+  'lesson.vocabulary': 'Words this stage is really about',
 
   // ---- Debrief, shown once a stage is restored -----------------------
   'debrief.title': 'What you just learned',
@@ -194,6 +195,7 @@ export const en = {
   'journal.empty': 'Nothing recorded yet.',
   'journal.filterAll': 'All',
   'journal.lockedCount': 'Remaining',
+  'journal.vocabulary': 'Vocabulary',
 
   // ---- Settings -------------------------------------------------------
   'settings.title': 'Settings',

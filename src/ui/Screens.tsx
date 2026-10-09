@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { APPLICATIONS } from '../catalog/applications';
 import { REGIONS, REGION_BY_ID } from '../catalog/regions';
 import { STAGE_BY_ID } from '../game/stages';
+import { termsFor } from '../game/terms';
 import { objectivePosition } from '../game/objective';
 import {
   advanceSpark,
@@ -476,6 +477,20 @@ export function JournalScreen() {
                       <strong>{t('puzzle.solved')}</strong>
                       {entry.completionCondition[lang]}
                     </p>
+                    <div className="journal-terms">
+                      <strong>{t('journal.vocabulary')}</strong>
+                      <dl className="vocab">
+                        {termsFor(entry.code).map((term) => (
+                          <div className="vocab-item" key={term.term}>
+                            <dt>{term.term}</dt>
+                            <dd>
+                              {term.meaning[lang]}
+                              <span className="vocab-world">{term.inWorld[lang]}</span>
+                            </dd>
+                          </div>
+                        ))}
+                      </dl>
+                    </div>
                     <a
                       className="source-link"
                       href={entry.sourceUrl}

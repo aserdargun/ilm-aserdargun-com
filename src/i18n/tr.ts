@@ -164,6 +164,7 @@ export const tr: Translations = {
   'lesson.showLesson': 'Dersi göster',
   'lesson.hideLesson': 'Dersi gizle',
   'lesson.counterpart': 'Gerçek dünyadaki karşılığı',
+  'lesson.vocabulary': 'Bu sahnenin gerçekten konuştuğu kelimeler',
 
   // ---- Sonuç değerlendirmesi ------------------------------------------
   'debrief.title': 'Az önce öğrendiğin',
@@ -195,6 +196,7 @@ export const tr: Translations = {
   'journal.empty': 'Henüz bir şey kaydedilmedi.',
   'journal.filterAll': 'Tümü',
   'journal.lockedCount': 'Kalan',
+  'journal.vocabulary': 'Terimler',
 
   // ---- Ayarlar --------------------------------------------------------
   'settings.title': 'Ayarlar',

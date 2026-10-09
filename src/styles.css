@@ -917,6 +917,77 @@ kbd {
   transform: translateY(-1px);
 }
 
+/* ---------------------------------------------------------- vocabulary */
+
+/*
+ * Terms are set as a definition list rather than as a list of strings, because
+ * the term alone teaches nothing: "occupancy" needs the sentence beside it.
+ * The lesson version shows the definition only — it sits under the board and
+ * the player is about to play. The journal version adds the world line, since
+ * that is the surface a player reads to recall rather than to act.
+ */
+
+.lesson-words .lesson-key {
+  color: var(--sandstone);
+}
+
+.vocab {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin: 0;
+}
+
+.vocab-item dt {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  font-size: 0.86rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--text);
+}
+
+.vocab-item dd {
+  margin: 0.15rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--text-soft);
+}
+
+.vocab-code {
+  font-size: 0.64rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.vocab-world {
+  display: block;
+  margin-top: 0.2rem;
+  padding-left: 0.6rem;
+  border-left: 1px solid var(--hairline);
+  font-size: 0.78rem;
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+.journal-terms {
+  margin-top: 0.7rem;
+  padding-top: 0.6rem;
+  border-top: 1px solid var(--hairline);
+}
+
+.journal-terms > strong {
+  display: block;
+  margin-bottom: 0.45rem;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--sandstone);
+}
+
 /* ---------------------------------------------------------------- debrief */
 
 /*
