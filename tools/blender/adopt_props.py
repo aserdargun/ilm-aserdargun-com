@@ -22,6 +22,8 @@ import bpy
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
+from common import bake_vertex_ao  # noqa: E402
+
 OUT_DIR = os.path.abspath(os.path.join(HERE, "..", "..", "public", "models"))
 
 SOURCE_DIR = (
@@ -94,6 +96,37 @@ def note_grounding():
     print("GROUND deferred to runtime (see src/world/Props.tsx)")
 
 
+def bake_ao_per_prop():
+    """
+    Bake each prop on its own, in an otherwise empty scene.
+
+    This isolation is the whole point. `Props.tsx` turns each of these meshes
+    into an InstancedMesh and scatters it, so one barrel geometry is drawn a
+    dozen times across six regions. Anything occluding its neighbours at bake
+    time — a crate against a pallet, a pillar beside a wall — would be frozen
+    into the vertices and then repeated at every placement, including the ones
+    standing in open ground. Baking alone keeps the stored value a property of
+    the prop itself: its own corners, its own overhangs.
+    """
+    meshes = [o for o in bpy.data.objects if o.type == "MESH"]
+    baked = 0
+    for obj in meshes:
+        # Moved aside rather than hidden: `hide_viewport` takes an object out
+        # of the dependency graph, and an AO bake that cannot see the object it
+        # is baking writes nothing.
+        obj.location.z = 500.0
+
+    for obj in meshes:
+        obj.location.z = 0.0
+        if bake_vertex_ao(obj, distance=1.2):
+            baked += 1
+        obj.location.z = 500.0
+
+    for obj in meshes:
+        obj.location.z = 0.0
+    print(f"AO baked on {baked}/{len(meshes)} props")
+
+
 def export(path):
     bpy.ops.object.select_all(action="SELECT")
     bpy.ops.export_scene.gltf(
@@ -104,6 +137,10 @@ def export(path):
         export_animations=False,
         export_materials="EXPORT",
         export_yup=True,
+        # Same reason as the landmarks: "NAME" would emit an all-white COLOR_0
+        # that three.js reads instead of the baked data in COLOR_1.
+        export_vertex_color="ACTIVE",
+        export_all_vertex_colors=True,
     )
     size = os.path.getsize(path) // 1024
     print(f"EXPORTED {path} ({size} KB)")
@@ -113,6 +150,7 @@ def main():
     count = import_props()
     shrink_atlas(ATLAS_SIZE)
     note_grounding()
+    bake_ao_per_prop()
 
     tris = 0
     for obj in bpy.data.objects:

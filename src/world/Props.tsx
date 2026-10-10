@@ -245,8 +245,19 @@ function PropInstances({
     if ('envMapIntensity' in resolved) {
       (resolved as { envMapIntensity: number }).envMapIntensity = 1;
     }
+    // Baked vertex AO. `adopt_props.py` ray-traces each prop in isolation —
+    // necessary here, because these become instanced meshes, so any occlusion
+    // from a neighbour at bake time would be repeated at every placement.
+    // Gated on the attribute being present: a material that expects vertex
+    // colours the geometry does not carry renders as undefined output rather
+    // than falling back cleanly.
+    if ('vertexColors' in resolved) {
+      (resolved as { vertexColors: boolean }).vertexColors = Boolean(
+        geometry.getAttribute('color'),
+      );
+    }
     return resolved;
-  }, [gltf, name]);
+  }, [gltf, name, geometry]);
 
   useLayoutEffect(() => {
     const mesh = ref.current;

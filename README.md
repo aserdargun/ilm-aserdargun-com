@@ -64,9 +64,9 @@ source rather than being opaque binary files:
 | `tools/blender/landmarks.py` | The Synthesis Tree and the seven region landmarks |
 | `tools/blender/render_preview.py` | Contact-sheet renders for review |
 
-Twelve models ship, about 950 KB in total: the Weaver, Spark, the Synthesis
+Twelve models ship, about 1.4 MB in total: the Weaver, Spark, the Synthesis
 Tree, the tapestry, the puzzle console, and the landmark for each of the seven
-regions.
+regions. Most of the growth over the original set is baked vertex AO.
 
 Geometry is built from **lofted cross-sections**, not stacked primitives, which
 is what gives the coat, trunk and pump their tapering silhouettes. Flat shading
@@ -99,12 +99,21 @@ vector the key light comes from, which is what puts the highlight on the correct
 side of a copper ring.
 
 **Baked vertex occlusion.** `bake_vertex_ao` in `tools/blender/common.py` ray-
-traces occlusion into a `Col` vertex colour layer on every landmark. It is
-baked rather than computed at runtime for three reasons: it survives the **low
+traces occlusion into a `Col` vertex colour layer. Every mesh in the game
+carries it — the landmarks, the Weaver, and all fourteen props. It is baked
+rather than computed at runtime for three reasons: it survives the **low
 tier**, where shadows are switched off entirely; it darkens the *inside* of a
-form — under a roof, between two arms — which a shadow map cannot do, since it
-records only where a light is blocked, not how enclosed a point is; and it
-costs nothing per frame.
+form — under a hat brim, between two arms, in the crook of a tree — which a
+shadow map cannot do, since it records only where a light is blocked, not how
+enclosed a point is; and it costs nothing per frame.
+
+Props are baked **one at a time in an otherwise empty scene**. That isolation is
+not tidiness, it is correctness: `Props.tsx` turns each prop into an
+InstancedMesh, so anything occluding its neighbours at bake time would be
+frozen into the vertices and then repeated at every one of the ~180 placements
+— including the ones standing in open ground. The character bakes in its rest
+pose, which is right for the same structural reason: the occlusion belongs to
+the model's shape and rides through the skinning with the vertices.
 
 Two export details decide whether any of this is actually visible, and both
 fail silently when wrong:
@@ -113,7 +122,10 @@ fail silently when wrong:
   `"NAME"` it writes a second, all-white `COLOR_0` beside the real data in
   `COLOR_1` — and three.js reads `COLOR_0`, so the bake loads and is never seen.
 - The material must set `vertexColors` on load. glTF does not switch this on by
-  itself, so the data arrives on a material that is ignoring it.
+  itself, so the data arrives on a material that is ignoring it. In `Props.tsx`
+  it is additionally gated on the geometry actually carrying the attribute,
+  because a material expecting colours the geometry lacks renders as undefined
+  output rather than falling back cleanly.
 
 ### Post-processing
 
