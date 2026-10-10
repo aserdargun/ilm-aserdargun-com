@@ -33,6 +33,7 @@ import {
 } from '../game/store';
 import { PropScatter, preloadProps } from './Props';
 import { Lighting } from './Lighting';
+import { applySurfaceDetail, useSurfaceDetailMap } from './detail';
 import { PostProcessing } from './PostProcessing';
 import { HORIZON_COLOR, SkyDome, TerrainDisc } from './Atmosphere';
 import { regionAt } from './Player';
@@ -50,6 +51,13 @@ import {
 } from './Models';
 
 const INTERACT_RANGE = 5.2;
+
+/**
+ * Frames of silence after which the detail pass assumes the world has finished
+ * streaming in. At the frame rates this runs at, a hundred frames is well under
+ * a second — long enough to cover a dropped frame or a slow GLB swap.
+ */
+const DETAIL_QUIET_FRAMES = 100;
 
 /**
  * Where the player arrives and where the home button sends them back: the hub
@@ -222,6 +230,46 @@ function SceneContents() {
   const { camera } = useThree();
   const raycaster = useMemo(() => new THREE.Raycaster(), []);
 
+  // Stone grain across the whole scene, not only the loaded landmarks. The
+  // bridge decks, the aqueduct and the canal are built from JSX primitives
+  // rather than Blender assets, and left alone they were the only large surfaces
+  // in the world with no surface at all — the bridge in particular is a
+  // twelve-unit-wide slab of flat colour running the length of every region.
+  //
+  // `applySurfaceDetail` is idempotent (materials carry a flag), so this
+  // composes with the per-asset call in `Models.tsx` instead of replacing it.
+  const detailMap = useSurfaceDetailMap();
+  const detailQuiet = useRef(0);
+
+  // Why this runs from the render loop instead of an effect.
+  //
+  // The landmark assets patch their materials from a layout effect and always
+  // have, because a GLTF scene is a plain three.js object that exists as soon as
+  // the loader resolves — it does not need to be attached to anything. The
+  // procedural geometry is different: R3F attaches its objects to the scene
+  // graph asynchronously, and a layout effect in this component runs before
+  // that has happened for the descendants below it. Walking the live scene from
+  // an effect therefore saw an empty world, and because `[scene, detailMap]`
+  // never changes it never looked again. Calling it from `useFrame` makes the
+  // pass independent of attachment order.
+  //
+  // The traversal is not free, so it stops once the scene has gone quiet for
+  // long enough that the assets have all streamed in, and starts again whenever
+  // the world geometry is rebuilt.
+  useFrame(() => {
+    if (detailQuiet.current > DETAIL_QUIET_FRAMES) return;
+    detailQuiet.current =
+      applySurfaceDetail(scene, detailMap) > 0 ? 0 : detailQuiet.current + 1;
+  });
+
+  // Reopen the pass whenever the world can have been rebuilt underneath it.
+  // Restoring a region swaps a bridge's stubs for a deck, which creates fresh
+  // materials; the latch would otherwise have closed before that happened and
+  // never look again.
+  useEffect(() => {
+    detailQuiet.current = 0;
+  }, [game.progression.completedRegions.length, game.progression.completedStages.length]);
+
   // Interaction target: nearest reachable console in range and in view.
   const findTarget = useCallback(() => {
     const origin = player.current.position;
@@ -333,6 +381,9 @@ function SceneContents() {
           }
           return perf ? { frames: perf.frames, last: perf.last } : null;
         })(),
+        // Raw handles, so a question like "what is that slab?" can be answered
+        // with a raycast instead of by guessing from a screenshot. Dev only.
+        three: { scene, camera },
         scene: (() => {
           let instanced = 0;
           let meshes = 0;
@@ -606,7 +657,12 @@ function WorldGeometry({
           <group key={`bridge-${region.id}`} position={mid} rotation={[0, angle, 0]}>
             <mesh receiveShadow>
               <boxGeometry args={[bridge.width, 0.5, length]} />
-              <meshStandardMaterial color={PALETTE.stone} flatShading roughness={0.9} />
+              {/* No `flatShading`: `BoxGeometry` builds four independent vertices
+                  per face with face-aligned normals, so flat and smooth shading
+                  produce identical pixels here — the flag only prevented the
+                  stone detail map from being applied to the largest flat surface
+                  in the game. */}
+              <meshStandardMaterial color={PALETTE.stone} roughness={0.9} />
             </mesh>
             {/* A woven runner down the middle and low rails at each side.
 
@@ -657,7 +713,7 @@ function WorldGeometry({
                 </mesh>
                 <mesh position={[side * (bridge.width / 2 - 0.2), 1.1, length * 0.18]}>
                   <boxGeometry args={[0.16, 0.7, length * 0.64]} />
-                  <meshStandardMaterial color={PALETTE.copper} flatShading metalness={0.6} roughness={0.35} />
+                  <meshStandardMaterial color={PALETTE.copper} metalness={0.6} roughness={0.35} />
                 </mesh>
               </group>
             ))}

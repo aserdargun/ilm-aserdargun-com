@@ -1,6 +1,12 @@
-import { Component, Suspense, useEffect, useMemo, type ReactNode } from 'react';
+import { Component, Suspense, useEffect, useLayoutEffect, useMemo, type ReactNode } from 'react';
 import { useGLTF } from '@react-three/drei';
 import type { Group, Material, Mesh } from 'three';
+import {
+  applySurfaceDetail,
+  NO_DETAIL_FLAG,
+  preloadSurfaceDetail,
+  useSurfaceDetailMap,
+} from './detail';
 
 /**
  * Blender-authored asset loading.
@@ -112,6 +118,21 @@ export const ALL_MODEL_NAMES = [
   'living_valley',
 ];
 
+/**
+ * Models that are characters rather than architecture.
+ *
+ * The detail map is projected in **world** space, which is what gives it
+ * consistent texel density across a thirty-metre terrace and a hand-sized
+ * console — and the same property is why it is skipped here. Anything that
+ * moves would carry the projection across its own surface as it walks, so the
+ * stone grain would visibly swim over it. The baked tone break-up is a vertex
+ * attribute and stays locked to the mesh, which is why that one is harmless.
+ */
+const CREATURE_MODELS = new Set(['weaver', 'spark']);
+
+/** Warms the stone detail map alongside the models themselves. */
+preloadSurfaceDetail();
+
 export interface AssetProps {
   /** File name under `/models`, without the extension. */
   name: string;
@@ -161,6 +182,26 @@ function AssetMesh({
 }: Omit<AssetProps, 'fallback'>) {
   const { scene } = useModel(name);
   const resolved = useMemo(() => scale ?? MODEL_SCALE[name] ?? 1, [scale, name]);
+  const detailMap = useSurfaceDetailMap();
+
+  // A layout effect, not `useMemo`: patching a material is a side effect, and
+  // this has to land before the browser paints so the landmark is never shown
+  // untextured while three.js recompiles the program.
+  useLayoutEffect(() => {
+    if (!scene) return;
+    if (CREATURE_MODELS.has(name)) {
+      // Opt these out by name rather than skipping them here: the scene-wide
+      // pass in `Scene.tsx` walks every material in the world, and it has no
+      // way to know which mesh belongs to a creature.
+      scene.traverse((child: unknown) => {
+        const mesh = child as Mesh & { material?: { userData?: Record<string, unknown> } };
+        const material = mesh.material;
+        if (material?.userData) material.userData[NO_DETAIL_FLAG] = true;
+      });
+      return;
+    }
+    applySurfaceDetail(scene, detailMap);
+  }, [scene, detailMap, name]);
 
   useEffect(() => {
     // Trailing colour-space correction so PBR materials match the procedural

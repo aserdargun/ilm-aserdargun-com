@@ -208,6 +208,107 @@ has to stay inside the camera's far plane of 900: a dome beyond it is not drawn
 at all, and the missing wedge shows up as a hard dark triangle in the corner of
 the sky.
 
+### Landmarks have a surface
+
+Every landmark is built from lofted cross-sections and raw vertex lists, so
+`export_glb` writes `COLOR_0` and `NORMAL` and **no UVs at all**. A conventional
+`normalMap` reads `vNormalMapUv`, which without a `uv` attribute arrives as
+(0, 0) for every fragment — the texture loads, the material compiles, the
+parameter is set, and the surface looks exactly as it did before.
+
+`src/world/detail.ts` projects `stone_normal.png` **triplanar** instead: three
+samples, one per world axis, blended by how squarely the surface faces each, with
+the weights raised to the fourth power so the blend stays hard across the 45°
+corners of every box in the set. The other thing it buys is world-space texel
+density — one tile covers the same number of units on a thirty-metre terrace and
+on a hand-sized console, so grain never stretches to fit the object.
+
+| Axis projection | U → | V → | N → | Tangent (x, y, z) becomes |
+| --- | --- | --- | --- | --- |
+| `.zy` | Z | Y | X | `(z, y, x)` |
+| `.xz` | X | Z | Y | `(x, z, y)` |
+| `.xy` | X | Y | Z | `(x, y, z)` |
+
+Getting one of those swaps wrong is silent: the grain still appears, it just
+leans the wrong way on one axis.
+
+What is skipped, and why each one is a case where the map would be *wrong*
+rather than merely unhelpful:
+
+| Skipped | Reason |
+| --- | --- |
+| Instanced meshes | The per-instance transform lives in `instanceMatrix`, which `project_vertex` applies to `mvPosition` only. `modelMatrix` does not contain it, so every copy of a rock would sample the same spot |
+| `flatShading` materials | Normals come from screen-space derivatives, not the attribute. The patch overwrites `normal`, so faceting would become smooth — the island cliff would stop looking like rock |
+| Materials with a `normalMap` | The terrain disc already tiles correctly through planar UVs; a second projection just fights the first |
+| Transparent and emissive | Grain on glass reads as dirt on the lens, and emission is added after the lighting, so the map cannot reach it |
+| The player and its spark | The projection is world-space, so on anything that moves the grain would swim across it |
+
+The pass runs from `useFrame` behind a quiet-frame latch, not from an effect.
+This is not a style choice. The landmark assets patch their materials from a
+layout effect and always have, because a GLTF scene is a plain three.js object
+that exists as soon as the loader resolves — it does not need to be attached to
+anything. The procedural geometry is different: R3F attaches its objects to the
+scene graph asynchronously, and walking the live scene from an effect saw an
+empty world. Worse, it saw one *once*: `[scene, detailMap]` never changes, so it
+never looked again, and the bridge decks — a twelve-unit-wide slab of flat
+colour running the length of every region — stayed plain for the rest of the
+session. The latch reopens on progression, because restoring a region swaps a
+bridge's stubs for a deck and creates fresh materials.
+
+`flatShading` was dropped from the bridge deck, its copper rails and the
+aqueduct segments to let the map through. On a `BoxGeometry` this is free:
+the geometry builds four independent vertices per face with face-aligned normals,
+so flat and smooth shading produce identical pixels.
+
+### Landmarks sat in the ground
+
+Two landmarks had wide flat bases authored at exactly `y = 0`, which is the
+height of the terrain disc's top face. Coplanar geometry z-fights, and the
+result read as a flat brown stain poured across the ground rather than a
+structure standing on it. `build_collective_gardens` now starts its first
+terrace at 0.6 and steps up from a shared `bed_height(distance)`, so the flower
+beds and turbines sit on the terrace they belong to;
+`build_terrace_map` lifts its table to 0.5.
+
+The check that catches this is not a screenshot. Both files report their vertex
+Y ranges straight out of the GLB JSON chunk:
+
+```
+collective_gardens.glb   terrace0    y: +0.600 .. +8.200
+terrace_map.glb          terrace     y: +0.500 .. +1.700
+```
+
+A related trap, from the island undersides: adding geometry *below* the player
+does nothing if the camera is above and looking slightly down — it all falls
+under the eyeline. What made the edge read as an edge was the second ring of the
+profile rising before it falls, not the forty units of depth beneath it.
+
+### Large flat faces needed a second break-up
+
+Vertex AO is the wrong tool for a thirty-unit terrace top. That face is
+uniformly lit and uniformly unoccluded, so AO leaves it a single flat colour
+across metres of screen. `common.mottle_vertex_tint` multiplies the baked layer by
+two octaves of world-space noise, keyed to position rather than object space so
+adjacent pieces of the same material never line up into a shared pattern.
+
+The samples are normalised by the largest one actually produced, so `amount`
+means what it says — a ±12% swing whatever range Blender's Perlin happens to
+return. The earlier form trusted the raw range and would silently become a no-op
+after a version bump.
+
+The same trap shaped the normal maps. Multiplying the raw finite difference by a
+fixed constant appears to work: the map is written, it is seamless, it tiles. It
+also produces a **blue channel pinned at 1.0**, because fBm sampled over a
+512-pixel lattice changes by roughly a thousandth of a unit between adjacent
+pixels, so the "strength" has to be in the hundreds to be visible at all. Caught
+by reading the PNG back and printing the channel range — `B 0.992..1.000` means
+every normal points at the viewer. `normal_map` now normalises by the measured
+peak gradient, so `peak_slope` is a tangent at the steepest point on the map.
+
+Tiling is verified directly rather than inferred: every octave is sampled at
+`SIZE + 1` and compared against index `SIZE`, where the wrap actually falls. All
+22 octaves return a wrap error of exactly 0.
+
 ### Islands have an underside
 
 Each island was a 1.2-unit cylinder, which reads as a plate laid on the sky
@@ -757,11 +858,16 @@ real `requestAnimationFrame` deltas after all assets had streamed in.
 
 | Environment | Viewport | Result |
 | --- | --- | --- |
-| Desktop, Apple M4 Pro | 1298×805 @ DPR 2 | **120 FPS**, worst frame 9.4 ms |
-| Mobile emulation | 390×844 @ DPR 3 | **120 FPS**, worst frame 9.4 ms |
+| Desktop, Apple M4 Pro, high tier | 2880×1610 @ DPR 1 | **97 FPS** |
+| Desktop, Apple M4 Pro, medium tier | 2880×1610 @ DPR 1 | **104 FPS** |
+| Desktop, Apple M4 Pro, low tier | 2880×1610 @ DPR 1 | **112 FPS** |
+| Mobile emulation, low tier | 390×844 @ DPR 3 | **110 FPS**, drawing buffer capped to 487×1055 |
+| Desktop, high tier, 1298×805 @ DPR 2 | 1298×805 @ DPR 2 | **120 FPS**, worst frame 9.4 ms |
 | Desktop, walking with collision | 1298×805 @ DPR 2 | **120 FPS**, worst frame 10.4 ms |
 
-Frame rate was also sampled in three different regions (hub, council city, flow
+The triplanar detail map costs three texture samples per fragment on stone
+surfaces and is applied at every tier; the low tier still holds 112 FPS. Frame
+rate was also sampled in three different regions (hub, council city, flow
 foundry) at 109–111 FPS in the dev build; the heaviest prop-dressed region is
 within 1 FPS of the emptiest. Roughly 1,500 instanced objects across 17
 instanced meshes keep the draw-call count low.

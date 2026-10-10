@@ -209,7 +209,16 @@ def build_terrace_map():
     """The Cartographer's Terrace: a vast carved world map."""
     parts = []
 
-    terrace = lathe([(0.0, 15.0, 15.0), (0.8, 15.2, 15.2), (1.2, 14.8, 14.8)], 24)
+    # Lifted off y = 0 for the same reason as the Gardens terraces: the ground
+    # disc's top face is at y = 0, so a table whose underside sits exactly
+    # there z-fights with the terrain and reads as a stain rather than a
+    # raised surface. 0.5 clears it and leaves a shadow line underneath.
+    LIFT = 0.5
+    terrace = lathe([
+        (LIFT + 0.0, 15.0, 15.0),
+        (LIFT + 0.8, 15.2, 15.2),
+        (LIFT + 1.2, 14.8, 14.8),
+    ], 24)
     tv, tf = terrace
     parts.append(new_mesh("terrace", tv, tf, ["stone"]))
 
@@ -224,7 +233,7 @@ def build_terrace_map():
                        (1.15 + h, r * 0.5, r * 0.42)], 6, rotation=i * 0.6)
         pv, pf = plate
         obj = new_mesh(f"plate{i}", pv, pf, ["ceramic"])
-        obj.location = (x, y, 0)
+        obj.location = (x, y, LIFT)
         parts.append(obj)
 
     map_model = join_objects(parts, "terrace_map")
@@ -341,13 +350,28 @@ def build_collective_gardens():
     """The Collective Gardens: terraced beds and mechanical flowers."""
     parts = []
 
+    # The terraces start at z = 0.6, not 0. The ground disc's top face is also
+    # at y = 0, so a terrace whose base ring sits exactly there is coplanar
+    # with the terrain: it z-fights, and from a standing camera the whole
+    # landmark reads as a flat brown patch with no steps at all. Lifting it
+    # clears the ground and leaves a visible lip beneath the lowest bed.
+    BASE = 0.6
+    STEP = 1.9
     for i in range(4):
         terrace = lathe([
-            (i * 1.6, 15.0 - i * 2.4, 15.0 - i * 2.4),
-            ((i + 1) * 1.6, 14.4 - i * 2.4, 14.4 - i * 2.4),
+            (BASE + i * STEP, 15.0 - i * 2.6, 15.0 - i * 2.6),
+            (BASE + (i + 1) * STEP, 15.0 - i * 2.6 - 1.3, 15.0 - i * 2.6 - 1.3),
         ], 20)
         tv, tf = terrace
         parts.append(new_mesh(f"terrace{i}", tv, tf, ["stone_dark"]))
+
+    def bed_height(distance):
+        """Height of the terrace surface at a given radius."""
+        for i in range(4):
+            r = 15.0 - i * 2.6
+            if distance <= r:
+                return BASE + (i + 1) * STEP
+        return BASE + 4 * STEP
 
     # flowers: stem, bud, petals
     for i in range(16):
@@ -355,7 +379,7 @@ def build_collective_gardens():
         distance = 5.0 + (i % 4) * 2.6
         x = math.cos(angle) * distance
         y = math.sin(angle) * distance
-        z = 1.6 * (1 + distance / 12.0)
+        z = bed_height(distance)
 
         stem = lathe([(z, 0.09, 0.09), (z + 1.1, 0.07, 0.07)], 5)
         sv, sf = stem
@@ -372,12 +396,14 @@ def build_collective_gardens():
     # moss-covered turbines at the terrace edges
     for i in range(4):
         angle = (i / 4) * math.tau + 0.4
-        x = math.cos(angle) * 13.0
-        y = math.sin(angle) * 13.0
+        distance = 13.0
+        x = math.cos(angle) * distance
+        y = math.sin(angle) * distance
         turbine = lathe([(0.0, 0.9, 0.9), (2.2, 0.7, 0.7), (2.8, 1.1, 1.1)], 8)
         tv, tf = turbine
         t_obj = new_mesh(f"turbine{i}", tv, tf, ["moss"])
-        t_obj.location = (x, y, 0)
+        # Seated on the bed they stand on, so none of them float.
+        t_obj.location = (x, y, bed_height(distance))
         parts.append(t_obj)
 
     gardens = join_objects(parts, "collective_gardens")

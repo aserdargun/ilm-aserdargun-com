@@ -469,7 +469,10 @@ function SuspendedAqueduct() {
       {segments.map((segment, i) => (
         <mesh key={i} position={segment.position} rotation={[0, segment.rotation, 0]} castShadow>
           <boxGeometry args={[9, 0.9, 3.4]} />
-          <meshStandardMaterial color={PALETTE.ceramic} flatShading roughness={0.85} />
+          {/* Flat shading is a no-op on a `BoxGeometry` — it builds four
+              vertices per face with face-aligned normals — so dropping it only
+              lets the stone detail map through. */}
+          <meshStandardMaterial color={PALETTE.ceramic} roughness={0.85} />
         </mesh>
       ))}
     </group>

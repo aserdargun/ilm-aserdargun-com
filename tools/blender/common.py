@@ -9,6 +9,7 @@ import math
 
 import bpy
 from mathutils import Matrix, Vector
+from mathutils import noise as mnoise
 
 # ---------------------------------------------------------------------------
 # Scene / collection helpers
@@ -392,4 +393,58 @@ def bake_vertex_ao(obj, distance=1.6):
 
     scene.render.engine = engine
     obj.data.update()
+    return True
+
+
+def mottle_vertex_tint(obj, scale=0.2, amount=0.12):
+    """
+    Multiply the baked AO layer by low-frequency noise, sampled in world space.
+
+    Occlusion is the wrong tool for a large flat face. A thirty-unit terrace top
+    is uniformly lit and uniformly unoccluded, so AO leaves it a single flat
+    colour across metres of screen — which is exactly how it read before the
+    detail map existed. The detail map gives such a face relief; it cannot vary
+    the *tone*, and tone is what makes a surface look poured rather than cut.
+
+    Two octaves, keyed to world position rather than object space, so adjacent
+    pieces of the same material never line up into a shared pattern.
+
+    The samples are normalised by the largest one that was actually produced, so
+    `amount` means what it says: the swing is exactly +/-amount whatever range
+    Blender's Perlin happens to return for a given seed. Relying on the raw
+    range instead is how this silently becomes a no-op after a version bump.
+    """
+    if obj.type != "MESH" or obj.data is None:
+        return False
+    mesh = obj.data
+    layer = mesh.color_attributes.get(AO_COLOR_LAYER)
+    if layer is None:
+        return False
+
+    matrix = obj.matrix_world
+    raw = []
+    for vertex in mesh.vertices:
+        p = matrix @ vertex.co
+        coarse = mnoise.noise(Vector((p.x * scale, p.y * scale, p.z * scale)))
+        fine = mnoise.noise(
+            Vector((p.x * scale * 2.9 + 31.7, p.y * scale * 2.9, p.z * scale * 2.9 - 17.3))
+        )
+        raw.append(coarse * 0.72 + fine * 0.28)
+
+    peak = max((abs(v) for v in raw), default=0.0)
+    if peak <= 1e-6:
+        return False
+    tint = [1.0 + amount * (v / peak) for v in raw]
+
+    for loop in mesh.loops:
+        value = tint[loop.vertex_index]
+        colour = layer.data[loop.index].color
+        layer.data[loop.index].color = (
+            colour[0] * value,
+            colour[1] * value,
+            colour[2] * value,
+            colour[3],
+        )
+    mesh.update()
+    print(f"MOTTLED {obj.name} tint={min(tint):.3f}..{max(tint):.3f}")
     return True
