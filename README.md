@@ -231,6 +231,39 @@ The cliff is flat-shaded and carries no normal map. That is not a compromise:
 it is the one surface whose faceting reads as rock, and a normal map on a
 flat-shaded face would be contradictory anyway.
 
+### The restored hub was a swimming pool
+
+Restoring every region lays all seven spans at once, and every span starts at
+the hub origin. Within ~20 units of the centre they therefore overlap — and
+because the runner was 40% opaque with an emissive glow, seven of them compounded
+into a solid turquoise sheet across the whole island that buried the Synthesis
+Tree. The game looked completely different depending on how far the player had
+got, which is not a state worth shipping.
+
+Two things fix it, and neither is "lower the opacity":
+
+- **The rails are inset** from the shared hub end. They mark where a span stops
+  being walkable, and they were the largest offender: opaque, emissive, and
+  running the full length of every span.
+- **The runner fades in along its length** via an `alphaMap` ramp.
+
+The ramp took three attempts, and every failure was invisible in the sense that
+the code looked right and the render did not change at all:
+
+1. The gradient was written to the **alpha** channel. three.js samples
+   `alphaMap`'s **green** channel — writing only `.a` leaves the texture white
+   to the shader, which reads as "fully opaque everywhere".
+2. Even correct, it did nothing, because `alphaMap` only fades the **diffuse**
+   contribution. **Emissive is added after lighting and multiplied by nothing**,
+   so the glowing runner stayed at full strength regardless. The glow had to
+   move to the rails, which are solid.
+3. With both fixed the ramp was simply too short — it completed inside the
+   stacked region. It now stays clear for the first third of the span.
+
+The lesson generalises: when a visual fix changes nothing at all, suspect a
+channel convention or a term that bypasses the mechanism, before suspecting the
+geometry.
+
 ### Character animation
 
 The Weaver is **rigged and animated in Blender**, not animated by hand-tweaked

@@ -58,6 +58,49 @@ const INTERACT_RANGE = 5.2;
  */
 const SPAWN: [number, number, number] = [0, 0, 16];
 
+/**
+ * Fade applied along every bridge runner.
+ *
+ * Alpha is a per-fragment quantity, so a constant `opacity` cannot express
+ * "invisible at the hub, solid further out" — seven spans converging on the
+ * origin would each contribute their full 40% in the same pixels. This is a
+ * 1D gradient sampled along the span's length instead.
+ */
+const hubFade = (() => {
+  const width = 64;
+  const data = new Uint8Array(width * 4);
+  for (let i = 0; i < width; i += 1) {
+    // The bridge box runs along local Z, and the group's origin sits at the
+    // span's midpoint, so v = 0 is the hub end.
+    const t = i / (width - 1);
+    // A long ramp: the shared hub region is where the spans pile up, so the
+    // runner stays nearly clear for the first third of its length and only
+    // reaches full strength well out towards the region.
+    const value = Math.min(1, Math.max(0, (t - 0.28) / 0.36));
+    const eased = value * value * (3 - 2 * value);
+    const byte = Math.round(eased * 255);
+    // three.js samples the **green** channel for `alphaMap`, not the alpha
+    // channel. Writing only `.a` leaves the texture fully white to the shader,
+    // which reads as "100% opacity everywhere" — the map is then correctly
+    // wired and completely invisible in its effect.
+    data[i * 4] = byte;
+    data[i * 4 + 1] = byte;
+    data[i * 4 + 2] = byte;
+    data[i * 4 + 3] = 255;
+  }
+  const texture = new THREE.DataTexture(data, width, 1, THREE.RGBAFormat);
+  // Unsigned byte data is sRGB-encoded by default, which would apply a gamma
+  // curve to a data value and skew every step of the ramp.
+  texture.colorSpace = THREE.NoColorSpace;
+  texture.magFilter = THREE.LinearFilter;
+  texture.minFilter = THREE.LinearFilter;
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+  texture.generateMipmaps = false;
+  texture.needsUpdate = true;
+  return texture;
+})();
+
 // Warm the authored models before the first render so the opening frame does
 // not stall while the GLB files stream in.
 preloadModels(ALL_MODEL_NAMES);
@@ -565,24 +608,45 @@ function WorldGeometry({
               <boxGeometry args={[bridge.width, 0.5, length]} />
               <meshStandardMaterial color={PALETTE.stone} flatShading roughness={0.9} />
             </mesh>
-            {/* a woven runner down the middle and low rails at each side */}
+            {/* A woven runner down the middle and low rails at each side.
+
+                Every span starts at the hub origin, so within ~20 units of
+                the centre seven of them overlap. Each runner is 40% opaque, and
+                alpha compounds: stacked, they resolved into an opaque cyan
+                sheet that buried the Synthesis Tree and turned the hub into a
+                swimming pool. The runner is therefore faded in along the span,
+                reaching full strength only once it is clear of the hub. */}
             <mesh position={[0, 0.28, 0]}>
               <boxGeometry args={[bridge.width * 0.55, 0.06, length * 0.98]} />
               <meshStandardMaterial
                 color={PALETTE.turquoise}
                 transparent
-                opacity={0.4}
-                emissive={PALETTE.turquoise}
-                emissiveIntensity={0.35}
+                opacity={0.26}
                 roughness={0.4}
+                // No emissive here, and that is the point: `alphaMap` only
+                // fades the *diffuse* contribution. Emissive is added after
+                // lighting and is multiplied by nothing, so a glowing runner
+                // stays at full strength no matter what the alpha map says —
+                // which is why the first attempt at this fix changed nothing.
+                // The glow is carried by the rails instead, which are solid.
+                // Fades the shared hub end out and solidifies outward, so
+                // overlapping spans never stack into an opaque sheet.
+                alphaMap={hubFade}
+                depthWrite={false}
               />
             </mesh>
             {/* The rails mark exactly where the span stops being walkable, so
-                the boundary is never an invisible wall. */}
+                the boundary is never an invisible wall.
+
+                They are inset from the hub end for the same reason the runner
+                fades: every span starts at the same origin, so seven pairs of
+                opaque rails radiating from one point merge into a solid
+                turquoise wedge across the whole island and bury the landmark
+                at the centre. */}
             {[-1, 1].map((side) => (
-              <group key={side}>
-                <mesh position={[side * (bridge.width / 2 - 0.2), 0.5, 0]}>
-                  <boxGeometry args={[0.3, 0.6, length]} />
+              <group key={side} position={[0, 0, -length * 0.18]}>
+                <mesh position={[side * (bridge.width / 2 - 0.2), 0.5, length * 0.18]}>
+                  <boxGeometry args={[0.3, 0.6, length * 0.64]} />
                   <meshStandardMaterial
                     color={PALETTE.turquoise}
                     emissive={PALETTE.turquoise}
@@ -591,8 +655,8 @@ function WorldGeometry({
                     roughness={0.5}
                   />
                 </mesh>
-                <mesh position={[side * (bridge.width / 2 - 0.2), 1.1, 0]}>
-                  <boxGeometry args={[0.16, 0.7, length]} />
+                <mesh position={[side * (bridge.width / 2 - 0.2), 1.1, length * 0.18]}>
+                  <boxGeometry args={[0.16, 0.7, length * 0.64]} />
                   <meshStandardMaterial color={PALETTE.copper} flatShading metalness={0.6} roughness={0.35} />
                 </mesh>
               </group>
