@@ -365,6 +365,60 @@ The lesson generalises: when a visual fix changes nothing at all, suspect a
 channel convention or a term that bypasses the mechanism, before suspecting the
 geometry.
 
+### Spans only cross the gap
+
+Fading the runner treated the symptom. The cause was that every span was drawn
+from the hub origin all the way to the region centre, when the only thing it has
+to cross is the space between two islands. All seven lay inside the 34-unit hub
+disc at once, and each one laid a twelve-unit slab across its destination island
+— on ground the player can already walk on.
+
+The geometry is now derived from the same two distances `navigation.ts` places
+its landing pads at, five units past each shoreline, so the deck and the walkable
+corridor agree:
+
+```ts
+const start = hub.radius - 5;
+const end = length - (region.radius - 5);
+```
+
+For the Collective Gardens span that is 29 → 115, an 86-unit deck instead of 152.
+With nothing overlapping any more, the `alphaMap` ramp is gone, the rails lose
+their inset, and the runner can simply be a woven strip — which it now is:
+matte, narrow, and in the same copper as the rail caps. A solid turquoise runner
+down a pale stone path read as a swimming pool, which is the thing the previous
+section was about in the first place.
+
+Removing the rails' inset and the alpha ramp deleted `hubFade` outright: 42 lines
+of `DataTexture` ramp and its three documented failure modes are no longer
+needed, because the situation they existed for no longer occurs.
+
+### The opening had an invisible bridge
+
+Auditing the restored hub turned up something worse. On a fresh game the opening
+walked the player across a bridge with **nothing drawn on it**.
+
+`openRegionIds` deliberately counts the frontier region as open — without it the
+first region would be unreachable — and `initNavigation` is built from that set.
+But the renderer asked the question a second time, its own way, and its answer
+omitted the frontier:
+
+```ts
+// Renderer, before:
+const open = completedRegions.has(region.id) || reached;
+// Navigation, all along:
+openRegions.has(region.id)   // ...plus the frontier
+```
+
+Measured on a fresh save: **0 bridge decks drawn, 14 stubs**, while the frontier
+corridor reported `offWalkableBy = 0` at 60, 90, 120 and 150 units along the
+span — walkable air over the void. An invisible bridge is precisely what
+`navigation.ts` says it refuses to be. The renderer now reads the same set, so
+there is one answer to the question rather than two that can drift.
+
+This is the shape of bug that a scripted playthrough cannot catch, because the
+test drives progression state directly and never looks at what was drawn.
+
 ### Character animation
 
 The Weaver is **rigged and animated in Blender**, not animated by hand-tweaked
@@ -858,7 +912,7 @@ real `requestAnimationFrame` deltas after all assets had streamed in.
 
 | Environment | Viewport | Result |
 | --- | --- | --- |
-| Desktop, Apple M4 Pro, high tier | 2880×1610 @ DPR 1 | **97 FPS** |
+| Desktop, Apple M4 Pro, high tier | 2880×1610 @ DPR 1 | **111 FPS** on a bridge span, 108.5 in the restored hub |
 | Desktop, Apple M4 Pro, medium tier | 2880×1610 @ DPR 1 | **104 FPS** |
 | Desktop, Apple M4 Pro, low tier | 2880×1610 @ DPR 1 | **112 FPS** |
 | Mobile emulation, low tier | 390×844 @ DPR 3 | **110 FPS**, drawing buffer capped to 487×1055 |
@@ -866,7 +920,10 @@ real `requestAnimationFrame` deltas after all assets had streamed in.
 | Desktop, walking with collision | 1298×805 @ DPR 2 | **120 FPS**, worst frame 10.4 ms |
 
 The triplanar detail map costs three texture samples per fragment on stone
-surfaces and is applied at every tier; the low tier still holds 112 FPS. Frame
+surfaces and is applied at every tier. Trimming the bridge decks to the gap
+they actually cross also removed about 40% of their geometry and the overdraw
+from seven overlapping decks, which is where the high tier gained the most: it
+went from 97 FPS to 111 on a span. Frame
 rate was also sampled in three different regions (hub, council city, flow
 foundry) at 109–111 FPS in the dev build; the heaviest prop-dressed region is
 within 1 FPS of the emptiest. Roughly 1,500 instanced objects across 17
