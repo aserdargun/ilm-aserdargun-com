@@ -63,6 +63,7 @@ source rather than being opaque binary files:
 | `tools/blender/weaver.py` | The player character and Spark |
 | `tools/blender/landmarks.py` | The Synthesis Tree and the seven region landmarks |
 | `tools/blender/render_preview.py` | Contact-sheet renders for review |
+| `tools/blender/ground_texture.py` | Tiling normal + roughness maps for the terrain |
 
 Twelve models ship, about 1.4 MB in total: the Weaver, Spark, the Synthesis
 Tree, the tapestry, the puzzle console, and the landmark for each of the seven
@@ -157,6 +158,55 @@ the main bundle at 437 KB gzipped instead of the 596 KB it would otherwise be.
 
 Handhelds default to low; desktops default to high. An explicit choice always
 wins over the default, including "high" on a phone.
+
+### Ground texture
+
+A lit but untextured plane reads as painted cardboard, and the terrain discs
+cover most of the screen. `tools/blender/ground_texture.py` generates two maps
+from periodic value noise:
+
+| Map | Purpose |
+| --- | --- |
+| `ground_normal.png` | Surface tooth, so the sun has something to rake across |
+| `ground_rough.png` | Dry/worn variation, from an independent noise field |
+
+```bash
+/Applications/Blender.app/Contents/MacOS/Blender \
+  --background --factory-startup --python tools/blender/ground_texture.py
+```
+
+Both are **seamlessly tileable**, and that is not free. The first pass looked
+correct in isolation and was not: it sampled one lattice axis from a fixed
+column, so rows repeated every `cells` samples instead of every `period` and
+the wrap only held on one axis. The tell is a seam error as large as the
+interior variation — the check that catches it is `seam / interior`, which
+should sit well below 1 and is now near 0.2.
+
+Sampling the field is not the same as sampling the image: `image.pixels` is
+bottom-up relative to the noise arrays, so the normal map's green channel is
+flipped on write rather than by flipping the field twice.
+
+Three things the material has to get right, each of which produces a
+flat-looking ground rather than an error:
+
+- **`flatShading` must be off.** three.js derives flat-shaded normals from the
+  face, which bypasses the normal map entirely.
+- **UVs are planar from world XZ**, not the cylinder's own — those wrap the
+  side wall in 0..1 and collapse the cap into a circle, a radial smear exactly
+  where the player looks most. The rim is projected by angle and height
+  instead; a purely XZ projection collapses there into one texel streak, which
+  showed as a bright band along the horizon.
+- **Roughness stays in a narrow, high band (0.92–0.98).** The wider range the
+  first version used put the low end near 0.57, and since the scene's turquoise
+  rim is a grazing-angle light, that produced a coloured sheen sweeping across
+  the ground. Dry stone should stay dry.
+
+Terrain is otherwise colour-only. Walking is solved in 2D against a flat plane
+(`navigation.ts` never reads a height), so displacing the ground would put the
+mesh where the player is not standing. For the same reason the sky dome radius
+has to stay inside the camera's far plane of 900: a dome beyond it is not drawn
+at all, and the missing wedge shows up as a hard dark triangle in the corner of
+the sky.
 
 ### Character animation
 
