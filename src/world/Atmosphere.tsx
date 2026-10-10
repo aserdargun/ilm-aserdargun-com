@@ -107,6 +107,119 @@ export function SkyDome({ radius = 760 }: { radius?: number }) {
  * enough to kill the flatness, not enough to compete with the landmark the
  * player is walking towards.
  */
+/**
+ * The underside of an island.
+ *
+ * The islands used to be a 1.2-unit cylinder, which reads as a plate someone
+ * laid on the sky rather than as ground that continues below the horizon. This
+ * builds a tapering, eroded chunk instead, so the silhouette carries the same
+ * faceted low-poly language as the landmarks.
+ *
+ * It is safe to put this below the walkable disc because the region is a 2D
+ * navigation problem: `navigation.ts` clamps the player to `radius - 1.2`
+ * with a further 1.1 margin, so across every region radius in the catalog the
+ * furthest a player can stand is 94.9% of the way out. The profile below
+ * starts at 95.5%, which leaves a margin on the largest region. Nothing here
+ * is ever stood on, so it can be as dramatic as it likes.
+ */
+function buildCliff(id: string, radius: number, stone: string): THREE.BufferGeometry {
+  const seed = [...id].reduce((acc, ch) => acc + ch.charCodeAt(0), 0) * 0.017;
+
+  // (radius fraction, depth). The first ring matches the ground disc's outer
+  // edge so there is no visible gap between them; the rest taper to a point,
+  // which is what makes it read as something torn loose rather than cut.
+  //
+  // The second ring *rises* slightly before falling. The player stands at
+  // y=0 with the camera above it, so a cliff that only ever descends stays
+  // entirely below the eyeline and the island keeps a hard flat silhouette
+  // against the sky — which is exactly what it looked like before this
+  // profile existed. Breaking the rim upward by a fraction of a unit is what
+  // makes the edge read as an edge.
+  const PROFILE: [number, number][] = [
+    [0.985, 0.35],
+    [1.0, 0.05],
+    [1.01, -1.0],
+    [0.98, -2.3],
+    [0.91, -3.8],
+    [0.79, -5.3],
+    [0.62, -6.6],
+    [0.41, -7.7],
+    [0.2, -8.5],
+  ];
+
+  const SECTORS = 44;
+  const positions: number[] = [];
+  const colors: number[] = [];
+  const base = new THREE.Color(stone);
+  const deep = base.clone().offsetHSL(-0.01, 0.02, -0.16);
+  const c = new THREE.Color();
+
+  // Per-region radius wobble, so no two islands share a silhouette. Sampled
+  // around the circumference and reused per sector, which keeps the columns
+  // continuous instead of jittering ring to ring.
+  const lobes = new Float32Array(SECTORS);
+  for (let s = 0; s < SECTORS; s += 1) {
+    const angle = (s / SECTORS) * Math.PI * 2;
+    lobes[s] =
+      Math.sin(angle * 3 + seed * 9) * 0.5 +
+      Math.sin(angle * 7 - seed * 4) * 0.3 +
+      Math.sin(angle * 11 + seed * 2) * 0.2;
+  }
+
+  const ringStart: number[] = [];
+  for (let r = 0; r < PROFILE.length; r += 1) {
+    const [radiusFrac, y] = PROFILE[r];
+    ringStart.push(positions.length / 3);
+    for (let s = 0; s < SECTORS; s += 1) {
+      const angle = (s / SECTORS) * Math.PI * 2;
+      // Erosion grows with depth: the top edge stays true to the walkable
+      // disc, and the underside wanders as it falls away.
+      const erosion = lobes[s] * (0.035 + 0.075 * (r / (PROFILE.length - 1)));
+      const ringRadius = radius * (radiusFrac + erosion);
+      positions.push(Math.cos(angle) * ringRadius, y, Math.sin(angle) * ringRadius);
+
+      const depth = 1 - r / (PROFILE.length - 1);
+      c.copy(base).lerp(deep, depth * 0.85);
+      // Ambient occlusion by hand: the deeper parts of the underside are the
+      // least exposed to the sky and should read as the darkest thing on the
+      // island.
+      c.multiplyScalar(1 - depth * 0.3);
+      colors.push(c.r, c.g, c.b);
+    }
+  }
+  ringStart.push(positions.length / 3);
+
+  // Apex, so the chunk closes rather than ending in an open ring.
+  const apex = positions.length / 3;
+  const lowest = PROFILE[PROFILE.length - 1];
+  positions.push(0, lowest[1] - radius * 0.06, 0);
+  c.copy(deep).multiplyScalar(0.62);
+  colors.push(c.r, c.g, c.b);
+
+  const indices: number[] = [];
+  for (let r = 0; r < PROFILE.length - 1; r += 1) {
+    for (let s = 0; s < SECTORS; s += 1) {
+      const s2 = (s + 1) % SECTORS;
+      const a = ringStart[r] + s;
+      const b = ringStart[r] + s2;
+      const d = ringStart[r + 1] + s;
+      const e = ringStart[r + 1] + s2;
+      indices.push(a, d, e, a, e, b);
+    }
+  }
+  const last = ringStart[PROFILE.length - 1];
+  for (let s = 0; s < SECTORS; s += 1) {
+    indices.push(last + s, apex, last + ((s + 1) % SECTORS));
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+  return geo;
+}
+
 export function TerrainDisc({ region }: { region: RegionDef }) {
   const [normalMap, roughnessMap] = useTexture([NORMAL_MAP_URL, ROUGH_MAP_URL]);
 
@@ -124,34 +237,17 @@ export function TerrainDisc({ region }: { region: RegionDef }) {
   }, [normalMap, roughnessMap]);
 
   const geometry = useMemo(() => {
-    const geo = new THREE.CylinderGeometry(region.radius, region.radius + 2.4, 1.2, 44);
+    const geo = new THREE.CircleGeometry(region.radius, 64);
+    geo.rotateX(-Math.PI / 2);
     const positions = geo.getAttribute('position');
     const colors = new Float32Array(positions.count * 3);
 
-    // Planar UVs from local XZ, so the texture tiles evenly across the disc.
-    //
-    // The cylinder's own UVs would be wrong here: they wrap the side wall in
-    // 0..1 and collapse the top cap into a circle, which would smear the
-    // texture into a radial smear precisely where the player looks most.
-    //
-    // The rim is the exception. A purely XZ projection collapses there — the
-    // wall is vertical, so its XZ footprint is a near-circle of almost constant
-    // radius and the whole edge samples one texel streak. That showed up as a
-    // bright teal band along the horizon. Projecting the wall by angle and
-    // height instead gives it its own continuous coordinates.
+    // Planar UVs from world XZ. The disc is flat, so a single projection is
+    // exactly correct here and the texture tiles evenly all the way out.
     const uvs = new Float32Array(positions.count * 2);
     for (let i = 0; i < positions.count; i += 1) {
-      const x = positions.getX(i);
-      const y = positions.getY(i);
-      const z = positions.getZ(i);
-      const horizontal = Math.abs(y) > 0.3;
-      if (horizontal) {
-        uvs[i * 2] = x / GROUND_TILE_SIZE;
-        uvs[i * 2 + 1] = z / GROUND_TILE_SIZE;
-      } else {
-        uvs[i * 2] = Math.atan2(z, x) / (Math.PI * 2) * 12;
-        uvs[i * 2 + 1] = y / GROUND_TILE_SIZE;
-      }
+      uvs[i * 2] = positions.getX(i) / GROUND_TILE_SIZE;
+      uvs[i * 2 + 1] = positions.getZ(i) / GROUND_TILE_SIZE;
     }
 
     // Each region gets its own seed, derived from its own name, so the tint is
@@ -191,23 +287,49 @@ export function TerrainDisc({ region }: { region: RegionDef }) {
     return geo;
   }, [region.id, region.palette.stone, region.radius]);
 
+  // The builder takes its inputs explicitly rather than the whole region
+  // object. `region` is a fresh object every render, so depending on it would
+  // rebuild the cliff mesh on every frame; depending on the three fields it
+  // actually reads is both correct and what the lint rule is asking for.
+  const { id: cliffSeedId, radius: cliffRadius, palette: cliffPalette } = region;
+  const cliffStone = cliffPalette.stone;
+  const cliff = useMemo(
+    () => buildCliff(cliffSeedId, cliffRadius, cliffStone),
+    [cliffSeedId, cliffRadius, cliffStone],
+  );
+
   return (
-    <mesh geometry={geometry} position={[0, -0.6, 0]} receiveShadow>
-      <meshStandardMaterial
-        vertexColors
-        // Deliberately NOT flatShading: three.js derives flat-shaded normals
-        // from the face, which bypasses the normal map entirely — the ground
-        // would look exactly as it did before. The disc's top is genuinely flat
-        // anyway, so smooth shading costs nothing and lets the map through.
-        roughness={0.96}
-        metalness={0}
-        normalMap={normalMap}
-        // Restrained on purpose: a strong normal map on a disc this large turns
-        // the ground into visual static, and the low facet count means the
-        // lighting cannot resolve fine relief anyway.
-        normalScale={new THREE.Vector2(0.55, 0.55)}
-        roughnessMap={roughnessMap}
-      />
-    </mesh>
+    <>
+      <mesh geometry={cliff} receiveShadow castShadow>
+        {/* No normal map here, and flat shading is deliberate: the cliff is
+            the one surface whose faceting reads as rock. A normal map on a
+            flat-shaded face would be contradictory anyway. */}
+        <meshStandardMaterial
+          vertexColors
+          flatShading
+          roughness={0.94}
+          metalness={0}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+
+      <mesh geometry={geometry} receiveShadow>
+        <meshStandardMaterial
+          vertexColors
+          // Deliberately NOT flatShading: three.js derives flat-shaded normals
+          // from the face, which bypasses the normal map entirely — the ground
+          // would look exactly as it did before. The disc's top is genuinely flat
+          // anyway, so smooth shading costs nothing and lets the map through.
+          roughness={0.96}
+          metalness={0}
+          normalMap={normalMap}
+          // Restrained on purpose: a strong normal map on a disc this large turns
+          // the ground into visual static, and the low facet count means the
+          // lighting cannot resolve fine relief anyway.
+          normalScale={new THREE.Vector2(0.55, 0.55)}
+          roughnessMap={roughnessMap}
+        />
+      </mesh>
+    </>
   );
 }

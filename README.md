@@ -208,6 +208,29 @@ has to stay inside the camera's far plane of 900: a dome beyond it is not drawn
 at all, and the missing wedge shows up as a hard dark triangle in the corner of
 the sky.
 
+### Islands have an underside
+
+Each island was a 1.2-unit cylinder, which reads as a plate laid on the sky
+rather than as ground that continues below the horizon. `buildCliff` gives
+every region a tapering, eroded chunk instead, with a per-region radius wobble
+so no two share a silhouette.
+
+The profile's **second ring rises** before the rest fall away. The player
+stands at y=0 with the camera above them, so a cliff that only ever descends
+sits entirely below the eyeline and the island keeps a hard flat silhouette
+against the sky — the first version of this geometry looked identical to the
+cylinder it replaced, because everything it added was hidden.
+
+It is also safe to be dramatic down there, and that is checked rather than
+assumed. `navigation.ts` clamps the player to `radius - 1.2` with a further
+1.1 margin, so across every radius in the catalog the furthest anyone can
+stand is **94.9%** of the way out; the cliff starts at 95.5%. Walking hard into
+the edge from the middle of the hub settles at 31.78 against a 31.67 ceiling.
+
+The cliff is flat-shaded and carries no normal map. That is not a compromise:
+it is the one surface whose faceting reads as rock, and a normal map on a
+flat-shaded face would be contradictory anyway.
+
 ### Character animation
 
 The Weaver is **rigged and animated in Blender**, not animated by hand-tweaked
