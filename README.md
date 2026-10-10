@@ -59,18 +59,92 @@ source rather than being opaque binary files:
 
 | File | Purpose |
 | --- | --- |
-| `tools/blender/common.py` | Loft / lathe / torus helpers, palette, PBR materials |
+| `tools/blender/common.py` | Loft / lathe / torus helpers, palette, PBR materials, AO bake |
 | `tools/blender/weaver.py` | The player character and Spark |
 | `tools/blender/landmarks.py` | The Synthesis Tree and the seven region landmarks |
 | `tools/blender/render_preview.py` | Contact-sheet renders for review |
 
-Twelve models ship, about 520 KB in total: the Weaver, Spark, the Synthesis
+Twelve models ship, about 950 KB in total: the Weaver, Spark, the Synthesis
 Tree, the tapestry, the puzzle console, and the landmark for each of the seven
 regions.
 
 Geometry is built from **lofted cross-sections**, not stacked primitives, which
 is what gives the coat, trunk and pump their tapering silhouettes. Flat shading
 is intentional: the look is deliberately faceted low-poly.
+
+### Light, shadow and occlusion
+
+Three systems carry the lighting, and they were added together because none of
+them works without the other two.
+
+**A shadow-casting sun.** `<Canvas shadows>` was already on, but no light was
+ever told to cast — every mesh in the world was lit purely by direction, so
+nothing touched the ground. The key light in `src/world/Lighting.tsx` is
+directional, so its shadow camera is a box, and the world is far too wide for
+one useful shadow map. The box therefore **follows the player** and stays tight
+around them: shadow detail is invisible far away and decisive up close. The
+second light is a rim with no shadow map at all, because separating silhouettes
+from the background does not require a second depth pass.
+
+**A procedural environment probe.** Every material in the world is
+`meshStandardMaterial`, and a PBR shader derives its specular response entirely
+from what it can reflect. With nothing to reflect, copper and glass collapse
+into flat dark shapes — the old look was not unlit, it was *unreflective*.
+`src/world/environment.ts` builds a 128×64 float equirectangular probe on the
+CPU at load time and hands it to `PMREMGenerator`, which pre-filters it so one
+small image serves smooth glass and rough stone alike. It is float rather than
+byte data because the sun has to exceed 1.0: clamping it away is exactly what
+makes a procedural environment look plastic. The sun disc sits on the same
+vector the key light comes from, which is what puts the highlight on the correct
+side of a copper ring.
+
+**Baked vertex occlusion.** `bake_vertex_ao` in `tools/blender/common.py` ray-
+traces occlusion into a `Col` vertex colour layer on every landmark. It is
+baked rather than computed at runtime for three reasons: it survives the **low
+tier**, where shadows are switched off entirely; it darkens the *inside* of a
+form — under a roof, between two arms — which a shadow map cannot do, since it
+records only where a light is blocked, not how enclosed a point is; and it
+costs nothing per frame.
+
+Two export details decide whether any of this is actually visible, and both
+fail silently when wrong:
+
+- The glTF exporter must be told `export_vertex_color="ACTIVE"`. With
+  `"NAME"` it writes a second, all-white `COLOR_0` beside the real data in
+  `COLOR_1` — and three.js reads `COLOR_0`, so the bake loads and is never seen.
+- The material must set `vertexColors` on load. glTF does not switch this on by
+  itself, so the data arrives on a material that is ignoring it.
+
+### Post-processing
+
+`src/world/PostFx.tsx` runs N8AO ambient occlusion, bloom, tone mapping and a
+vignette, plus SMAA on the high tier. Bloom's threshold is high (0.72) on
+purpose: lowered, it starts blooming sunlit stone, which reads as haze rather
+than as light sources.
+
+Adding a composer introduces one trap. R3F sets `ACESFilmicToneMapping` on the
+renderer by default, which is correct for a direct-to-canvas render and wrong
+here — with a composer the scene is written to an offscreen target first, so a
+renderer-side tone map would compress the range *before* bloom reads it, and
+bloom would find nothing above its threshold. `PostProcessing.tsx` switches the
+renderer's tone mapping off and restores it on unmount, and the composer's own
+`ToneMapping` effect maps the final frame instead.
+
+The module is **loaded lazily**. The low tier renders none of these effects, so
+it should not download their ~162 KB of shader code. Splitting them out kept
+the main bundle at 437 KB gzipped instead of the 596 KB it would otherwise be.
+
+### Quality tiers
+
+| | Low | Medium | High |
+| --- | --- | --- | --- |
+| Shadow map | off | 1024 | 2048 |
+| Post-processing | none | AO, bloom, tone, vignette | + SMAA |
+| AO resolution | — | half | full |
+| Device pixel ratio cap | 1.25 | 1.5 | 1.75 |
+
+Handhelds default to low; desktops default to high. An explicit choice always
+wins over the default, including "high" on a phone.
 
 ### Character animation
 
@@ -203,7 +277,7 @@ touches progression or the puzzle currently open.
 | Puzzle systems | `src/systems/` | Six pure, deterministic, testable engines |
 | Catalog | `src/catalog/` | 33 typed application records + region art direction |
 | Game rules | `src/game/` | Stages, lessons, labels, progression, save/load, input, audio, store |
-| Rendering | `src/world/` | Procedural geometry, player, camera, interaction |
+| Rendering | `src/world/` | Procedural geometry, player, camera, interaction, lighting |
 | Interface | `src/ui/` | Menus, HUD, journal, puzzle panel, endings |
 | Localisation | `src/i18n/` | Central TR/EN dictionaries with compile-time key parity |
 

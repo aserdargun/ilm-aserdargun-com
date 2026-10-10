@@ -237,7 +237,15 @@ function PropInstances({
         found = node.material as THREE.Material;
       }
     });
-    return found ?? new THREE.MeshStandardMaterial({ color: '#b9ac93', roughness: 0.9 });
+    const resolved =
+      found ?? new THREE.MeshStandardMaterial({ color: '#b9ac93', roughness: 0.9 });
+    // Matched to the authored landmarks (see Models.tsx): the props are placed
+    // right beside them, and at a different reflection strength the same
+    // material reads as a different one.
+    if ('envMapIntensity' in resolved) {
+      (resolved as { envMapIntensity: number }).envMapIntensity = 1;
+    }
+    return resolved;
   }, [gltf, name]);
 
   useLayoutEffect(() => {

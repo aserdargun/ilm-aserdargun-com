@@ -19,8 +19,8 @@ sys.path.insert(0, HERE)
 OUT_DIR = os.path.abspath(os.path.join(HERE, "..", "..", "public", "models"))
 
 import common  # noqa: E402
-import common  # noqa: E402
 from common import build_materials, export_glb, reset_scene, set_collection  # noqa: E402
+from common import bake_vertex_ao  # noqa: E402
 import weaver as weaver_mod  # noqa: E402
 import landmarks as landmarks_mod  # noqa: E402
 
@@ -35,6 +35,9 @@ def build_all():
         if obj is None:
             print(f"SKIPPED {name}")
             return
+        # Bake before export: the glTF writer reads whatever colour layer is
+        # on the mesh, so the bake has to exist first.
+        bake_vertex_ao(obj)
         path = os.path.join(OUT_DIR, f"{name}.glb")
         export_glb(path, [obj])
         exported.append(name)

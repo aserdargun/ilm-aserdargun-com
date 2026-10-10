@@ -32,6 +32,9 @@ import {
   useGame,
 } from '../game/store';
 import { PropScatter, preloadProps } from './Props';
+import { Lighting } from './Lighting';
+import { PostProcessing } from './PostProcessing';
+import { HORIZON_COLOR, SkyDome, TerrainDisc } from './Atmosphere';
 import { regionAt } from './Player';
 import { input } from '../game/input';
 import { audio, useSparkAudio } from '../game/audio';
@@ -75,11 +78,15 @@ export function GameCanvas() {
   const dprCap = quality === 'low' ? 1.25 : quality === 'medium' ? 1.5 : 1.75;
   return (
     <Canvas
-      shadows={quality === 'high'}
+      shadows={quality !== 'low'}
       dpr={[1, dprCap]}
       gl={{ antialias: true, powerPreference: 'high-performance' }}
       camera={{ fov: 58, near: 0.1, far: 900, position: [0, 8, 26] }}
       onCreated={({ gl }) => {
+        // r186 removed PCFSoftShadowMap and silently falls back to this one,
+        // so it is named explicitly rather than left to emit a warning. Soft
+        // edges now come from `shadow-radius` instead.
+        gl.shadowMap.type = THREE.PCFShadowMap;
         gl.setClearColor(new THREE.Color(PALETTE.midnight));
       }}
     >
@@ -343,10 +350,9 @@ function SceneContents() {
   return (
     <>
       <color attach="background" args={[PALETTE.midnight]} />
-      <fog attach="fog" args={[PALETTE.midnight, 90, 460]} />
-      <hemisphereLight args={['#9fc7ff', '#2a2417', 0.55]} />
-      <directionalLight position={[70, 90, 40]} intensity={1.15} color="#ffe9c4" />
-      <directionalLight position={[-60, 40, -70]} intensity={0.32} color="#4fd6d0" />
+      <fog attach="fog" args={[HORIZON_COLOR, 110, 520]} />
+      <SkyDome />
+      <Lighting quality={game.settings.quality} target={player.current.position} />
 
       <WorldGeometry
         completedRegions={new Set(game.progression.completedRegions)}
@@ -369,6 +375,7 @@ function SceneContents() {
         onHome={callbacks.onHome}
       />
       <Spark companionTarget={player} reducedMotion={game.settings.reducedMotion} />
+      <PostProcessing quality={game.settings.quality} />
     </>
   );
 }
@@ -488,19 +495,9 @@ function WorldGeometry({
     <group>
       {/* ground discs */}
       {REGIONS.map((region) => (
-        <mesh
-          key={region.id}
-          position={[region.anchor[0], -0.6, region.anchor[2]]}
-          receiveShadow
-        >
-          <cylinderGeometry args={[region.radius, region.radius + 2.4, 1.2, 44]} />
-          <meshStandardMaterial
-            color={region.palette.stone}
-            flatShading
-            roughness={0.96}
-            metalness={0}
-          />
-        </mesh>
+        <group key={region.id} position={[region.anchor[0], 0, region.anchor[2]]}>
+          <TerrainDisc region={region} />
+        </group>
       ))}
 
       <RockField items={rocks} color={PALETTE.stone} />

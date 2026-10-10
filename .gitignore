@@ -8,3 +8,10 @@ test-results
 
 # Blender review renders (regenerate with render_preview.py)
 tools/blender/preview
+
+# Visual review screenshots from the browser session
+.shots
+
+# Blender bytecode
+__pycache__/
+*.pyc

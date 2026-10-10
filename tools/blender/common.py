@@ -288,5 +288,108 @@ def export_glb(filepath, objects):
         export_apply=True,
         export_materials="EXPORT",
         export_yup=True,
+        # Vertex AO rides along in COLOR_0 and multiplies the base colour at
+        # runtime. ACTIVE exports only the mesh's active colour layer, which is
+        # the one `prepare_vertex_ao` creates. "NAME" also emits a second,
+        # all-white COLOR_0 alongside the real data in COLOR_1, and three.js
+        # reads COLOR_0 — so the bake would arrive as a layer nothing renders.
+        export_vertex_color="ACTIVE",
+        export_all_vertex_colors=True,
     )
     print(f"EXPORTED {filepath}")
+
+
+# ---------------------------------------------------------------------------
+# Baked ambient occlusion
+# ---------------------------------------------------------------------------
+
+AO_COLOR_LAYER = "Col"
+
+
+def _clear_other_colour_layers(mesh):
+    """Keep only the AO layer, so repeat bakes never stack their results."""
+    for attr in list(mesh.color_attributes):
+        if attr.name != AO_COLOR_LAYER:
+            mesh.color_attributes.remove(attr)
+
+
+def prepare_vertex_ao(obj):
+    """Add an all-white AO colour layer to a mesh, ready to be baked into."""
+    if obj.type != "MESH" or obj.data is None:
+        return None
+    mesh = obj.data
+    layer = mesh.color_attributes.get(AO_COLOR_LAYER)
+    if layer is None:
+        # FLOAT_COLOR, not BYTE_COLOR: AO is a shading multiplier and needs
+        # headroom above 1.0 for the same reason an HDR probe does.
+        layer = mesh.color_attributes.new(
+            name=AO_COLOR_LAYER, type="FLOAT_COLOR", domain="CORNER"
+        )
+    _clear_other_colour_layers(mesh)
+    # The exporter is configured to write the *active* colour layer, so the AO
+    # layer has to be the active one or it is exported as nothing at all.
+    mesh.color_attributes.active_color = layer
+    mesh.color_attributes.render_color_index = 0
+
+    # White = fully open. The bake only ever darkens.
+    for element in layer.data:
+        element.color = (1.0, 1.0, 1.0, 1.0)
+    mesh.update()
+    return layer
+
+
+def bake_vertex_ao(obj, distance=1.6):
+    """
+    Ray-traced occlusion, written into a vertex colour layer.
+
+    Why bake this when the scene has real lights and a shadow map:
+
+    * It survives the **low quality tier**, which turns shadows off entirely.
+      Without it, a low-tier player looks at landmarks that are lit but not
+      touching their own geometry.
+    * It darkens the *inside* of a form — under a roof, between two arms, in
+      the crook of the tree. A shadow map does not do this: it only records
+      where a light is blocked, not how enclosed a point is.
+    * It costs nothing at runtime. The result is four floats per corner.
+
+    Cycles is used rather than EEVEE because this is a ray-traced bake, not a
+    screen-space effect, and EEVEE's approximation of it is not worth the
+    inconsistency.
+    """
+    if prepare_vertex_ao(obj) is None:
+        return False
+
+    scene = bpy.context.scene
+    engine = scene.render.engine
+    # Baked occlusion must not depend on a light rig that is not in the file.
+    scene.render.engine = "CYCLES"
+    scene.cycles.samples = 16
+    scene.cycles.use_denoising = False
+    scene.cycles.max_bounces = 2
+
+    bpy.ops.object.select_all(action="DESELECT")
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+
+    try:
+        bpy.ops.object.bake(
+            type="AO",
+            # Blender 5.x renamed the AO reach from `ao_distance` and requires
+            # `target` to name the vertex colour layer explicitly; the default
+            # writes an image texture instead.
+            target="VERTEX_COLORS",
+            max_ray_distance=distance,
+            # Typed as an int; a float raises before the bake starts.
+            margin=1,
+            use_clear=True,
+        )
+    except RuntimeError as exc:
+        # A mesh with no UVs or a degenerate layout cannot be baked. That is
+        # not fatal: the asset simply ships without AO, exactly as before.
+        print(f"AO_BAKE_SKIPPED {obj.name}: {exc}")
+        scene.render.engine = engine
+        return False
+
+    scene.render.engine = engine
+    obj.data.update()
+    return True

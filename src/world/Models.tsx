@@ -166,9 +166,27 @@ function AssetMesh({
     // Trailing colour-space correction so PBR materials match the procedural
     // meshes rendered elsewhere in the scene.
     scene?.traverse((child: unknown) => {
-      const material = (child as Mesh).material as Material | undefined;
-      if (material && 'envMapIntensity' in material) {
-        material.envMapIntensity = 0.7;
+      const mesh = child as Mesh;
+      // A loaded GLB carries no shadow flags: the glTF format has no concept
+      // of them, so every landmark was floating until it was told to cast and
+      // receive like the procedural geometry around it.
+      if (mesh.isMesh) {
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+      }
+      const material = mesh.material as Material | undefined;
+      if (!material) return;
+      // Raised from 0.7 now that a real environment probe exists. The original
+      // value was chosen against a scene with no reflections at all, where a
+      // higher one only washed the metal out.
+      if ('envMapIntensity' in material) {
+        material.envMapIntensity = 1;
+      }
+      // Vertex AO, baked in Blender, arrives in COLOR_0. The material has to be
+      // told to read it — glTF does not switch this on by itself, so without
+      // this the bake loads and is never seen.
+      if ('vertexColors' in material && mesh.geometry?.getAttribute('color')) {
+        (material as { vertexColors: boolean }).vertexColors = true;
       }
     });
   }, [scene]);
