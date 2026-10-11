@@ -853,6 +853,17 @@ two cannot drift apart again. A unit test asserting `kind === 'pebble' ? a : b`
 would only have tested the ternary; the invariant worth protecting is that both
 call sites see one value, and that is now true by construction.
 
+**Which brought up the second half of it.** With grass finally green, the hub
+looked wrong for a different reason — measuring the scatter per island showed
+the hub had **0** grass tufts against 60 on each of the other seven. The cause
+is a `REGIONS.filter((r) => r.id !== 'hub')` that has been in the file since
+the first commit. No commit has ever recorded a reason for it. And it could not
+have been noticed: until two rounds ago the ground it stands on was not rendered
+at all, so the exclusion was a judgement about something nobody had seen. The
+hub is where the opening happens and where a player spends their first minutes;
+it now gets 60 tufts on its own seed, leaving the seven islands that always had
+grass with exactly the layout they had.
+
 ### Assets degrade, they do not break
 
 `src/world/Models.tsx` loads every model through an error boundary and a

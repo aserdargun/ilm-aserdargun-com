@@ -496,13 +496,21 @@ function WorldGeometry({
       ),
     [],
   );
-  const grass = useMemo(
-    () =>
-      REGIONS.filter((r) => r.id !== 'hub').flatMap((region, i) =>
-        scatter(7000 + i * 53, region.anchor[0], region.anchor[2], region.radius * 0.9, 60),
-      ),
-    [],
-  );
+  const grass = useMemo(() => {
+    const seeded = REGIONS.filter((r) => r.id !== 'hub').flatMap((region, i) =>
+      scatter(7000 + i * 53, region.anchor[0], region.anchor[2], region.radius * 0.9, 60),
+    );
+    // The hub used to be excluded here outright. The filter has been in the
+    // file since the first commit and no commit has ever recorded a reason for
+    // it — but until two rounds ago the ground it stands on was not rendered at
+    // all, so the exclusion had never been something anyone could see. The hub
+    // is the island every player spends the opening on, and 60 sparse,
+    // non-colliding tufts cost nothing next to the ones already shipped on the
+    // other seven. Its own seed, so those seven keep the layout they have had.
+    const hub = REGIONS.find((r) => r.id === 'hub');
+    if (!hub) return seeded;
+    return [...seeded, ...scatter(7900, hub.anchor[0], hub.anchor[2], hub.radius * 0.9, 60)];
+  }, []);
 
   // Bridges from the hub to each region, laid down as regions are restored.
   //
