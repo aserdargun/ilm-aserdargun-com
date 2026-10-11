@@ -907,30 +907,40 @@ Measured in the browser:
 
 ### Performance
 
-Measured on the **production `dist/` build** in Chromium via DevTools, sampling
-real `requestAnimationFrame` deltas after all assets had streamed in.
+Measured on the **production build as deployed**, in Chromium via DevTools at a
+pinned viewport, sampling real `requestAnimationFrame` deltas after every asset
+had streamed in.
 
-| Environment | Viewport | Result |
-| --- | --- | --- |
-| Desktop, Apple M4 Pro, high tier | 2880×1610 @ DPR 1 | **111 FPS** on a bridge span, 108.5 in the restored hub |
-| Desktop, Apple M4 Pro, medium tier | 2880×1610 @ DPR 1 | **104 FPS** |
-| Desktop, Apple M4 Pro, low tier | 2880×1610 @ DPR 1 | **112 FPS** |
-| Mobile emulation, low tier | 390×844 @ DPR 3 | **110 FPS**, drawing buffer capped to 487×1055 |
-| Desktop, high tier, 1298×805 @ DPR 2 | 1298×805 @ DPR 2 | **120 FPS**, worst frame 9.4 ms |
-| Desktop, walking with collision | 1298×805 @ DPR 2 | **120 FPS**, worst frame 10.4 ms |
+| Tier | Viewport | Drawing buffer | Median FPS | Worst frame |
+| --- | --- | --- | --- | --- |
+| high | 1440×810 @ DPR 2 | 2520×1417 (3.57 MP) | **75.2 FPS** | 16.7 ms |
+| medium | 1440×810 @ DPR 2 | 2160×1215 (2.62 MP) | **122 FPS** | 13.0 ms |
+| low | 1440×810 @ DPR 2 | 1800×1012 (1.82 MP) | **120.5 FPS** | 11.1 ms |
+| low, mobile emulation | 390×844 @ DPR 3 | 487×1055 (0.51 MP) | **120.5 FPS** | 9.4 ms |
+
+The DPR cap is what separates the tiers: 1.75, 1.5 and 1.25. At this size the
+high tier's cost is fill rate rather than geometry — ambient occlusion, bloom
+and SMAA are per-pixel passes over 3.57 million pixels, and dropping to medium
+gives back more than everything else the renderer does. Low is already at the
+display's refresh cap, so medium and low are indistinguishable in practice.
 
 The triplanar detail map costs three texture samples per fragment on stone
-surfaces and is applied at every tier. Trimming the bridge decks to the gap
-they actually cross also removed about 40% of their geometry and the overdraw
-from seven overlapping decks, which is where the high tier gained the most: it
-went from 97 FPS to 111 on a span. Frame
-rate was also sampled in three different regions (hub, council city, flow
-foundry) at 109–111 FPS in the dev build; the heaviest prop-dressed region is
-within 1 FPS of the emptiest. Roughly 1,500 instanced objects across 17
-instanced meshes keep the draw-call count low.
+surfaces and is applied at every tier. Frame rate was also sampled in three
+different regions (hub, council city, flow foundry) in the dev build; the
+heaviest prop-dressed region is within 1 FPS of the emptiest. Roughly 1,500
+instanced objects across 17 instanced meshes keep the draw-call count low.
 
 Hardware string as reported by WebGL:
 `ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro)`.
+
+**A correction worth keeping.** An earlier version of this table claimed the
+high tier went from 97 to 111 FPS when the bridge decks were shortened. Both
+numbers were real and the comparison was not: the viewport had not been pinned
+between them, so they were measured at different resolutions. The honest figure
+at a pinned 3.57 MP is the 75.2 FPS above, and part of what the bridge work
+costs is simply that the opening now draws a bridge it previously did not draw
+at all. Frame rates are only comparable when the drawing buffer is identical —
+`canvas.width * canvas.height` belongs in the table next to them.
 
 ### Playtime
 
