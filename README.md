@@ -818,6 +818,41 @@ because the prop has one. Same symptom, different cause, and the fix that
 "worked" for the first one would have looked like success while leaving the
 second untouched.
 
+### The grass was the same colour as the pebbles
+
+Scattered across every island are 208 boulders, 720 pebbles and 420 grass tufts.
+Measured on the running build, the grass was rendering *darker than the pebbles
+it sat beside*, and at the hue of wet earth:
+
+| set | count | material | first instance | hue | mean linear luminance |
+| --- | --- | --- | --- | --- | --- |
+| boulders | 208 | `#c9b79a` | `#b8a78d` | 34.6° tan | 0.416 |
+| pebbles | 720 | `#9a8a72` | `#988870` | 33.3° tan | 0.195 |
+| **grass, before** | 420 | `#7fa06a` | `#b7ae9f` | **~45° brown** | **0.194** |
+| **grass, after** | 420 | `#7fa06a` | **`#637d53`** | **100.3° green** | **0.227** |
+
+`instanceColor` *multiplies* the material colour, so the base handed to
+`buildInstances` and the colour written on the material have to be the same
+value. They were not: `GroundDetail` serves both pebbles and grass and passed
+the pebble's sandstone to `buildInstances` for both, while the material already
+picked moss for grass. Green times sandstone is mud — which is exactly what the
+comment inside `buildInstances` warned about, written by whoever fixed the
+`instanceColor` guard two rounds earlier, while the call site underneath it was
+doing the thing the comment described.
+
+How it was found is the part worth keeping. Recovering the lerp alpha that maps
+base to instance colour gives a clean per-channel number for a correct set
+(rocks: 0.452 / 0.452 / 0.452; pebbles: 0.048 / 0.048 / 0.048). Grass returned
+0.152 / 0.789 / 0.432, and across all 420 instances ranged down to **−0.72**. A
+lerp between two colours cannot produce a negative alpha or disagree with itself
+per channel, so those numbers were proof that the written colour had not come
+from the lerp being inspected — which is what pointed at the wrong `base`.
+
+The fix reads the colour into one variable and uses it in both places, so the
+two cannot drift apart again. A unit test asserting `kind === 'pebble' ? a : b`
+would only have tested the ternary; the invariant worth protecting is that both
+call sites see one value, and that is now true by construction.
+
 ### Assets degrade, they do not break
 
 `src/world/Models.tsx` loads every model through an error boundary and a

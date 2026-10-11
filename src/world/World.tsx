@@ -117,9 +117,19 @@ export function GroundDetail({
   items: ScatterItem[];
   kind: 'pebble' | 'grass';
 }) {
+  // One colour, read in both places. `instanceColor` *multiplies* the material
+  // colour, so the base handed to `buildInstances` and the colour on the
+  // material have to be the same value or the two silently cancel into mud.
+  // Writing the choice twice is what broke it: grass was given the pebble's
+  // sandstone while its material was moss, and 420 cones rendered at a mean
+  // linear luminance of 0.194 — identical to the pebbles beside them, and at
+  // a hue of 45° rather than green. The comment inside `buildInstances`
+  // describes that exact failure while the call site was committing it.
+  const tint = kind === 'pebble' ? PEBBLE_COLOUR : PALETTE.moss;
+
   const { matrices, colors } = useMemo(
-    () => buildInstances(items, 77, new THREE.Color(PEBBLE_COLOUR), 0.02, kind === 'grass' ? 0.5 : 0.22, kind === 'grass' ? 1 : 0.5),
-    [items, kind],
+    () => buildInstances(items, 77, new THREE.Color(tint), 0.02, kind === 'grass' ? 0.5 : 0.22, kind === 'grass' ? 1 : 0.5),
+    [items, kind, tint],
   );
   if (matrices.length === 0) return null;
   return (
@@ -143,7 +153,7 @@ export function GroundDetail({
         <coneGeometry args={[0.5, 1.4, 4, 1, true]} />
       )}
       <meshStandardMaterial
-        color={kind === 'pebble' ? PEBBLE_COLOUR : PALETTE.moss}
+        color={tint}
         flatShading
         roughness={0.95}
         side={kind === 'grass' ? THREE.DoubleSide : THREE.FrontSide}
