@@ -947,22 +947,23 @@ had streamed in.
 
 | Tier | Viewport | Drawing buffer | Median FPS | Worst frame |
 | --- | --- | --- | --- | --- |
-| high | 1440×810 @ DPR 2 | 2520×1417 (3.57 MP) | **75.2 FPS** | 16.7 ms |
-| medium | 1440×810 @ DPR 2 | 2160×1215 (2.62 MP) | **122 FPS** | 13.0 ms |
-| low | 1440×810 @ DPR 2 | 1800×1012 (1.82 MP) | **120.5 FPS** | 11.1 ms |
-| low, mobile emulation | 390×844 @ DPR 3 | 487×1055 (0.51 MP) | **120.5 FPS** | 9.4 ms |
+| high | 1440×810 @ DPR 2 | 2520×1417 (3.57 MP) | **119 FPS** | 10.0 ms |
+| medium | 1440×810 @ DPR 2 | 2160×1215 (2.62 MP) | **119 FPS** | 9.7 ms |
+| low | 1440×810 @ DPR 2 | 1800×1012 (1.82 MP) | **120.5 FPS** | 9.6 ms |
+| low, mobile emulation | 390×844 @ DPR 3 | 487×1055 (0.51 MP) | **120.5 FPS** | 10.1 ms |
 
-The DPR cap is what separates the tiers: 1.75, 1.5 and 1.25. At this size the
-high tier's cost is fill rate rather than geometry — ambient occlusion, bloom
-and SMAA are per-pixel passes over 3.57 million pixels, and dropping to medium
-gives back more than everything else the renderer does. Low is already at the
-display's refresh cap, so medium and low are indistinguishable in practice.
+The DPR cap is what separates the tiers: 1.75, 1.5 and 1.25. All three now sit
+at the display's refresh cap on this hardware, so the tiers buy headroom rather
+than frames — which is what they should do, since the cap only takes effect on a
+display dense enough to want it.
 
-The triplanar detail map costs three texture samples per fragment on stone
-surfaces and is applied at every tier. Frame rate was also sampled in three
-different regions (hub, council city, flow foundry) in the dev build; the
-heaviest prop-dressed region is within 1 FPS of the emptiest. Roughly 1,500
-instanced objects across 17 instanced meshes keep the draw-call count low.
+The high tier was at **75.2 FPS** when this table was last measured, and the
+cause was not the post-processing chain at all. Sixteen decorative aqueduct slabs
+were casting shadows, and sixteen large casters inside a 46-unit shadow extent
+cost more than every effect in the composer combined. Stopping them moved the
+high tier to 119 with no visual cost worth defending — the shadows they threw
+were a starburst across the spawn floor. Half of what looked like "the high tier
+is fill-rate bound" was one `castShadow` attribute.
 
 Hardware string as reported by WebGL:
 `ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro)`.
