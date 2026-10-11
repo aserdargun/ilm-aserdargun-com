@@ -3,6 +3,7 @@ import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import { PALETTE } from './World';
 import { SUN_COLOR, SUN_DIRECTION } from './environment';
+import { buildDisc } from './disc';
 import type { RegionDef } from '../catalog/regions';
 
 /**
@@ -270,56 +271,7 @@ function buildCliff(id: string, radius: number, stone: string): THREE.BufferGeom
  * 3.3 units wide at the rim — any colour feature smaller than that cannot be
  * represented at all, however the colour is computed. Concentric rings are what
  * the ground's mottling actually needs.
- *
- * Winding is corrected rather than assumed: the triangles are built in one
- * order and the resulting average normal is measured, because getting it
- * backwards makes the whole disc invisible from above with no other symptom.
  */
-function buildDisc(radius: number, segments: number, rings: number): THREE.BufferGeometry {
-  const positions: number[] = [0, 0, 0];
-  for (let r = 1; r <= rings; r += 1) {
-    const t = r / rings;
-    for (let s = 0; s < segments; s += 1) {
-      const angle = (s / segments) * Math.PI * 2;
-      positions.push(Math.cos(angle) * radius * t, 0, Math.sin(angle) * radius * t);
-    }
-  }
-
-  const ringStart = (r: number) => 1 + (r - 1) * segments;
-  const indices: number[] = [];
-  for (let s = 0; s < segments; s += 1) {
-    const next = (s + 1) % segments;
-    indices.push(0, ringStart(1) + next, ringStart(1) + s);
-  }
-  for (let r = 1; r < rings; r += 1) {
-    const inner = ringStart(r);
-    const outer = ringStart(r + 1);
-    for (let s = 0; s < segments; s += 1) {
-      const next = (s + 1) % segments;
-      indices.push(inner + next, outer + s, outer + next);
-      indices.push(inner + next, inner + s, outer + next);
-    }
-  }
-
-  const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geo.setIndex(indices);
-  geo.computeVertexNormals();
-
-  if ((geo.getAttribute('normal').getY(0) ?? -1) < 0) {
-    // Front faces are counter-clockwise from the side the normal points at, so a
-    // disc built the other way round is culled and reads as a hole in the world.
-    const index = geo.getIndex()!.array as Uint16Array | Uint32Array;
-    for (let i = 0; i < index.length; i += 3) {
-      const swap = index[i + 1];
-      index[i + 1] = index[i + 2];
-      index[i + 2] = swap;
-    }
-    geo.getIndex()!.needsUpdate = true;
-    geo.computeVertexNormals();
-  }
-  return geo;
-}
 
 export function TerrainDisc({ region }: { region: RegionDef }) {
   const [normalMap, roughnessMap] = useTexture([NORMAL_MAP_URL, ROUGH_MAP_URL]);

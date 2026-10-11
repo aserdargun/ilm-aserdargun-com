@@ -719,6 +719,59 @@ source mesh data verbatim and drops a per-prop offset, so several models would
 have been buried up to half their height. `Props.tsx` lifts each geometry by its
 own bounding box and centres it on its footprint instead.
 
+### The ground was not being drawn
+
+A radial starburst sat under the player's feet, on every frame, on every island.
+It looked like a shadow and it was not: the aqueduct had already been stopped
+casting shadows two rounds earlier, and the pattern survived that change intact.
+
+It was the ground. Specifically, the terrain the player walks on was **not
+rendered at all**, and what showed through the hole was the island's cliff
+underside — a `DoubleSide`, flat-shaded bowl whose 96-sector apex fan converges
+on a point directly below the hub centre. That apex is what the starburst was.
+The player was standing on nothing at all.
+
+Two independent faults, neither of which threw:
+
+**1. The winding guard could not see the problem.** `buildDisc` emits in two
+passes — an inner fan, then ring quads — and the two wound in opposite
+directions. The existing guard checked `normal.getY(0) < 0`, and vertex 0 is the
+fan's centre vertex, which is always correct. Measured on the running build:
+
+```
+triangles           2806
+facing up            122   (the inner fan)
+facing down         2684   (every ring quad — 95.7%)
+```
+
+`computeVertexNormals()` derives normals *from* the winding, so a single sample
+can never disagree with its own mesh. The check was not weak, it was
+vacuous. `faceUp()` in `src/world/disc.ts` now walks all 2,806 triangles and
+flips any whose `uz * vx - ux * vz` is negative — the disc is flat, so that one
+term is the whole question, and no square root is needed.
+
+**2. Then the quads had to tile, which they did not.** The annulus between two
+rings is a quad with corners `inner+s`, `outer+s`, `outer+next`, `inner+next`.
+It was being split on `inner+next → outer+next` — which is the quad's own outer
+edge, not a diagonal. Both triangles therefore sat on the *same* side of it:
+they overlapped and left a wedge of nothing between them. Visible as a pinwheel
+of ground alternating with cliff, converging on the centre.
+
+The inner→outer diagonal puts the two apexes on opposite sides, which tiles.
+
+**What the eye said and the number said.** Vertex colour was ruled out before
+being blamed: angular luminance SD across each ring was 0.010–0.014 with a worst
+adjacent-pair delta of 0.017, far too small to produce the contrast on screen.
+Painting the disc magenta and the cliffs green at runtime is what actually
+located it — the two interleaved into a pinwheel, which is not a shading bug at
+any resolution.
+
+`tests/disc.test.ts` now asserts what the old guard could not: every triangle
+faces up, and the triangle areas sum to π·r² within 0.1% (the old split sat at
+about 0.71 of the disc). A flatness test guards the other invariant — walking is
+solved in 2D against y=0, so a vertex that leaves that plane is a surface the
+player visibly floats above.
+
 ### Assets degrade, they do not break
 
 `src/world/Models.tsx` loads every model through an error boundary and a
