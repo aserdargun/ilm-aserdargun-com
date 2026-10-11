@@ -65,9 +65,15 @@ source rather than being opaque binary files:
 | `tools/blender/render_preview.py` | Contact-sheet renders for review |
 | `tools/blender/ground_texture.py` | Tiling normal + roughness maps for the terrain |
 
-Twelve models ship, about 1.4 MB in total: the Weaver, Spark, the Synthesis
-Tree, the tapestry, the puzzle console, and the landmark for each of the seven
-regions. Most of the growth over the original set is baked vertex AO.
+Eleven files are downloaded, about 1.4 MB in total: the Weaver, the puzzle
+console, a landmark for each of the eight regions (the hub's is the Synthesis
+Tree), and the props GLB. Most of the growth over the original set is baked
+vertex AO.
+
+Two more sit in `public/models/` and are not on that list: `spark.glb` (22 KB)
+and `tapestry.glb` (16 KB). Both are build artefacts of the Blender scripts and
+neither has a reader — they are kept because the scripts that produce them are
+kept, and the loader lists decide what the game actually fetches.
 
 Geometry is built from **lofted cross-sections**, not stacked primitives, which
 is what gives the coat, trunk and pump their tapering silhouettes. Flat shading
@@ -144,8 +150,8 @@ renderer's tone mapping off and restores it on unmount, and the composer's own
 `ToneMapping` effect maps the final frame instead.
 
 The module is **loaded lazily**. The low tier renders none of these effects, so
-it should not download their ~162 KB of shader code. Splitting them out kept
-the main bundle at 437 KB gzipped instead of the 596 KB it would otherwise be.
+it should not download their ~159 KB of shader code. Splitting them out kept
+the main bundle at 425 KB gzipped instead of the 596 KB it would otherwise be.
 
 ### Quality tiers
 
@@ -369,12 +375,12 @@ build until the tapestry grows with it.
 The file stays on disk because it is a build product of
 `tools/blender/landmarks.py`.
 
-### 1,348 objects, one colour each
+### 1,408 objects, one colour each
 
-The ground scatter is three instanced meshes — 208 boulders, 720 pebbles, 420
+The ground scatter is three instanced meshes — 208 boulders, 720 pebbles, 480
 grass tufts — and every one of them was rendering in a single flat colour.
 
-`buildInstances` computed a per-instance tint for all 1,348 of them. Then:
+`buildInstances` computed a per-instance tint for all 1,408 of them. Then:
 
 ```js
 if (!mesh.instanceColor) return;
@@ -399,7 +405,7 @@ scatter so the two cannot drift apart.
 
 ### Rocks that sit on the ground
 
-The same three meshes had `castShadow` off, so 1,348 scattered objects floated
+The same three meshes had `castShadow` off, so 1,408 scattered objects floated
 with nothing underneath them — visible immediately as boulders with a visible
 gap under them. Boulders and pebbles now cast; grass does not, because a thin
 double-sided cone's shadow is a hard speck rather than form and it is the
@@ -668,7 +674,9 @@ git clone --depth 1 https://github.com/KayKit-Game-Assets/\
 
 `adopt_character.py` imports the source GLB, keeps only the locomotion clips the
 player can reach, downsamples the 1024px atlas to 256px, and re-exports a single
-GLB: **3.5 MB → 478 KB**, 76 clips → 5.
+GLB: **3.5 MB → 744 KB**, 76 clips → 5. The size grew from what the clip trim
+alone left behind once the baked vertex AO went in — 609 vertices, one mesh, one
+256×256 atlas.
 
 The source ships 76 clips; the game uses five, all from the same rig, which is
 what keeps the motion consistent:
@@ -709,10 +717,18 @@ git clone --depth 1 https://github.com/KayKit-Game-Assets/\
   --background --factory-startup --python tools/blender/adopt_props.py
 ```
 
-Fourteen props merge into one 134 KB GLB. `src/world/Props.tsx` turns each child
+Fourteen props merge into one 187 KB GLB. `src/world/Props.tsx` turns each child
 mesh into an instanced mesh and scatters it deterministically per region, clear
-of the landmark in the middle. About 180 placed objects across seven regions cost
+of the landmark in the middle. 155 placed objects across seven regions cost
 fourteen draw calls.
+
+The hub carries none of them, and that one is deliberate rather than an
+oversight: every entry in `REGION_DRESSING` is themed to the region's
+*application* — the council city gets pillars and walls, the foundry gets beams
+and worktables, the cloud harbour gets barrels and pallets — and the hub is not
+an application site. It is the meeting point, and it is dressed with the things
+that are not applications either: the synthesis tree, the canal, the aqueduct,
+26 boulders, 90 pebbles and 60 grass tufts.
 
 Grounding happens at load time, not in the file: the glTF exporter writes the
 source mesh data verbatim and drops a per-prop offset, so several models would
