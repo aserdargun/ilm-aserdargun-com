@@ -1173,28 +1173,39 @@ had streamed in.
 
 | Tier | Viewport | Drawing buffer | Median FPS | Worst frame |
 | --- | --- | --- | --- | --- |
-| high | 1440×810 @ DPR 2 | 2520×1417 (3.57 MP) | **119 FPS** | 10.0 ms |
-| medium | 1440×810 @ DPR 2 | 2160×1215 (2.62 MP) | **119 FPS** | 9.7 ms |
-| low | 1440×810 @ DPR 2 | 1800×1012 (1.82 MP) | **120.5 FPS** | 9.6 ms |
-| low, mobile emulation | 390×844 @ DPR 3 | 487×1055 (0.51 MP) | **120.5 FPS** | 10.1 ms |
+| high | 1440×810 @ DPR 2 | 2520×1417 (3.57 MP) | **69.1 FPS** | 33.2 ms |
+| medium | 1440×810 @ DPR 2 | 2160×1215 (2.62 MP) | **91.6 FPS** | 28.1 ms |
+| low | 1440×810 @ DPR 2 | 1800×1012 (1.82 MP) | **101.8 FPS** | 23.4 ms |
+| low, mobile emulation | 390×844 @ DPR 3 | 487×1055 (0.51 MP) | **103 FPS** | 12.1 ms |
 
-The DPR cap is what separates the tiers: 1.75, 1.5 and 1.25. All three now sit
-at the display's refresh cap on this hardware, so the tiers buy headroom rather
-than frames — which is what they should do, since the cap only takes effect on a
-display dense enough to want it.
+The DPR cap is what separates the tiers: 1.75, 1.5 and 1.25.
 
-The high tier was at **75.2 FPS** when this table was last measured, and the
-cause was not the post-processing chain at all. Sixteen decorative aqueduct slabs
-were casting shadows, and sixteen large casters inside a 46-unit shadow extent
-cost more than every effect in the composer combined. Stopping them moved the
-high tier to 119 with no visual cost worth defending — the shadows they threw
-were a starburst across the spawn floor. Half of what looked like "the high tier
-is fill-rate bound" was one `castShadow` attribute.
+**These numbers are 50 FPS lower than the previous table's, and that is the
+point.** The earlier figures — 119 / 119 / 120.5 / 120.5 — were measured on a
+world where the ground was not being rendered at all (see above). All three
+tiers were sitting at the display's refresh cap because they were not drawing
+the terrain. The terrain is now drawn, so they are not: eight discs totalling
+about 26,000 triangles, each sampling a normal map and a roughness map and
+receiving shadows, several of them covering most of the frame. That is fill-rate
+work that was previously skipped by a winding bug rather than optimised away.
+
+69 FPS is the honest cost of a floor existing. It is also comfortably above the
+refresh cap of the display these numbers came from, and every tier stays above
+60, so the right move is to leave the quality where it is rather than trade the
+ground back for frames.
 
 Hardware string as reported by WebGL:
 `ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro)`.
 
-**A correction worth keeping.** An earlier version of this table claimed the
+An earlier round of this table reported the high tier at **75.2 FPS**, and
+identified the cause as neither the post-processing chain nor the aqueduct —
+sixteen decorative slabs were casting shadows, and sixteen large casters inside a
+46-unit shadow extent cost more than every effect in the composer combined.
+Stopping them was worth it, but they were never the whole story either. Half of
+what looked like "the high tier is fill-rate bound" was one `castShadow`
+attribute, and the other half was terrain that was not there.
+
+**A correction worth keeping.** An even earlier version of this table claimed the
 high tier went from 97 to 111 FPS when the bridge decks were shortened. Both
 numbers were real and the comparison was not: the viewport had not been pinned
 between them, so they were measured at different resolutions. The honest figure
