@@ -208,6 +208,40 @@ has to stay inside the camera's far plane of 900: a dome beyond it is not drawn
 at all, and the missing wedge shows up as a hard dark triangle in the corner of
 the sky.
 
+### The ground had 66 vertices
+
+Measured on the running build, not guessed: the terrain disc was a
+`CircleGeometry(radius, 64)`, which is a **fan** — one centre vertex and a single
+rim ring. A 68-unit disc with 66 vertices puts a wedge about 3.3 units wide at
+the rim, and more to the point the colour could only vary *angularly* and never
+*radially*. Every colour feature the ground's noise was capable of expressing
+below that width simply could not appear, however the colour was computed.
+
+`buildDisc` now builds concentric rings — 96+ segments scaled to the radius, 12
+rings — which is what lets the ground carry the 12- and 7-unit wavelengths it
+never had the vertices for. The winding is *measured* rather than assumed: the
+triangles are built in one order and the resulting average normal is checked,
+because getting it backwards makes the entire disc invisible from above with no
+other symptom. Cost is 64 triangles per island becoming 2,806, which is noise.
+
+The island undersides had the same class of problem. `buildCliff` sums the 3rd,
+7th and 11th harmonic for its erosion, drawn at 44 sectors — four samples per
+cycle on the shortest one, which aliased into a beat pattern that had nothing to
+do with the intended silhouette. At 96 sectors the 11th harmonic gets 8.7
+samples.
+
+### The hub's floor was striped by a shadow
+
+With the ground finally readable, a radial starburst appeared across it that
+looked exactly like a colour artefact. It was not. Flipping `castShadow` off on
+the sixteen aqueduct segments and re-shooting removed every band, which
+identified the cause: sixteen slabs hanging 24–31 units over the hub, throwing
+shadows onto the one piece of floor the player always spawns on.
+
+A decorative sky structure casting a meaningless pattern over the spawn point is
+clutter rather than depth, so they no longer cast. It was also worth more than it
+looks: sixteen large shadow casters inside a 46-unit shadow extent is real cost.
+
 ### Landmarks have a surface
 
 Every landmark is built from lofted cross-sections and raw vertex lists, so

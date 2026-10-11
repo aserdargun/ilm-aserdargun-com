@@ -147,7 +147,11 @@ function buildCliff(id: string, radius: number, stone: string): THREE.BufferGeom
     [0.2, -8.5],
   ];
 
-  const SECTORS = 44;
+  // Enough sectors to actually resolve the lobes below. They are sums of the
+  // 3rd, 7th and 11th harmonics, and at 44 sectors the 11th got four samples per
+  // cycle — it aliased into a beat pattern that had nothing to do with the
+  // intended silhouette. 96 puts ~8.7 samples on that shortest cycle.
+  const SECTORS = 96;
   const positions: number[] = [];
   const colors: number[] = [];
   const base = new THREE.Color(stone);
@@ -220,6 +224,66 @@ function buildCliff(id: string, radius: number, stone: string): THREE.BufferGeom
   return geo;
 }
 
+/**
+ * A flat disc with real radial subdivision.
+ *
+ * `CircleGeometry` is a fan: one centre vertex and a single rim ring, so its
+ * vertex colours can only vary *angularly* and never *radially*. Measured on
+ * the running build, a 68-unit disc had 66 vertices, which puts a wedge about
+ * 3.3 units wide at the rim — any colour feature smaller than that cannot be
+ * represented at all, however the colour is computed. Concentric rings are what
+ * the ground's mottling actually needs.
+ *
+ * Winding is corrected rather than assumed: the triangles are built in one
+ * order and the resulting average normal is measured, because getting it
+ * backwards makes the whole disc invisible from above with no other symptom.
+ */
+function buildDisc(radius: number, segments: number, rings: number): THREE.BufferGeometry {
+  const positions: number[] = [0, 0, 0];
+  for (let r = 1; r <= rings; r += 1) {
+    const t = r / rings;
+    for (let s = 0; s < segments; s += 1) {
+      const angle = (s / segments) * Math.PI * 2;
+      positions.push(Math.cos(angle) * radius * t, 0, Math.sin(angle) * radius * t);
+    }
+  }
+
+  const ringStart = (r: number) => 1 + (r - 1) * segments;
+  const indices: number[] = [];
+  for (let s = 0; s < segments; s += 1) {
+    const next = (s + 1) % segments;
+    indices.push(0, ringStart(1) + next, ringStart(1) + s);
+  }
+  for (let r = 1; r < rings; r += 1) {
+    const inner = ringStart(r);
+    const outer = ringStart(r + 1);
+    for (let s = 0; s < segments; s += 1) {
+      const next = (s + 1) % segments;
+      indices.push(inner + next, outer + s, outer + next);
+      indices.push(inner + next, inner + s, outer + next);
+    }
+  }
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setIndex(indices);
+  geo.computeVertexNormals();
+
+  if ((geo.getAttribute('normal').getY(0) ?? -1) < 0) {
+    // Front faces are counter-clockwise from the side the normal points at, so a
+    // disc built the other way round is culled and reads as a hole in the world.
+    const index = geo.getIndex()!.array as Uint16Array | Uint32Array;
+    for (let i = 0; i < index.length; i += 3) {
+      const swap = index[i + 1];
+      index[i + 1] = index[i + 2];
+      index[i + 2] = swap;
+    }
+    geo.getIndex()!.needsUpdate = true;
+    geo.computeVertexNormals();
+  }
+  return geo;
+}
+
 export function TerrainDisc({ region }: { region: RegionDef }) {
   const [normalMap, roughnessMap] = useTexture([NORMAL_MAP_URL, ROUGH_MAP_URL]);
 
@@ -237,8 +301,10 @@ export function TerrainDisc({ region }: { region: RegionDef }) {
   }, [normalMap, roughnessMap]);
 
   const geometry = useMemo(() => {
-    const geo = new THREE.CircleGeometry(region.radius, 64);
-    geo.rotateX(-Math.PI / 2);
+    // Density is tied to the radius so every island's mottling reads at the
+    // same physical scale instead of the hub looking coarser than the rest.
+    const segments = Math.max(96, Math.round(region.radius * 3.6));
+    const geo = buildDisc(region.radius, segments, 12);
     const positions = geo.getAttribute('position');
     const colors = new Float32Array(positions.count * 3);
 
@@ -267,9 +333,15 @@ export function TerrainDisc({ region }: { region: RegionDef }) {
       const broad =
         Math.sin(x * 0.035 + seed) * Math.cos(z * 0.031 - seed * 0.7) +
         Math.sin((x + z) * 0.017 + seed * 1.3) * 0.6;
+      // The band the old fan could not reach: ~12 and ~7 unit wavelengths, which
+      // is where a ground reads as ground rather than as a painted disc. It is
+      // only expressible now that the mesh has concentric rings.
+      const mid =
+        Math.sin(x * 0.41 + seed * 3.1) * Math.sin(z * 0.47 - seed * 2.3) +
+        Math.sin((x - z) * 0.63 - seed * 1.1) * 0.6;
       const fine = Math.sin(x * 0.21 + seed * 2.1) * Math.sin(z * 0.19 - seed * 1.7) * 0.35;
 
-      const t = THREE.MathUtils.clamp(0.5 + (broad + fine) * 0.22, 0, 1);
+      const t = THREE.MathUtils.clamp(0.5 + (broad + mid * 0.5 + fine) * 0.22, 0, 1);
       c.copy(cool).lerp(warm, t);
 
       // Darken toward the rim. The edge of a disc is the one place a player

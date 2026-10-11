@@ -467,11 +467,18 @@ function SuspendedAqueduct() {
   return (
     <group>
       {segments.map((segment, i) => (
-        <mesh key={i} position={segment.position} rotation={[0, segment.rotation, 0]} castShadow>
+        <mesh key={i} position={segment.position} rotation={[0, segment.rotation, 0]}>
           <boxGeometry args={[9, 0.9, 3.4]} />
           {/* Flat shading is a no-op on a `BoxGeometry` — it builds four
               vertices per face with face-aligned normals — so dropping it only
-              lets the stone detail map through. */}
+              lets the stone detail map through.
+
+              Deliberately does **not** cast. Sixteen slabs hanging twenty-four to
+              thirty-one units above the hub threw a starburst of shadows across
+              the island floor, and an A/B with the flag flipped showed those were
+              the only thing producing the radial banding the ground appeared to
+              have. A decorative sky structure casting a meaningless pattern over
+              the one place the player spawns is clutter, not depth. */}
           <meshStandardMaterial color={PALETTE.ceramic} roughness={0.85} />
         </mesh>
       ))}
