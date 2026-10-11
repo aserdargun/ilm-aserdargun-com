@@ -276,6 +276,51 @@ is not a painter, it is a latch.
 puzzle-state mark stays in code and changes colour with the puzzle — which is
 why the tree follows the same shape rather than inventing a new one.
 
+### The sky finally knew where the sun was
+
+The sky dome was the largest surface in every frame — around 40% of the pixels —
+and it was a three-stop gradient with no information in it at all. Meanwhile
+`environment.ts` places the IBL's sun disc on `SUN_DIRECTION` and the key light
+shines along that same vector, so the shadows had been saying "warm light from
+up and to the right" while the backdrop the player is looking past said nothing.
+
+The dome now takes the same constant, so the three agree by construction rather
+than by coincidence:
+
+```glsl
+float sun = max(dot(d, normalize(uSun)), 0.0);
+colour += uSunColour * (pow(sun, 90.0) * 0.9 + pow(sun, 6.0) * 0.1);
+```
+
+A tight core and a wide warmth around it, in the key light's own colour.
+
+It also has high cloud now — four sine terms over the view direction rather than
+a noise function. It is continuous everywhere, needs no texture, and costs a
+handful of ALU on the one surface that never writes depth, which is why this is
+in the shader instead of in a second PNG. It is masked to sit above the horizon
+and to fade out before the zenith, at deliberately low contrast: this is
+atmosphere, not a weather system.
+
+### An unused model, and a misleading one
+
+`spark.glb` was in the preload list and nothing ever loaded it — `Spark` in
+`Scene.tsx` is built entirely from primitives. That cost 22 KB of download for
+a file with no reader, and the worse part was its presence in `CREATURE_MODELS`,
+which implied to the next reader that the companion was a GLB being kept away
+from the stone detail pass. It is procedural, flat-shaded and 0.26 units across.
+
+Declared models are now cross-checked against rendered ones: `weaver`,
+`synthesis_tree` and `console` are named directly, and the other seven come from
+`LANDMARK_MODELS`. `ALL_MODEL_NAMES` was carrying two names that matched neither.
+
+### A note on reading these screenshots
+
+One thing that cost real time this round: the tapestry panels *look* lit in a
+fresh save, because the ceramic picks up the scene's strong turquoise rim light
+and reads teal. Measured, it was `regions: []`, `stages: []`, and 0 of 14 panels
+lit. The eye was wrong and the number was right — the same trap as the radial
+banding in an earlier turn, and the reason each of these claims is a count.
+
 ### The tapestry had never actually been weaving
 
 The tapestry is the game's central feedback device: "its woven panels brighten

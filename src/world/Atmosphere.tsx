@@ -2,6 +2,7 @@ import { useEffect, useMemo } from 'react';
 import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import { PALETTE } from './World';
+import { SUN_COLOR, SUN_DIRECTION } from './environment';
 import type { RegionDef } from '../catalog/regions';
 
 /**
@@ -60,30 +61,66 @@ export function SkyDome({ radius = 760 }: { radius?: number }) {
           uZenith: { value: new THREE.Color(PALETTE.midnight) },
           uHorizon: { value: HORIZON_COLOR.clone() },
           uGlow: { value: new THREE.Color('#3f6a86') },
+          // The visible sky was the one part of the scene with no idea where the
+          // sun was. The environment probe puts its disc on SUN_DIRECTION and
+          // the key light shines along it, so the shadows already said "warm
+          // light from up and to the right" while the backdrop said nothing at
+          // all. Same constant, so the three agree by construction.
+          uSun: { value: SUN_DIRECTION.clone() },
+          uSunColour: { value: SUN_COLOR.clone() },
         },
         vertexShader: `
           varying float vHeight;
+          varying vec3 vDir;
           void main() {
             // Direction from the camera, so the gradient stays anchored to the
             // horizon instead of sliding with the dome.
-            vec4 world = modelMatrix * vec4(position, 1.0);
-            vHeight = normalize(world.xyz - cameraPosition).y;
-            gl_Position = projectionMatrix * viewMatrix * world;
+            vec3 world = (modelMatrix * vec4(position, 1.0)).xyz;
+            vDir = world - cameraPosition;
+            vHeight = normalize(vDir).y;
+            gl_Position = projectionMatrix * viewMatrix * vec4(world, 1.0);
           }
         `,
         fragmentShader: `
           uniform vec3 uZenith;
           uniform vec3 uHorizon;
           uniform vec3 uGlow;
+          uniform vec3 uSun;
+          uniform vec3 uSunColour;
           varying float vHeight;
+          varying vec3 vDir;
+
           void main() {
+            vec3 d = normalize(vDir);
             float h = clamp(vHeight, -1.0, 1.0);
-            // A tight band at the horizon with a slow falloff above it.
             float t = pow(clamp(1.0 - h, 0.0, 1.0), 5.0);
             vec3 colour = mix(uZenith, uHorizon, t);
             // A faint lift where the sky meets the land, so the sun has a
             // visible source instead of arriving from nowhere.
             colour += uGlow * pow(t, 3.0) * 0.3;
+
+            // The sun itself, and the wide warmth around it.
+            float sun = max(dot(d, normalize(uSun)), 0.0);
+            colour += uSunColour * (pow(sun, 90.0) * 0.9 + pow(sun, 6.0) * 0.1);
+
+            // High cloud. Four sine terms over the view direction rather than a
+            // noise function: it is continuous everywhere, needs no texture, and
+            // costs a handful of ALU on the one surface that never writes depth.
+            // Kept very low contrast — this is atmosphere, not a weather system.
+            float band =
+                sin(d.x * 3.1 + d.y * 1.7) * 0.50 +
+                sin(d.z * 4.3 - d.y * 2.2) * 0.34 +
+                sin((d.x + d.z) * 7.4 + d.y * 3.1) * 0.22 +
+                sin((d.x - d.z) * 11.3 - d.y * 5.7) * 0.11;
+            float cloud = smoothstep(0.18, 0.72, band);
+            // Present above the horizon, gone before the zenith, brightest where
+            // the haze already is.
+            float mask =
+                smoothstep(-0.02, 0.30, d.y) *
+                (1.0 - smoothstep(0.55, 0.98, d.y)) *
+                (0.35 + 0.65 * t);
+            colour = mix(colour, colour + uGlow * 0.55, cloud * mask * 0.5);
+
             gl_FragColor = vec4(colour, 1.0);
           }
         `,

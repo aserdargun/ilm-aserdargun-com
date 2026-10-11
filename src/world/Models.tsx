@@ -105,7 +105,6 @@ export const CHARACTER_Y_OFFSET = 0.7;
 
 export const ALL_MODEL_NAMES = [
   'weaver',
-  'spark',
   'synthesis_tree',
   'console',
   'terrace_map',
@@ -121,18 +120,22 @@ export const ALL_MODEL_NAMES = [
 // the panel-by-panel progression the tapestry exists to show; `World.tsx` builds
 // the panels from primitives instead. The file is left on disk because it is a
 // build product of `tools/blender/landmarks.py`, not something to hand-delete.
+//
+// `spark.glb` is absent for the opposite reason: `Spark` in `Scene.tsx` is
+// built entirely from primitives and never loaded a model. Listing it here made
+// the game download 22 KB of a file nothing reads, and — worse for the next
+// reader — putting it in `CREATURE_MODELS` below implied the companion was a
+// GLB that had to be kept away from the stone detail pass. It is procedural,
+// flat-shaded, and 0.26 units across.
 
 /**
- * Models that are characters rather than architecture.
- *
- * The detail map is projected in **world** space, which is what gives it
- * consistent texel density across a thirty-metre terrace and a hand-sized
- * console — and the same property is why it is skipped here. Anything that
- * moves would carry the projection across its own surface as it walks, so the
- * stone grain would visibly swim over it. The baked tone break-up is a vertex
- * attribute and stays locked to the mesh, which is why that one is harmless.
+ * Models that are characters rather than architecture — currently just the
+ * player. Anything loaded here is kept out of the stone detail pass: the
+ * projection is world-space, so on something that moves the grain would swim
+ * across it. The baked tone break-up is a vertex attribute and stays locked to
+ * the mesh, which is why that one is harmless.
  */
-const CREATURE_MODELS = new Set(['weaver', 'spark']);
+const CREATURE_MODELS = new Set(['weaver']);
 
 /** Warms the stone detail map alongside the models themselves. */
 preloadSurfaceDetail();
