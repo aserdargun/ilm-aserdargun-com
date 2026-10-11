@@ -32,7 +32,7 @@ import {
   useGame,
 } from '../game/store';
 import { PropScatter, preloadProps } from './Props';
-import { Lighting } from './Lighting';
+import { Lighting, type ShadowRegion } from './Lighting';
 import { applySurfaceDetail, useSurfaceDetailMap } from './detail';
 import { PostProcessing } from './PostProcessing';
 import { HORIZON_COLOR, SkyDome, TerrainDisc } from './Atmosphere';
@@ -147,6 +147,15 @@ function SceneContents() {
   const player = useRef<PlayerState>(createPlayerState(new THREE.Vector3(...SPAWN)));
   const stagePositions = useMemo(() => buildStagePositions(), []);
   const regionMeta = useMemo(() => allRegionMeta(), []);
+  // The shadow box is fitted to the island rather than to the player, so the
+  // island underfoot has to be known every frame, not only on the HUD tick.
+  // Seeded from the spawn island; the frame loop corrects it from the first
+  // tick onward.
+  const shadowRegion = useRef<ShadowRegion>({
+    x: regionMeta[0].x,
+    z: regionMeta[0].z,
+    radius: regionMeta[0].radius,
+  });
 
   useAudioLayers(game.progression.completedRegions.length);
 
@@ -389,12 +398,19 @@ function SceneContents() {
       };
     }
     setTargetedStage(id);
+    const here = regionAt(player.current.position.x, player.current.position.z, regionMeta);
     updatePlayerPosition(
       player.current.position.x,
       player.current.position.y,
       player.current.position.z,
-      regionAt(player.current.position.x, player.current.position.z, regionMeta),
+      here,
     );
+    const anchor = regionMeta.find((r) => r.id === here);
+    if (anchor) {
+      shadowRegion.current.x = anchor.x;
+      shadowRegion.current.z = anchor.z;
+      shadowRegion.current.radius = anchor.radius;
+    }
     reportPlayerFacing(player.current.facing);
   });
 
@@ -403,7 +419,7 @@ function SceneContents() {
       <color attach="background" args={[PALETTE.midnight]} />
       <fog attach="fog" args={[HORIZON_COLOR, 110, 520]} />
       <SkyDome />
-      <Lighting quality={game.settings.quality} target={player.current.position} />
+      <Lighting quality={game.settings.quality} target={player.current.position} region={shadowRegion} />
 
       <WorldGeometry
         completedRegions={new Set(game.progression.completedRegions)}

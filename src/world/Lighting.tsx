@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type RefObject } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { RIM_COLOR, SUN_COLOR, SUN_DIRECTION, createEnvironment } from './environment';
@@ -27,15 +27,47 @@ import type { Quality } from '../game/store';
  *    ambient balance the art direction was authored against does not shift.
  */
 
-/** Half-width of the shadow box, in world units. */
-const SHADOW_EXTENT = 46;
+/** Half-width of the shadow box before an island is known, in world units. */
+export const SHADOW_FALLBACK_EXTENT = 46;
 /** Depth of the shadow box along the light direction. */
 const SHADOW_DEPTH = 220;
+
+/**
+ * How far past a shoreline the shadow box reaches.
+ *
+ * Bridges begin five units *inside* the rim (`hub.radius - 5`), so the part of
+ * one that shades this island is already covered by a box fitted to the island.
+ * The shoulder only catches the small return cast of the next few units of
+ * deck, which lands back on the sand because the sun is low.
+ *
+ * The real defect was never the size, it was the centre. A box that followed
+ * the player put its edge *inside* the island whenever they stood off-centre,
+ * and the bridge's shadow stopped dead on open ground — measured at 26 units
+ * off-centre, the far 6 units of shoreline were outside a ±54 box entirely. A
+ * controlled A/B at one camera and one box size: island-centred, the hard
+ * vertical cut in the bridge shadow disappears and the deck's shadow runs on
+ * to the shore.
+ *
+ * Sizing it to the island also means texels-per-unit no longer depends on where
+ * the player is standing. At 2048² this yields 23.3 texels/unit on the hub,
+ * against 22.4 for the old player-following box — slightly *better* detail on
+ * the island the player spends most of their time on.
+ */
+const SHADOW_SHOULDER = 10;
+
+/** Centre and radius of the island the player is standing on. */
+export interface ShadowRegion {
+  x: number;
+  z: number;
+  radius: number;
+}
 
 export interface LightingProps {
   quality: Quality;
   /** Player world position, so the shadow box can trail behind them. */
   target: THREE.Vector3 | null;
+  /** The island under the player; the box is fitted to it rather than to them. */
+  region: RefObject<ShadowRegion> | null;
 }
 
 /**
@@ -68,24 +100,53 @@ function SceneEnvironment() {
  * 1024 map over the same box is trading detail for frame rate whether it wants
  * to or not.
  */
-function Sun({ quality, target }: LightingProps) {
+function Sun({ quality, target, region }: LightingProps) {
   const light = useRef<THREE.DirectionalLight>(null);
+  const fitted = useRef<number>(-1);
   const shadowsOn = quality !== 'low';
-  const mapSize = quality === 'high' ? 2048 : 1024;
+  // The box is fitted to an island whose radius can reach 46, so the map is
+  // sized to hold at least the ~20 texels/unit the hub used to get. The old
+  // fixed ±46 box never dropped below 11 texels/unit on medium either.
+  const mapSize = quality === 'high' ? 2048 : 1280;
 
   useFrame(() => {
     const lamp = light.current;
     const focus = target;
     if (!lamp || !focus) return;
-    // The light and its target both move, so the shadow box stays centred on
-    // the player no matter how far they walk from the hub.
+
+    // Read inside the frame, not during render: the ref is updated by the
+    // scene's own frame loop and never triggers a React render, so a value
+    // captured at render time would be one island stale.
+    const island = region?.current ?? null;
+
+    // The box is fitted to the island, not to the player. An island is a closed
+    // shape the player cannot walk out of, so following them only ever slid the
+    // boundary around inside ground they could already see — and pulled the
+    // bridge casters at the shoreline further out of it the closer they got.
+    const cx = island ? island.x : focus.x;
+    const cz = island ? island.z : focus.z;
+    const extent = island ? island.radius + SHADOW_SHOULDER : SHADOW_FALLBACK_EXTENT;
+
     lamp.position.set(
-      focus.x + SUN_DIRECTION.x * SHADOW_DEPTH,
-      focus.y + SUN_DIRECTION.y * SHADOW_DEPTH,
-      focus.z + SUN_DIRECTION.z * SHADOW_DEPTH,
+      cx + SUN_DIRECTION.x * SHADOW_DEPTH,
+      SUN_DIRECTION.y * SHADOW_DEPTH,
+      cz + SUN_DIRECTION.z * SHADOW_DEPTH,
     );
-    lamp.target.position.copy(focus);
+    lamp.target.position.set(cx, focus.y, cz);
     lamp.target.updateMatrixWorld();
+
+    // Resizing the orthographic box every frame would re-derive the projection
+    // matrix for nothing; the extent only changes when the player crosses to
+    // another island.
+    if (fitted.current !== extent) {
+      fitted.current = extent;
+      const cam = lamp.shadow.camera;
+      cam.left = -extent;
+      cam.right = extent;
+      cam.top = extent;
+      cam.bottom = -extent;
+      cam.updateProjectionMatrix();
+    }
   });
 
   return (
@@ -99,10 +160,10 @@ function Sun({ quality, target }: LightingProps) {
         shadow-mapSize-height={mapSize}
         shadow-camera-near={1}
         shadow-camera-far={SHADOW_DEPTH * 2}
-        shadow-camera-left={-SHADOW_EXTENT}
-        shadow-camera-right={SHADOW_EXTENT}
-        shadow-camera-top={SHADOW_EXTENT}
-        shadow-camera-bottom={-SHADOW_EXTENT}
+        shadow-camera-left={-SHADOW_FALLBACK_EXTENT}
+        shadow-camera-right={SHADOW_FALLBACK_EXTENT}
+        shadow-camera-top={SHADOW_FALLBACK_EXTENT}
+        shadow-camera-bottom={-SHADOW_FALLBACK_EXTENT}
         // A tight box concentrates the whole map onto the area the player can
         // actually see. Without these the depth precision is spent on the far
         // side of the frustum and the shadows acne or detach from their
@@ -132,14 +193,14 @@ function RimLight({ quality }: { quality: Quality }) {
   );
 }
 
-export function Lighting({ quality, target }: LightingProps) {
+export function Lighting({ quality, target, region }: LightingProps) {
   return (
     <>
       <SceneEnvironment />
       {/* Sky and ground fill. Kept at the authored level so the palette the
           regions were designed around survives the move to real lighting. */}
       <hemisphereLight args={['#9fc7ff', '#2a2417', 0.4]} />
-      <Sun quality={quality} target={target} />
+      <Sun quality={quality} target={target} region={region} />
       <RimLight quality={quality} />
     </>
   );

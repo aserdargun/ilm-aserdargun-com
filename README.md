@@ -772,6 +772,52 @@ about 0.71 of the disc). A flatness test guards the other invariant — walking 
 solved in 2D against y=0, so a vertex that leaves that plane is a surface the
 player visibly floats above.
 
+### The shadow box was following the wrong thing
+
+With the ground finally rendering, shadows had something to land on, and a new
+artefact appeared: the bridge's shadow stopped dead across open sand, along a
+vertical line, with clean ground beyond it.
+
+The obvious diagnosis — the shadow frustum is too small — was measured and
+**half wrong**:
+
+- A 100×100 sample of every visible ground point found only **0.2–0.3%** of
+  them outside the ±46 box. By that measure there was no problem at all.
+- Growing the box to ±90 in a runtime A/B did extend the shadows to the shore
+  and did remove the hard edge, which is what made the frustum look guilty.
+
+Both were true, and together they point somewhere the first measurement could
+not see. The receivers were inside the box; the **casters** were not. A bridge
+starts five units inside the rim and runs 86 units out to the next island, so
+almost all of it sat outside a 92-unit box centred on the player — and a clipped
+caster projects a truncated shadow, which lands on ground that is *well inside*
+the frame. Sampling the receivers can never see that.
+
+The actual defect was the centre, not the size. The box tracked the player, so
+its edge sat *inside the island* whenever they stood off-centre. Measured at 26
+units off-centre, the far 6 units of shoreline were outside even a ±54 box. The
+player cannot walk out of an island, so following them only ever slid the
+boundary around inside ground they could already see.
+
+`Sun` now takes the island the player is standing on — centre and radius, from
+`regionAt` — and fits the box to *that*. Verified by a controlled A/B: one
+camera, one box size, only the centre toggled between the player and the island.
+The player-centred frame has the hard vertical cut in the bridge shadow; the
+island-centred frame does not, and the deck's shadow runs on to the shore.
+
+Fitting to the island also means texels-per-unit no longer depends on where the
+player stands. At 2048² the hub gets **23.3** texels/unit against the **22.4**
+the old player-following box gave it — slightly better detail on the island
+where play actually happens — and the medium map went 1024 → 1280 so that
+no island, including the 46-unit one, drops below what it had before.
+
+One thing this exercise also got wrong, and it is worth recording: a dark band
+near the left of the frame looked exactly like the same clipping. Raising the
+extent to ±80 left it untouched. It was a prop's shadow, with a hard edge
+because the prop has one. Same symptom, different cause, and the fix that
+"worked" for the first one would have looked like success while leaving the
+second untouched.
+
 ### Assets degrade, they do not break
 
 `src/world/Models.tsx` loads every model through an error boundary and a
