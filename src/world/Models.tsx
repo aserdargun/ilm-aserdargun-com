@@ -1,4 +1,4 @@
-import { Component, Suspense, useEffect, useLayoutEffect, useMemo, type ReactNode } from 'react';
+import { Component, Suspense, useEffect, useLayoutEffect, useMemo, useRef, type ReactNode } from 'react';
 import { useGLTF } from '@react-three/drei';
 import type { Group, Material, Mesh } from 'three';
 import {
@@ -147,6 +147,16 @@ export interface AssetProps {
   scale?: number;
   /** Uniform scale applied only to the model, leaving the fallback untouched. */
   visible?: boolean;
+  /**
+   * Called for every mesh in the model, on load and again whenever `paintKey`
+   * changes. The escape hatch for state that has to live on the geometry
+   * itself: a GLB is one static file, so anything the game wants to change —
+   * a branch that lights when a connection is made — can only be expressed by
+   * reaching into the loaded scene rather than by swapping the model out.
+   */
+  paint?: (mesh: Mesh) => void;
+  /** Change this to re-apply `paint`. */
+  paintKey?: unknown;
 }
 
 /**
@@ -161,6 +171,8 @@ export function Asset({
   rotation,
   scale,
   visible,
+  paint,
+  paintKey,
 }: AssetProps) {
   return (
     <AssetBoundary fallback={fallback}>
@@ -171,6 +183,8 @@ export function Asset({
           rotation={rotation}
           scale={scale}
           visible={visible}
+          paint={paint}
+          paintKey={paintKey}
         />
       </Suspense>
     </AssetBoundary>
@@ -183,10 +197,21 @@ function AssetMesh({
   rotation,
   scale,
   visible,
+  paint,
+  paintKey,
 }: Omit<AssetProps, 'fallback'>) {
   const { scene } = useModel(name);
   const resolved = useMemo(() => scale ?? MODEL_SCALE[name] ?? 1, [scale, name]);
   const detailMap = useSurfaceDetailMap();
+
+  // Synced in a layout effect rather than assigned during render: an inline
+  // arrow would otherwise give `paint` a new identity on every render and drag
+  // the effect below along with it. Layout effects run in declaration order, so
+  // this one is always current by the time the painter runs.
+  const paintRef = useRef(paint);
+  useLayoutEffect(() => {
+    paintRef.current = paint;
+  }, [paint]);
 
   // A layout effect, not `useMemo`: patching a material is a side effect, and
   // this has to land before the browser paints so the landmark is never shown
@@ -206,6 +231,16 @@ function AssetMesh({
     }
     applySurfaceDetail(scene, detailMap);
   }, [scene, detailMap, name]);
+
+  // Per-model state painted onto the loaded geometry, the way `StageConsole`
+  // keeps its state-driven mark in code while the plinth stays a model.
+  useLayoutEffect(() => {
+    if (!scene || !paintRef.current) return;
+    scene.traverse((child: unknown) => {
+      const mesh = child as Mesh;
+      if (mesh.isMesh) paintRef.current?.(mesh);
+    });
+  }, [scene, paintKey]);
 
   useEffect(() => {
     // Trailing colour-space correction so PBR materials match the procedural

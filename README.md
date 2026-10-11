@@ -242,6 +242,40 @@ A decorative sky structure casting a meaningless pattern over the spawn point is
 clutter rather than depth, so they no longer cast. It was also worth more than it
 looks: sixteen large shadow casters inside a 46-unit shadow extent is real cost.
 
+### Painting state onto a model
+
+The tapestry could not be rescued by editing its GLB, so it was rebuilt. The
+tree could, and the difference is worth stating: **paint the model rather than
+replace it.**
+
+`Scene.tsx` claims the opening connection "turns the tree's first branch". It
+did not. `SynthesisTree`'s only `restored`-dependent property is the colour and
+emissive of its eight branches, and the hub renders the model with that
+component as the `Suspense` fallback — so the beat was visible for the fraction
+of a second the GLB took to download, and never after.
+
+`synthesis_tree.glb` is a single mesh split into three primitives — copper
+trunk, copper rings, ceramic crown — and the crown (y 13.0–17.4) is a mesh in
+its own right, which means it can be lit in place. `Asset` gained a `paint`
+callback for exactly this: called on load and again whenever `paintKey` changes,
+which is how the rest of the codebase already handles a model that carries
+static geometry next to state-driven geometry.
+
+Verified in the running build, and verified in both directions:
+
+```
+before the opening   emissiveIntensity 0
+opening completed    emissiveIntensity 0.55
+progression reset    emissiveIntensity 0
+```
+
+The third line is the one that matters. A painter that only ever turns things on
+is not a painter, it is a latch.
+
+`StageConsole` had already solved this properly — the plinth is the GLB, and the
+puzzle-state mark stays in code and changes colour with the puzzle — which is
+why the tree follows the same shape rather than inventing a new one.
+
 ### The tapestry had never actually been weaving
 
 The tapestry is the game's central feedback device: "its woven panels brighten

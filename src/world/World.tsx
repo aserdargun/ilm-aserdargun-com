@@ -301,7 +301,26 @@ export function Landmark({
   if (region.id === 'hub') {
     return (
       <group>
-        <Asset name="synthesis_tree" fallback={<SynthesisTree restored={restored} />} />
+        <Asset
+          name="synthesis_tree"
+          fallback={<SynthesisTree restored={restored} />}
+          // The crown catches the light once the opening connection is made.
+          // `synthesis_tree.glb` is a single mesh split into three primitives —
+          // copper trunk, copper rings, ceramic crown — and the crown is a mesh
+          // of its own, so it can be lit in place. The procedural version had
+          // this behaviour and was only ever visible while the GLB downloaded,
+          // which meant the beat the comments describe ("the opening connection
+          // turns the tree's first branch") never reached the player. Painting
+          // the model beats swapping it out for a worse-looking one.
+          paint={(mesh) => {
+            const material = mesh.material as THREE.MeshStandardMaterial;
+            if (!material?.name || material.name !== 'ceramic') return;
+            material.emissive.set(PALETTE.turquoise);
+            material.emissiveIntensity = restored ? 0.55 : 0;
+            material.needsUpdate = true;
+          }}
+          paintKey={restored}
+        />
         {/* The tapestry is built from primitives rather than loaded, because the
             progression is the whole point of it and a GLB cannot express it:
             `tapestry.glb` is a *single* mesh with two materials and no emissive
