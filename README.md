@@ -242,6 +242,48 @@ A decorative sky structure casting a meaningless pattern over the spawn point is
 clutter rather than depth, so they no longer cast. It was also worth more than it
 looks: sixteen large shadow casters inside a 46-unit shadow extent is real cost.
 
+### 1,348 objects, one colour each
+
+The ground scatter is three instanced meshes — 208 boulders, 720 pebbles, 420
+grass tufts — and every one of them was rendering in a single flat colour.
+
+`buildInstances` computed a per-instance tint for all 1,348 of them. Then:
+
+```js
+if (!mesh.instanceColor) return;
+for (let i = 0; i < colors.length; i += 1) mesh.setColorAt(i, colors[i]);
+```
+
+`setColorAt` is the call that *allocates* `instanceColor`. Guarding on the
+attribute being non-null before calling it means the guard permanently blocks
+the only thing that could ever set it. Measured after the fix: **200 distinct
+colours across 208 boulders**, 640 across 720 pebbles, 382 across 420 tufts.
+
+This is the same shape of bug as the invisible opening bridge — a guard that
+prevents the action which creates the thing it is guarding — and it is the kind
+that no assertion catches, because the state before and after is "some colours
+were computed" either way.
+
+The tint base also had to move. `buildInstances` hardcoded a sandstone base and
+a brown dark, which is right for boulders and turns green grass into mud, so it
+now derives the dark end from whatever colour the material actually uses. The
+pebble colour became a named constant shared between the material and the
+scatter so the two cannot drift apart.
+
+### Rocks that sit on the ground
+
+The same three meshes had `castShadow` off, so 1,348 scattered objects floated
+with nothing underneath them — visible immediately as boulders with a visible
+gap under them. Boulders and pebbles now cast; grass does not, because a thin
+double-sided cone's shadow is a hard speck rather than form and it is the
+largest of the three groups.
+
+Measured cost at 3.55 MP with all three toggling, worst case **104.2 → 99.0
+FPS**. The first attempt to measure this gave a *faster* result with the
+shadows on, which is what a measurement taken before the shadow program has
+finished recompiling looks like; four alternating runs after a settle period is
+what produced the honest number.
+
 ### Landmarks have a surface
 
 Every landmark is built from lofted cross-sections and raw vertex lists, so

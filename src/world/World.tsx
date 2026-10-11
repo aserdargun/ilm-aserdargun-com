@@ -101,6 +101,10 @@ export function scatter(
 // Shared instanced rock / plant fields
 // ---------------------------------------------------------------------------
 
+/** Pebble tint. The material colour and the per-instance tint share it, so the
+ *  scatter can never drift away from what is actually drawn. */
+const PEBBLE_COLOUR = '#9a8a72';
+
 /**
  * Small pebbles and dry grass tufts. Cheap instanced detail that keeps large
  * ground discs from reading as empty painted planes.
@@ -113,7 +117,7 @@ export function GroundDetail({
   kind: 'pebble' | 'grass';
 }) {
   const { matrices, colors } = useMemo(
-    () => buildInstances(items, 77, 0.02, kind === 'grass' ? 0.5 : 0.22, kind === 'grass' ? 1 : 0.5),
+    () => buildInstances(items, 77, new THREE.Color(PEBBLE_COLOUR), 0.02, kind === 'grass' ? 0.5 : 0.22, kind === 'grass' ? 1 : 0.5),
     [items, kind],
   );
   if (matrices.length === 0) return null;
@@ -121,12 +125,15 @@ export function GroundDetail({
     <instancedMesh
       args={[undefined, undefined, matrices.length]}
       receiveShadow
+      // Pebbles cast, grass does not. A pebble sitting on the ground with no
+      // shadow under it floats; a grass tuft is a thin double-sided cone whose
+      // shadow is a hard speck rather than form, and it is the largest group of
+      // the three. Measured cost of all three together was ~5% at 3.55 MP.
+      castShadow={kind === 'pebble'}
       onUpdate={(mesh) => {
         for (let i = 0; i < matrices.length; i += 1) mesh.setMatrixAt(i, matrices[i]);
         mesh.instanceMatrix.needsUpdate = true;
-        if (!mesh.instanceColor) return;
-        for (let i = 0; i < colors.length; i += 1) mesh.setColorAt(i, colors[i]);
-        mesh.instanceColor.needsUpdate = true;
+        applyInstanceColours(mesh, colors);
       }}
     >
       {kind === 'pebble' ? (
@@ -135,7 +142,7 @@ export function GroundDetail({
         <coneGeometry args={[0.5, 1.4, 4, 1, true]} />
       )}
       <meshStandardMaterial
-        color={kind === 'pebble' ? '#9a8a72' : PALETTE.moss}
+        color={kind === 'pebble' ? PEBBLE_COLOUR : PALETTE.moss}
         flatShading
         roughness={0.95}
         side={kind === 'grass' ? THREE.DoubleSide : THREE.FrontSide}
@@ -165,8 +172,8 @@ export function RockField({
   y?: number;
 }) {
   const { matrices, colors } = useMemo(
-    () => buildInstances(items, seedOffset, y),
-    [items, seedOffset, y],
+    () => buildInstances(items, seedOffset, new THREE.Color(color), y),
+    [items, seedOffset, y, color],
   );
 
   useLayoutEffect(() => {
@@ -190,7 +197,7 @@ export function RockField({
   return (
     <instancedMesh
       args={[undefined, undefined, matrices.length]}
-      castShadow={false}
+      castShadow
       receiveShadow
       frustumCulled
       ref={(mesh) => {
@@ -200,11 +207,8 @@ export function RockField({
       }}
       onUpdate={(mesh) => {
         for (let i = 0; i < matrices.length; i += 1) mesh.setMatrixAt(i, matrices[i]);
-        mesh.setMatrixAt(0, matrices[0]);
         mesh.instanceMatrix.needsUpdate = true;
-        if (!mesh.instanceColor) return;
-        for (let i = 0; i < colors.length; i += 1) mesh.setColorAt(i, colors[i]);
-        mesh.instanceColor.needsUpdate = true;
+        applyInstanceColours(mesh, colors);
       }}
     >
       <icosahedronGeometry args={[1, 0]} />
@@ -216,6 +220,7 @@ export function RockField({
 function buildInstances(
   items: ScatterItem[],
   seedOffset: number,
+  base: THREE.Color,
   yOffset = 0,
   scaleMul = 1,
   stretch = 1,
@@ -227,8 +232,10 @@ function buildInstances(
   const euler = new THREE.Euler();
   const position = new THREE.Vector3();
   const scale = new THREE.Vector3();
-  const base = new THREE.Color('#c9b79a');
-  const dark = new THREE.Color('#6d6152');
+  // Darkened from the material's own colour rather than a fixed brown. The same
+  // scatter code dresses green grass tufts, and multiplying moss by sandstone
+  // does not give variation — it gives mud.
+  const dark = base.clone().offsetHSL(0, -0.02, -0.18);
 
   items.forEach((item, index) => {
     const rng = makeRng(index * 7919 + seedOffset);
@@ -242,10 +249,24 @@ function buildInstances(
     );
     matrix.compose(position, quaternion, scale);
     matrices.push(matrix.clone());
-    const c = base.clone().lerp(dark, item.tint * 0.55);
+    const c = base.clone().lerp(dark, item.tint * 0.7);
     colors.push(c);
   });
   return { matrices, colors };
+}
+
+/**
+ * Writes the per-instance colours, allocating the attribute if it is not there.
+ *
+ * `setColorAt` is the call that *creates* `instanceColor` — guarding on the
+ * attribute being non-null before calling it means the guard permanently
+ * prevents the only thing that could ever set it. Every rock in the world was
+ * computed, given a tint, and then dropped on the floor: 208 boulders, 720
+ * pebbles and 420 grass tufts all rendering in one flat colour each.
+ */
+function applyInstanceColours(mesh: THREE.InstancedMesh, colors: THREE.Color[]): void {
+  for (let i = 0; i < colors.length; i += 1) mesh.setColorAt(i, colors[i]);
+  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
 }
 
 // ---------------------------------------------------------------------------
