@@ -1219,26 +1219,31 @@ had streamed in.
 
 | Tier | Viewport | Drawing buffer | Median FPS | Worst frame |
 | --- | --- | --- | --- | --- |
-| high | 1440×810 @ DPR 2 | 2520×1417 (3.57 MP) | **69.1 FPS** | 33.2 ms |
-| medium | 1440×810 @ DPR 2 | 2160×1215 (2.62 MP) | **91.6 FPS** | 28.1 ms |
-| low | 1440×810 @ DPR 2 | 1800×1012 (1.82 MP) | **101.8 FPS** | 23.4 ms |
-| low, mobile emulation | 390×844 @ DPR 3 | 487×1055 (0.51 MP) | **103 FPS** | 12.1 ms |
+| high | 1440×810 @ DPR 2 | 2520×1417 (3.57 MP) | **55.4 FPS** | 37.1 ms |
+| medium | 1440×810 @ DPR 2 | 2160×1215 (2.62 MP) | **92.0 FPS** | 27.9 ms |
+| low | 1440×810 @ DPR 2 | 1800×1012 (1.82 MP) | **100.7 FPS** | 13.2 ms |
+| low, mobile emulation | 390×844 @ DPR 3 | 487×1055 (0.51 MP) | **101.2 FPS** | 13.7 ms |
 
-The DPR cap is what separates the tiers: 1.75, 1.5 and 1.25.
+The DPR cap is what separates the tiers: 1.75, 1.5 and 1.25. The high tier is
+the median of three 5-second runs (57.5 / 55.4 / 54.6); the medium tier of two.
 
-**These numbers are 50 FPS lower than the previous table's, and that is the
-point.** The earlier figures — 119 / 119 / 120.5 / 120.5 — were measured on a
-world where the ground was not being rendered at all (see above). All three
-tiers were sitting at the display's refresh cap because they were not drawing
-the terrain. The terrain is now drawn, so they are not: eight discs totalling
-about 26,000 triangles, each sampling a normal map and a roughness map and
-receiving shadows, several of them covering most of the frame. That is fill-rate
-work that was previously skipped by a winding bug rather than optimised away.
+**Where these numbers came from, and what moved them.** The 119 / 119 / 120.5 /
+120.5 figures two rounds ago were measured on a world where the ground was not
+being rendered at all (see "The ground was never being drawn"). Re-measuring
+after that fix gave 69.1 / 91.6 / 101.8 / 103 — about 26,000 triangles of terrain
+that had previously been culled, each sampling a normal map and a roughness map
+and receiving shadows.
 
-69 FPS is the honest cost of a floor existing. It is also comfortably above the
-refresh cap of the display these numbers came from, and every tier stays above
-60, so the right move is to leave the quality where it is rather than trade the
-ground back for frames.
+Fitting the shadow box to the island (see above) then cost the high tier another
+~14 FPS, 69.1 → 55.4, and left the other three untouched. That is the expected
+direction and the reason is not mysterious: a box centred on the player excluded
+much of the island, so much of the island's casters never entered the shadow
+pass. Covering the whole island means rendering more of them. The medium tier
+paid nothing measurable despite its shadow map going from 1024 to 1280.
+
+Every tier is still above 50 FPS and the medium and low tiers are effectively at
+the refresh cap, so the right call is to keep the correctness rather than trade
+it back.
 
 Hardware string as reported by WebGL:
 `ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro)`.
