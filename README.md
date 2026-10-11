@@ -279,10 +279,14 @@ double-sided cone's shadow is a hard speck rather than form and it is the
 largest of the three groups.
 
 Measured cost at 3.55 MP with all three toggling, worst case **104.2 → 99.0
-FPS**. The first attempt to measure this gave a *faster* result with the
-shadows on, which is what a measurement taken before the shadow program has
-finished recompiling looks like; four alternating runs after a settle period is
-what produced the honest number.
+FPS** in the dev build. The first attempt to measure this gave a *faster*
+result with the shadows on, which is what a measurement taken before the shadow
+program has finished recompiling looks like; four alternating runs after a
+settle period is what produced the honest number.
+
+On the deployed build the cost is not measurable at all: the high tier reads
+**119 FPS** at 3.55 MP both before and after, twice each. The dev figure is the
+upper bound; production has enough headroom at that resolution to absorb it.
 
 ### Landmarks have a surface
 
