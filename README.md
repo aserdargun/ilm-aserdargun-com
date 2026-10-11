@@ -64,6 +64,7 @@ source rather than being opaque binary files:
 | `tools/blender/landmarks.py` | The Synthesis Tree and the seven region landmarks |
 | `tools/blender/render_preview.py` | Contact-sheet renders for review |
 | `tools/blender/ground_texture.py` | Tiling normal + roughness maps for the terrain |
+| `tools/blender/measure_texture.py` | Measures texture anisotropy without Blender |
 
 Eleven files are downloaded, about 1.4 MB in total: the Weaver, the puzzle
 console, a landmark for each of the eight regions (the hub's is the Synthesis
@@ -191,6 +192,32 @@ should sit well below 1 and is now near 0.2.
 Sampling the field is not the same as sampling the image: `image.pixels` is
 bottom-up relative to the noise arrays, so the normal map's green channel is
 flipped on write rather than by flipping the field twice.
+
+**The generator was under-reporting its own relief by exactly half.** The build
+prints a `peak_tilt` for each normal map, and the check next to it is written in
+the wrong units: the blue channel is stored as `nz * 0.5 + 0.5`, so `|B - 1|` is
+half the tilt and cannot be compared with the `peak_slope` that produced it. It
+was printing 0.071 for a soil map asked for a slope of 0.6 and 0.137 for a stone
+map asked for 0.95 — the true values are 0.143 and 0.275, which is what
+`1 − 1/√(1 + slope²)` gives. Nothing was wrong with the maps; the instrument was
+wrong, and it was wrong in the direction that hides a problem: halving
+`peak_slope` would have printed a number that still looked healthy. The log now
+decodes the channel back and prints the requested slope next to the measured
+one, and a roughness map — which has no normal in it — no longer gets a tilt
+printed at all. The PNG checksums are identical before and after, which is the
+proof that only the reporting moved.
+
+**A negative result worth keeping.** The ground also shows a fine directional
+streak up close that reads a little like brushed metal, and the obvious suspect
+is a normal map with directional bias in it. It is not. `tools/blender/
+measure_texture.py` measures the anisotropy of a field via the structure tensor
+of its gradient, and stubs `bpy` so the generators can be imported without
+Blender. Both height fields come out near-isotropic — 0.015 for the soil and
+0.061 for the stone, with gradient energy spread across orientation bands at
+1.17× and 1.10× of a uniform field. The first measurement suggested otherwise
+(0.30 anisotropy, 18.7% of the energy in one 15° band) and was simply wrong: it
+took the gradient of the gradient of the normal vector field. The tool exists so
+that the next person asks the map rather than the screenshot.
 
 Three things the material has to get right, each of which produces a
 flat-looking ground rather than an error:

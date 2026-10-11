@@ -25,6 +25,11 @@ OUT_DIR = os.path.abspath(os.path.join(HERE, "..", "..", "public", "textures"))
 
 SIZE = 512
 
+# Peak tangent-space slope each map is normalised to reach. Reported back out by
+# `main()` next to the tilt it actually measured, so the two can be compared.
+SOIL_PEAK_SLOPE = 0.6
+STONE_PEAK_SLOPE = 0.95
+
 
 def periodic_value_noise(period, cells, seed):
     """
@@ -192,7 +197,7 @@ def save_image(name, rgb):
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
     height = height_field()
-    normal = normal_map(height)
+    normal = normal_map(height, peak_slope=SOIL_PEAK_SLOPE)
     roughness = roughness_map(height)
     # Roughness is a scalar, written as a neutral grey image so it can be read
     # from any channel by the material's roughnessMap.
@@ -206,18 +211,32 @@ def main():
     # Stone gets a steeper peak than soil: it is read at ten to thirty units,
     # where the ground's 0.6 has been averaged away by distance, and the shader
     # scales it back down again per material.
-    stone = normal_map(stone_height_field(), peak_slope=0.95)
+    stone = normal_map(stone_height_field(), peak_slope=STONE_PEAK_SLOPE)
 
-    for name, rgb in (
-        ("ground_normal", normal),
-        ("ground_rough", rough_rgb),
-        ("stone_normal", stone),
+    for name, rgb, peak_slope in (
+        ("ground_normal", normal, SOIL_PEAK_SLOPE),
+        ("ground_rough", rough_rgb, None),
+        ("stone_normal", stone, STONE_PEAK_SLOPE),
     ):
         path = save_image(name, rgb)
+        if peak_slope is None:
+            # A roughness map has no normal in it; printing a tilt for it would
+            # be exactly the kind of number that looks like a measurement.
+            print(f"WROTE {path}")
+            continue
         # Blue carries the tilt: 1.0 means every normal points straight at the
         # viewer, so a map that reports ~0.99 there is a map with no relief.
-        tilt = float(np.abs(rgb[:, :, 2] - 1.0).max())
-        print(f"WROTE {path}  peak_tilt={tilt:.3f}")
+        #
+        # The stored channel is `nz * 0.5 + 0.5`, though, so `|B - 1|` is
+        # *half* the tilt and cannot be compared with the `peak_slope` that
+        # produced it. Measured on the maps this script was already writing:
+        # the soil reported 0.071 for a requested slope of 0.6, and the stone
+        # 0.137 for 0.95 — every map was under-reporting its own relief by
+        # exactly a factor of two, so halving `peak_slope` would have printed
+        # a number that still looked healthy. Decode it back before printing.
+        nz = rgb[:, :, 2] * 2.0 - 1.0
+        tilt = float((1.0 - nz).max())
+        print(f"WROTE {path}  peak_tilt={tilt:.3f}  requested_slope={peak_slope:.2f}")
     print("GROUND_TEXTURE_COMPLETE")
 
 
