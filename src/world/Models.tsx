@@ -107,7 +107,6 @@ export const ALL_MODEL_NAMES = [
   'weaver',
   'spark',
   'synthesis_tree',
-  'tapestry',
   'console',
   'terrace_map',
   'great_loom',
@@ -117,6 +116,11 @@ export const ALL_MODEL_NAMES = [
   'observer_mirrors',
   'living_valley',
 ];
+// `tapestry.glb` is deliberately absent and is no longer rendered. It is a
+// single mesh with two materials and no emissive channel, so it cannot express
+// the panel-by-panel progression the tapestry exists to show; `World.tsx` builds
+// the panels from primitives instead. The file is left on disk because it is a
+// build product of `tools/blender/landmarks.py`, not something to hand-delete.
 
 /**
  * Models that are characters rather than architecture.

@@ -591,6 +591,9 @@ function WorldGeometry({
                 ? completedStages.has('r0-opening')
                 : completedRegions.has(region.id)
             }
+            // The count, not the boolean. The tapestry lights two panels per
+            // region restored, so it needs to know *how many* have come back.
+            restoredCount={completedRegions.size * 2}
           />
         </group>
       ))}

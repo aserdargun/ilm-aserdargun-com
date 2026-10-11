@@ -242,6 +242,54 @@ A decorative sky structure casting a meaningless pattern over the spawn point is
 clutter rather than depth, so they no longer cast. It was also worth more than it
 looks: sixteen large shadow casters inside a 46-unit shadow extent is real cost.
 
+### The tapestry had never actually been weaving
+
+The tapestry is the game's central feedback device: "its woven panels brighten
+one by one as regions are restored". It was not doing that, for two independent
+reasons stacked on top of each other.
+
+The drawn version was `tapestry.glb`, and that file is **one mesh** with two
+materials and **no emissive channel**. There is nothing in it to light panel by
+panel — the panels are not addressable at all.
+
+The procedural version, which does have the panel-by-panel logic, was still in
+the file and still being passed a count. It just was not on screen: it appeared
+only as the `Suspense` fallback while the GLB downloaded, and then a second
+time in a `<UnfinishedTapestry visible={false}>` that never rendered. So the
+mechanic was present twice and visible for a fraction of a second.
+
+And even then it would not have worked. The rule was
+
+```ts
+const lit = i / panels.length < restoredCount / 7;
+```
+
+— a ratio against the region total rather than a count — fed `restored ? 14 : 0`,
+which is all-or-nothing by construction. The call site passes a boolean, because
+`Landmark` was only ever given `restored`, so the number of regions restored
+never reached the component at all.
+
+Fixed by inverting the flow: the scene passes `completedRegions.size * 2`, the
+panels light strictly left to right, and the tapestry is built from primitives
+so it has something to light. Measured in the running build at three regions
+restored:
+
+```
+x: -22.1 -18.7 -15.3 -11.9  -8.5  -5.1 | -1.7   1.7   5.1   8.5  11.9  15.3  18.7  22.1
+   LIT  LIT  LIT  LIT  LIT  LIT  | dark dark dark dark dark dark dark dark
+   #3fb6c8 × 6                      | #e2d6c2 … #eae2d3 × 8
+```
+
+The rule now lives in `src/world/tapestry.ts` with no React or three.js in it,
+so `tests/tapestry.test.ts` can pin it. That suite includes the check that
+matters for the next change someone makes: `TAPESTRY_PANELS / PANELS_PER_REGION`
+must equal the number of non-hub regions, so adding an eighth region fails the
+build until the tapestry grows with it.
+
+`tapestry.glb` is no longer rendered and has been dropped from the preload list.
+The file stays on disk because it is a build product of
+`tools/blender/landmarks.py`.
+
 ### 1,348 objects, one colour each
 
 The ground scatter is three instanced meshes — 208 boulders, 720 pebbles, 420

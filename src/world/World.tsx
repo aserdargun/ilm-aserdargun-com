@@ -4,6 +4,7 @@ import { REGIONS, type RegionDef } from '../catalog/regions';
 import { makeRng } from '../systems/types';
 import type { RegionId } from '../types/catalog';
 import { Asset } from './Models';
+import { PANELS_PER_REGION, TAPESTRY_PANELS, isPanelLit } from './tapestry';
 import { addCollider, clearColliders } from './collision';
 
 /**
@@ -285,19 +286,30 @@ const LANDMARK_MODELS: Record<RegionId, string> = {
   'valley-living-machines': 'living_valley',
 };
 
-export function Landmark({ region, restored = false }: { region: RegionDef; restored?: boolean }) {
+export function Landmark({
+  region,
+  restored = false,
+  restoredCount = 0,
+}: {
+  region: RegionDef;
+  restored?: boolean;
+  /** Regions restored so far, which is what the tapestry reads. */
+  restoredCount?: number;
+}) {
   const [x, , z] = region.anchor;
 
   if (region.id === 'hub') {
     return (
       <group>
         <Asset name="synthesis_tree" fallback={<SynthesisTree restored={restored} />} />
-        <Asset
-          name="tapestry"
-          fallback={<UnfinishedTapestry restoredCount={restored ? 14 : 0} />}
-          visible={restored}
-        />
-        <UnfinishedTapestry restoredCount={restored ? 14 : 0} visible={false} />
+        {/* The tapestry is built from primitives rather than loaded, because the
+            progression is the whole point of it and a GLB cannot express it:
+            `tapestry.glb` is a *single* mesh with two materials and no emissive
+            channel, so there is nothing to light up panel by panel. It was drawn
+            from the model while the panels stayed behind in a `visible={false}`
+            copy, which means the documented mechanic — the tapestry brightening
+            as regions come back — had not been visible in the shipped game. */}
+        <UnfinishedTapestry restoredCount={restoredCount} />
         <SuspendedAqueduct />
         {restored && <FlowingCanal />}
       </group>
@@ -422,22 +434,21 @@ function FlowingCanal() {
  * The enormous unfinished tapestry the Weaver wakes beneath. Its woven panels
  * brighten one by one as regions are restored.
  */
-function UnfinishedTapestry({
-  restoredCount = 0,
-  visible = true,
-}: {
-  restoredCount?: number;
-  visible?: boolean;
-}) {
+function UnfinishedTapestry({ restoredCount = 0 }: { restoredCount?: number }) {
   const panels = useMemo(
     () =>
-      Array.from({ length: 14 }, (_, i) => ({
-        position: [(i - 6.5) * 3.4, 17.5, 0] as [number, number, number],
-        hue: i / 14,
-      })),
+      Array.from({ length: TAPESTRY_PANELS }, (_, i) => {
+        const cloth = new THREE.Color(PALETTE.ceramic);
+        // A little tone variation along the row, so fourteen panels read as woven
+        // from one bolt of cloth rather than as fourteen identical cards.
+        cloth.offsetHSL(0.004 * ((i % 3) - 1), -0.02 * ((i % 2) - 0.5), -0.03 * ((i % 4) - 1.5));
+        return {
+          position: [(i - (TAPESTRY_PANELS - 1) / 2) * 3.4, 17.5, 0] as [number, number, number],
+          cloth,
+        };
+      }),
     [],
   );
-  if (!visible) return null;
   return (
     <group>
       {/* the crossbeam the tapestry hangs from */}
@@ -446,13 +457,15 @@ function UnfinishedTapestry({
         <meshStandardMaterial color={PALETTE.copperDark} flatShading roughness={0.75} metalness={0.4} />
       </mesh>
       {panels.map((panel, i) => {
-        const lit = i / panels.length < restoredCount / 7;
+        // `restoredCount` is panels, not regions — the scene already multiplied.
+        const lit = isPanelLit(i, restoredCount / PANELS_PER_REGION);
         return (
           <mesh key={i} position={panel.position} castShadow>
-            <planeGeometry args={[3.1, 4.6]} />
+            {/* A thin box rather than a plane: a plane has no edge to catch the
+                sun, and fourteen of them in a row read as paper cut-outs. */}
+            <boxGeometry args={[3.1, 4.6, 0.09]} />
             <meshStandardMaterial
-              color={lit ? PALETTE.turquoise : PALETTE.ceramic}
-              side={THREE.DoubleSide}
+              color={lit ? PALETTE.turquoise : panel.cloth}
               roughness={0.95}
               flatShading
               emissive={lit ? PALETTE.turquoise : '#000000'}
