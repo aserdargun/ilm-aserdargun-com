@@ -1187,8 +1187,30 @@ the same recipe the canal already uses, applied to the one mesh whose material i
 called `water`. `water_normal.png` cannot be attached to it the way the canal's
 is, because the mesh carries **no UVs** (drei names it `beam_low_3` after the
 merge, and it is 24 vertices); giving it ripple relief needs the triplanar map
-`detail.ts` builds for the stone. That is the remaining half and it is not done
-here.
+`detail.ts` builds for the stone.
+
+**That second half was tried and measured to do nothing.** `applySurfaceDetail`
+skips emissive materials, so the channel never got the stone's triplanar relief,
+and the obvious repair was to hand it `water_normal.png` through the same
+patcher. It applies — the material carries the `ilmekSurfaceDetail` flag, its
+`onBeforeCompile` is a function, and the console stays clean — and it changes
+nothing:
+
+| | luminance std | mean luminance |
+| --- | --- | --- |
+| emission fix only | 8.32 | 110.3 |
+| + triplanar at strength 0.3 | 8.35 | 110.3 |
+| + triplanar at strength 2.5 | 8.35 | 110.3 |
+| + its own program cache key | 8.35 | 110.3 |
+
+Identical to a tenth of a unit at eight times the intended tilt, and identical
+again after giving the material a `customProgramCacheKey` so it could not inherit
+an unpatched program. Whatever is eating the perturbation on this material was
+not found, so the patch was withdrawn rather than shipped as a no-op. The relief
+the channel has today comes from the lighting change alone, and the 8.3 it
+reaches is still short of the sand's 20.2 — so this surface is improved, not
+finished, and the triplanar route into GLB meshes with baked vertex colours is
+worth picking up again with more time than this had.
 
 ### Comparing two frames, and refusing to compare the wrong ones
 
