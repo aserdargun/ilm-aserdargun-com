@@ -1077,10 +1077,31 @@ plinth in the game, so the first look at a console measured the finished state.
 
 This one has no unit test, and it should be said plainly rather than papered
 over with one: the defect is in how a cached Object3D is parented by the
-renderer, and no amount of testing `three` would catch a regression here. The
-check that does catch it is a scene-graph one — count the GLB's instances and
-their distinct world positions, and require the two numbers to match — and it
-runs in about a second against a loaded page.
+renderer, and no amount of testing `three` would catch a regression here. What
+does catch it is a scene-graph one — **a model drawn N times must occupy N
+places** — and that is now permanent and tested.
+
+`src/world/scene-audit.ts` holds the check. `placedModels` walks the graph
+counting only GLB roots (`isGltfRoot`, which matches drei's `Scene` node), and
+`findPiledModels` groups them by vertex signature and reports any whose distinct
+position count is below their instance count. It is wired into the dev hook as
+`__ilm.audit()` and returns `[]` when the scene is sound.
+
+Ten tests in `tests/scene-audit.test.ts`, and they are checked in both
+directions, because an audit that only ever reports a problem is as useless as
+one that never does: a model wrongly reported as piled, two different GLBs that
+happen to share a spot and are *not* a bug, positions inside the tolerance
+counting as the same place, and a single instance which cannot be piled. It also
+pins the mistake the first version of this probe made — walking every group
+instead of only the GLB roots, which counts each model against its own parent
+group and makes all eight healthy landmarks look piled.
+
+Verified end to end in the browser, both ways:
+
+| scene | `__ilm.audit()` |
+| --- | --- |
+| fixed | `[]` |
+| clone reverted | `657v/4m — 28 instances, 1 distinct position, all at (4, 0, 30)` |
 
 ### Comparing two frames, and refusing to compare the wrong ones
 

@@ -34,6 +34,7 @@ import {
 import { PropScatter, preloadProps } from './Props';
 import { Lighting, type ShadowRegion } from './Lighting';
 import { applySurfaceDetail, useSurfaceDetailMap } from './detail';
+import { findPiledModels, isGltfRoot, placedModels } from './scene-audit';
 import { PostProcessing } from './PostProcessing';
 import { HORIZON_COLOR, SkyDome, TerrainDisc } from './Atmosphere';
 import { regionAt } from './Player';
@@ -299,6 +300,11 @@ function SceneContents() {
         target: id,
         input: { enabled: input.enabled, move: input.moveVector() },
         colliders: { total: getColliders().length, byOwner: countByOwner() },
+        // Any loaded GLB drawn in more places than it occupies. Returns [] when
+        // the scene is sound. This is the check that catches a shared cached
+        // scene, which throws nothing, renders every mesh, and looks perfectly
+        // healthy in a frame count.
+        audit: () => findPiledModels(placedModels(scene, isGltfRoot)),
         // Deepest overlap between the player and any collider; should stay <= 0.
         // What is holding the player: the nearest collider, and how far the
         // player is from walkable ground.
