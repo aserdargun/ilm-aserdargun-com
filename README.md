@@ -1166,71 +1166,42 @@ interior patch of its top face against the sand a few metres either side of it:
 | the sand just above it | 22.76 | 116.9 |
 | the sand just below it | 16.55 | 109.8 |
 
-Two point seven against twenty-three. It had no surface variation at all, and it
-was *blown out* — brighter than the sand it sat on, which is why the loom's own
-shadow barely showed as it crossed the bar.
+Two point seven against twenty-three, and a mean brighter than the ground it lies
+on, which is why the loom's own shadow barely showed as it crossed the bar.
 
-The cause is a baked material. `landmarks.py` builds the channel with the
-`water` material, which `common.py` defines with `emission=PALETTE["water"]` at
-`emission_strength=0.5` and `roughness=0.18`. That is the same flat emissive
-that made the canal water read as turquoise cardboard three rounds ago, on the
-same concept, in the same world — the canal got measured and fixed, this one was
-never looked at.
+**Correction: that window was measuring the wrong part of the surface.** The bar
+is seen almost edge-on, and a window 24 rows tall near its middle sat on the
+*front face and the shadow boundary* rather than the top. Re-measured on the top
+face itself — rows 538-542, which scan the bar and find its own silhouette at
+rows 528-544 — the same screenshots give:
 
-Dropping the emission and roughening the surface takes it to **8.32**, three
-times the relief, and the mean falls from 156.2 to 110.3 so the channel sits
-with the ground instead of above it; the shadow crossing it now reads.
-
-It is painted in `World.tsx` rather than fixed in `landmarks.py`, because that is
-a Blender material and changing it would mean regenerating the GLB — and this is
-the same recipe the canal already uses, applied to the one mesh whose material is
-called `water`. `water_normal.png` cannot be attached to it the way the canal's
-is, because the mesh carries **no UVs** (drei names it `beam_low_3` after the
-merge, and it is 24 vertices); giving it ripple relief needs the triplanar map
-`detail.ts` builds for the stone.
-
-**That second half was tried and measured to do almost nothing.** `applySurfaceDetail`
-skips emissive materials, so the channel never got the stone's triplanar relief, and
-the obvious repair was to hand it `water_normal.png` through the same patcher. It
-applies — on a fresh load the material carries the `ilmekSurfaceDetail` flag, its
-`onBeforeCompile` is a function, and the console stays clean — and it barely moves
-the surface:
-
-| | luminance std | mean luminance |
+| surface | mean luminance | std |
 | --- | --- | --- |
-| emission fix only | 8.32 | 110.3 |
-| + triplanar at strength 0.3 | 8.35 | 110.3 |
-| + triplanar at strength 2.5 (8x the intended tilt) | 9.32 | 110.0 |
-| + its own program cache key | 8.35 | 110.3 |
+| the channel top, before | **148.2** | 0.52 |
+| the channel top, after the emission fix | 85.8 | 0.77 |
+| the sand beside it | 108.6 | 23.96 |
 
-Twelve percent at eight times the tilt, on a surface that has to reach the sand's
-20.2. So the patch was withdrawn rather than shipped as a near-no-op.
+So the real, and much larger, defect was **exposure, not relief**: the channel
+was blown out to 148 against a ground of 109, which is why the shadow crossing it
+disappeared. Dropping the emission and roughening the surface brought it to 85.8,
+below the sand and with the shadow reading properly. That part is real and it is
+what shipped.
 
-**What the triplanar system itself is not.** The obvious worry is that the patch
-never reaches the shader, because three.js does not put `onBeforeCompile` in the
-default program cache key and a material can silently inherit a program compiled
-before its patch was attached. That is ruled out: the bridge decks carry **no
-texture map at all** — they are plain `BoxGeometry` with a flat colour — and they
-show a high-pass std of 6.40 with a p99 residual of 33.5, which can only have come
-from this patch. The system works. Whatever is eating the perturbation on this one
-mesh was not identified.
+The relief part is a different story, and it is not a bug: the top face is
+genuinely flat (std 0.5-1.1) and **four separate mechanisms could not change it** —
+the triplanar patch at its own strength (0.78), at eight times it (1.06), the same
+patch with the surface turned into a rough dielectric (0.98), and an ordinary UV
+normal map at scale 2.5 (0.77). A flat horizontal surface lit by a low sun gives a
+tangent-space normal map almost nothing to modulate: `N·L` barely moves when the
+normal is already pointing up. Relief on water like this needs a raking light, a
+glossier environment, or geometry that is not flat — none of which this scene
+provides at this hour.
 
-**And the other guess was wrong too.** The channel's baked vertex colours looked
-like the obvious suspect for flattening it, so `vertexColors` was turned off on the
-material and the frame re-measured: **9.32 → 9.32**, not a thing changed. It is not
-the vertex colours.
-
-**A measurement trap worth more than the finding.** The first attempt at this read
-that the patch had not applied at all — and it had not, but not for the reason the
-reading suggested. `paint` runs in a layout effect keyed on `[instance, paintKey]`,
-and after an HMR edit neither of those changes, so the new closure is never called
-and the old one stays on the material. Measuring after an HMR edit silently
-measures the *previous* build. Anything driven by a `paint` callback has to be
-measured after a full page load, and the state has to be read back rather than
-assumed: the flag was absent, which is what caught it.
-
-So the channel is improved and still not finished: 8.3 against the sand's 20.2, and
-the route to closing that is genuinely open.
+The emission fix is painted in `World.tsx` rather than made in `landmarks.py`,
+because that is a Blender material and changing it would mean regenerating the GLB.
+It is the same recipe the canal uses, applied to the one mesh whose material is
+called `water`. The channel is no longer a blown-out plank; it is a flat plank that
+sits correctly in the light, which is what this round could honestly deliver.
 
 ### Comparing two frames, and refusing to compare the wrong ones
 
