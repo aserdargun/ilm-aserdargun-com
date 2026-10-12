@@ -665,6 +665,40 @@ there is one answer to the question rather than two that can drift.
 This is the shape of bug that a scripted playthrough cannot catch, because the
 test drives progression state directly and never looks at what was drawn.
 
+**The bridge geometry, measured, because guessing it goes wrong.** A bridge is
+diagonal, so an offset along world X is not an offset across the deck — and this
+was got wrong twice while checking a different suspicion, both times producing a
+confident wrong number. Reading the scene and projecting properly:
+
+| | value | source |
+| --- | --- | --- |
+| deck, full width | 12 | `boxGeometry args={[width, 0.5, span]}` |
+| deck, half-width | 6 | |
+| central strip | 4.32 | `width * 0.36` |
+| railings | ±5.8 | `width / 2 - 0.2`, emissive turquoise, 0.3 × 0.6 × span |
+| walkable corridor | ±5.2 | `halfWidth: 5.6` − `margin: 0.4` |
+
+So the player can walk to 5.2, which is 0.6 short of a railing and 0.8 short of
+the deck edge. `isWalkable` and `distanceToWalkable` agree with that, and
+`__ilm.blocking.offWalkableBy` agrees with them — checked in one call, at the
+player's *settled* position rather than the one the teleport asked for, which is
+the third way that measurement went wrong.
+
+**Checked and found sound.** The suspicion was that `Bridge.width` is a full
+width (`Player.ts` and `navigation.ts` read it as a half-width and as
+`halfWidth` respectively), so the walkable surface might be twice the drawn
+deck and the player might be able to stand off the side of a bridge in the air.
+It is not: `navigation.ts` builds the corridor from `halfWidth` and subtracts a
+margin, and measuring outward along the perpendicular from the deck's centre
+line gives walkable to 5.2 and not-walkable beyond it, on both sides of all
+seven spans. The glowing rails are decorative rather than colliders — nothing
+pushes the player back at 5.8 — but since the corridor already ends at 5.2 that
+never comes up in play. `groundHeight` in `Player.ts` does compare against
+`path.width` as a half-width, which is inconsistent with the geometry, but every
+bridge has `y: 0` and so does its fallback, so the threshold cannot change what
+is drawn or where a player ends up. It was left alone rather than "fixed" into a
+change with no observable effect.
+
 ### Character animation
 
 The Weaver is **rigged and animated in Blender**, not animated by hand-tweaked
