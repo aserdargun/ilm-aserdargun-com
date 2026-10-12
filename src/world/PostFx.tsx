@@ -20,8 +20,18 @@ export function PostProcessing({ quality }: { quality: Quality }) {
 
   return (
     <EffectComposer
-      // The canvas already antialiases; a multisampled composer target would
-      // pay for it twice.
+      // Measured, not assumed. The reason this was left at 0 was "the canvas
+      // already antialiases, so a multisampled target pays twice" — and the
+      // premise is wrong: with a composer the scene is rendered into an
+      // offscreen target and the canvas backbuffer's MSAA never touches it, so
+      // the composer is the only place edge antialiasing can come from. The
+      // decision still came out the same, for different reasons, priced at
+      // 3840x2160 on the medium tier: multisampling 0 -> 67.4 FPS, 4 -> 41.5.
+      // MSAA costs 38% of the frame rate to move 0.93% of static pixels by
+      // more than 4/255, and it is that number, not the comment's reasoning,
+      // that the medium tier is running without it on. See "The medium tier has
+      // no antialiasing, and buying it back is not worth the frame" in the
+      // README.
       multisampling={0}
       enableNormalPass
     >
@@ -54,6 +64,12 @@ export function PostProcessing({ quality }: { quality: Quality }) {
           `PostProcessing.tsx` to keep bloom working on real HDR values. */}
       <ToneMapping mode={ToneMappingMode.AGX} />
       <Vignette offset={0.28} darkness={0.62} blendFunction={BlendFunction.NORMAL} />
+      {/* High only, and the gap is deliberate. The medium tier renders this
+          composer with no edge antialiasing at all, and the two ways to buy it
+          back were both measured at a fixed camera: SMAA costs 7.4% of the
+          frame rate (67.4 -> 62.4 FPS) and removes 8.6% of the hard silhouette
+          steps while barely touching the ground texture (-0.8%). MSAA costs
+          five times that. High is the tier where the money is worth spending. */}
       {full ? <SMAA /> : <></>}
     </EffectComposer>
   );

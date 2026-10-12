@@ -1030,6 +1030,46 @@ perspective compression. The underlying inconsistency — a constant count sprea
 across a 1.83× range of areas — is now impossible to reintroduce by accident,
 which is the durable part.
 
+### The medium tier has no antialiasing, and buying it back is not worth the frame
+
+`Scene.tsx` opens the canvas with `antialias: true`, and `PostFx.tsx` runs the
+medium tier through an `EffectComposer` with `multisampling={0}` and no SMAA. The
+comment beside that zero said: *"The canvas already antialiases; a multisampled
+composer target would pay for it twice."*
+
+**The premise is wrong and the decision is right.** With a composer the scene is
+rendered into an offscreen render target; the canvas backbuffer's MSAA is never
+applied to it, so the composer target is the only place edge antialiasing can
+come from. The medium tier genuinely renders unantialiased. But both ways of
+fixing that were priced, at 3840×2160 on the medium tier where the refresh cap
+is not in the way:
+
+| configuration | FPS | static pixels moved >4/255 |
+| --- | --- | --- |
+| `multisampling={0}` (shipped) | **67.4** | — |
+| `multisampling={4}` | **41.5** | 0.93% |
+| `multisampling={0}` + SMAA | **62.4** | 1.47% |
+
+MSAA at 4 samples costs **38% of the frame rate** — about 9 ms a frame — to move
+0.93% of the static pixels by more than 4/255. SMAA is far cheaper at **7.4%**,
+and what it buys was measured on a camera-verified A/B pair: hard silhouette
+steps (adjacent-column luminance jumps over 60/255) drop from 0.197% to 0.180%,
+**8.6%**, while the ground's fine texture is left essentially alone
+(block high-pass std 11.97 → 11.87, −0.8%). Paying 7.4% of the frame rate for
+8.6% of the edges is a bad trade, and MSAA is five times worse. The gap stays,
+and the reason it stays is now a measurement rather than a wrong premise.
+
+**How the measurement nearly went wrong, twice.** The first A/B compared two
+screenshots taken a few seconds apart and reported that SMAA changed **54%** of
+the frame — far too much for an edge filter. The two shots were of *different
+views*: an HMR remount had reset the camera between them. The second comparison
+looked fine until the crop was inspected and the two panels turned out to show a
+rock in one and the canal in the other. Every A/B in this project now settles the
+camera first and reads its position back, and a pair is only compared when the
+two positions are equal to three decimals. That is the fourth time this session a
+confident number came out of a frame that was not the thing being measured; the
+first three are in "There is nothing far away to fade".
+
 ### There is nothing far away to fade
 
 The obvious next depth cue after the canal is aerial perspective, and the scene
