@@ -474,6 +474,32 @@ function buildStagePositions(): StagePosition[] {
   });
 }
 
+/**
+ * How many of one scatter set an island gets, scaled to its area.
+ *
+ * The eight discs range from radius 34 to 46, so a constant count made the hub
+ * 1.83x denser than the largest island purely by geometry — measured per 1000
+ * square units, the seven others sat at 0.55x-0.72x of the hub's density, and the
+ * Collective Gardens (which reads as half-empty on screen) at 0.66x. Nothing
+ * about those islands is emptier; they were simply being given the same number
+ * of objects as a disc a third smaller.
+ *
+ * `hubCount` is the number the hub already has, so the hub returns exactly
+ * itself and the opening — the part of the game everyone sees first — keeps the
+ * layout it has had. `max` guards against a future island smaller than the hub
+ * losing detail on the strength of the formula.
+ *
+ * The per-set radius factor cancels: both sides scale by the same `f`, so only
+ * the ratio of radii survives.
+ */
+function scatterCount(region: { radius: number }, hubCount: number): number {
+  const scale = (region.radius / HUB_RADIUS) ** 2;
+  return Math.max(hubCount, Math.round(hubCount * scale));
+}
+
+/** The radius of the central island, which sets the density everything else matches. */
+const HUB_RADIUS = 34;
+
 function WorldGeometry({
   completedRegions,
   completedStages,
@@ -490,7 +516,7 @@ function WorldGeometry({
   const rocks = useMemo(
     () =>
       REGIONS.flatMap((region, i) =>
-        scatter(1000 + i * 37, region.anchor[0], region.anchor[2], region.radius * 0.94, 26),
+        scatter(1000 + i * 37, region.anchor[0], region.anchor[2], region.radius * 0.94, scatterCount(region, 26)),
       ),
     [],
   );
@@ -499,13 +525,13 @@ function WorldGeometry({
   const pebbles = useMemo(
     () =>
       REGIONS.flatMap((region, i) =>
-        scatter(5000 + i * 91, region.anchor[0], region.anchor[2], region.radius * 0.96, 90),
+        scatter(5000 + i * 91, region.anchor[0], region.anchor[2], region.radius * 0.96, scatterCount(region, 90)),
       ),
     [],
   );
   const grass = useMemo(() => {
     const seeded = REGIONS.filter((r) => r.id !== 'hub').flatMap((region, i) =>
-      scatter(7000 + i * 53, region.anchor[0], region.anchor[2], region.radius * 0.9, 60),
+      scatter(7000 + i * 53, region.anchor[0], region.anchor[2], region.radius * 0.9, scatterCount(region, 60)),
     );
     // The hub used to be excluded here outright. The filter has been in the
     // file since the first commit and no commit has ever recorded a reason for
@@ -516,7 +542,7 @@ function WorldGeometry({
     // other seven. Its own seed, so those seven keep the layout they have had.
     const hub = REGIONS.find((r) => r.id === 'hub');
     if (!hub) return seeded;
-    return [...seeded, ...scatter(7900, hub.anchor[0], hub.anchor[2], hub.radius * 0.9, 60)];
+    return [...seeded, ...scatter(7900, hub.anchor[0], hub.anchor[2], hub.radius * 0.9, scatterCount(hub, 60))];
   }, []);
 
   // Bridges from the hub to each region, laid down as regions are restored.

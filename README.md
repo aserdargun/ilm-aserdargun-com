@@ -405,8 +405,11 @@ The file stays on disk because it is a build product of
 
 ### 1,408 objects, one colour each
 
-The ground scatter is three instanced meshes — 208 boulders, 720 pebbles, 480
-grass tufts — and every one of them was rendering in a single flat colour.
+At the time of that round the ground scatter was three instanced meshes — 208
+boulders, 720 pebbles, 480 grass tufts, 1,408 in total — and every one of them
+was rendering in a single flat colour. The totals have since changed (see "The
+scatter gave every island the same number"); the defect described here was in
+the colour path, and both are independent.
 
 `buildInstances` computed a per-instance tint for all 1,408 of them. Then:
 
@@ -417,8 +420,9 @@ for (let i = 0; i < colors.length; i += 1) mesh.setColorAt(i, colors[i]);
 
 `setColorAt` is the call that *allocates* `instanceColor`. Guarding on the
 attribute being non-null before calling it means the guard permanently blocks
-the only thing that could ever set it. Measured after the fix: **200 distinct
-colours across 208 boulders**, 640 across 720 pebbles, 382 across 420 tufts.
+the only thing that could ever set it. Measured after the fix, on that round's
+counts: **200 distinct colours across 208 boulders**, 640 across 720 pebbles,
+382 across 420 tufts.
 
 This is the same shape of bug as the invisible opening bridge — a guard that
 prevents the action which creates the thing it is guarding — and it is the kind
@@ -864,7 +868,10 @@ second untouched.
 
 ### The grass was the same colour as the pebbles
 
-Scattered across every island are 208 boulders, 720 pebbles and 420 grass tufts.
+Scattered across every island are, at the time of that round, 208 boulders, 720
+pebbles and 480 grass tufts — the totals have since moved to 314 / 1,081 / 720
+when the scatter became proportional to island area (see "The scatter gave every
+island the same number"). The colours below are what was measured then.
 Measured on the running build, the grass was rendering *darker than the pebbles
 it sat beside*, and at the hue of wet earth:
 
@@ -969,6 +976,59 @@ were projected from the scene rather than guessed. The second was worse — the
 browser had been restarted and was sitting on the title menu, so three
 screenshots "measured" the teal *Continue* button. Both said the same wrong thing
 with high confidence. A measurement is only as good as the state it was taken in.
+
+### The scatter gave every island the same number
+
+The Collective Gardens reads as half-empty from the one viewpoint that looks
+across it, and the ground takes up most of the frame on every island. The
+scatter is uniform in angle and radius — `scatter()` draws `angle` uniformly and
+`distance` uniformly between an inner and outer radius — so the distribution is
+not the problem. The *count* is.
+
+Every island was given a flat 26 boulders, 90 pebbles and 60 grass tufts. The
+discs range from radius 34 to 46, so that is a **1.83× spread in area**, and the
+hub — the smallest island, and the one the opening happens on — ended up the
+densest in the game:
+
+| island | r | boulders | pebbles | grass | density vs hub |
+| --- | --- | --- | --- | --- | --- |
+| hub | 34 | 26 | 90 | 60 | 1.00× |
+| cartographers-terrace, observers-mirrors | 40 | 26 | 90 | 60 | 0.72× |
+| flow-foundry, collective-gardens | 42 | 26 | 90 | 60 | 0.66× |
+| adaptation-cloud-harbor, valley | 44 | 26 | 90 | 60 | 0.60× |
+| memory-council-city | 46 | 26 | 90 | 60 | 0.55× |
+
+Counts are now `base · (radius / 34)²`, floored at the base so no future island
+smaller than the hub loses detail. The per-set radius factor cancels — both
+sides scale by the same `f`, so only the ratio of radii survives — and the hub
+returns exactly itself, so the opening keeps the layout it has had.
+
+| island | r | boulders | pebbles | grass |
+| --- | --- | --- | --- | --- |
+| hub | 34 | 26 | 90 | 60 |
+| cartographers-terrace | 40 | 36 | 125 | 83 |
+| flow-foundry | 42 | 40 | 137 | 92 |
+| memory-council-city | 46 | 48 | 165 | 110 |
+| adaptation-cloud-harbor | 44 | 44 | 151 | 100 |
+| collective-gardens | 42 | 40 | 137 | 92 |
+| observers-mirrors | 40 | 36 | 125 | 83 |
+| valley-living-machines | 44 | 44 | 151 | 100 |
+| **total** | | **314** | **1,081** | **720** |
+
+Verified on the rendered scene rather than on the arithmetic: reading
+`instanceMatrix` back out of the three instanced meshes and bucketing each
+instance by the island it sits on returns exactly the table above.
+
+**The visible effect is real but modest, and worth stating honestly.** Counted as
+the fraction of ground pixels differing from their local mean by more than
+10/255, at the same pinned camera before and after: the left half of the gardens
+goes 0.36% → 0.40% and the centre 4.09% → 5.24%, with block-9 high-pass std
+rising 2.64 → 2.78 and 6.69 → 7.30. The count went up 1.5× on that island and the
+coverage only 1.1–1.3×, because the added objects are small and a share of them
+land beyond the sampled bands. The perceived emptiness was mostly real and mostly
+perspective compression. The underlying inconsistency — a constant count spread
+across a 1.83× range of areas — is now impossible to reintroduce by accident,
+which is the durable part.
 
 ### There is nothing far away to fade
 
