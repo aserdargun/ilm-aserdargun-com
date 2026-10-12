@@ -1189,28 +1189,48 @@ is, because the mesh carries **no UVs** (drei names it `beam_low_3` after the
 merge, and it is 24 vertices); giving it ripple relief needs the triplanar map
 `detail.ts` builds for the stone.
 
-**That second half was tried and measured to do nothing.** `applySurfaceDetail`
-skips emissive materials, so the channel never got the stone's triplanar relief,
-and the obvious repair was to hand it `water_normal.png` through the same
-patcher. It applies — the material carries the `ilmekSurfaceDetail` flag, its
-`onBeforeCompile` is a function, and the console stays clean — and it changes
-nothing:
+**That second half was tried and measured to do almost nothing.** `applySurfaceDetail`
+skips emissive materials, so the channel never got the stone's triplanar relief, and
+the obvious repair was to hand it `water_normal.png` through the same patcher. It
+applies — on a fresh load the material carries the `ilmekSurfaceDetail` flag, its
+`onBeforeCompile` is a function, and the console stays clean — and it barely moves
+the surface:
 
 | | luminance std | mean luminance |
 | --- | --- | --- |
 | emission fix only | 8.32 | 110.3 |
 | + triplanar at strength 0.3 | 8.35 | 110.3 |
-| + triplanar at strength 2.5 | 8.35 | 110.3 |
+| + triplanar at strength 2.5 (8x the intended tilt) | 9.32 | 110.0 |
 | + its own program cache key | 8.35 | 110.3 |
 
-Identical to a tenth of a unit at eight times the intended tilt, and identical
-again after giving the material a `customProgramCacheKey` so it could not inherit
-an unpatched program. Whatever is eating the perturbation on this material was
-not found, so the patch was withdrawn rather than shipped as a no-op. The relief
-the channel has today comes from the lighting change alone, and the 8.3 it
-reaches is still short of the sand's 20.2 — so this surface is improved, not
-finished, and the triplanar route into GLB meshes with baked vertex colours is
-worth picking up again with more time than this had.
+Twelve percent at eight times the tilt, on a surface that has to reach the sand's
+20.2. So the patch was withdrawn rather than shipped as a near-no-op.
+
+**What the triplanar system itself is not.** The obvious worry is that the patch
+never reaches the shader, because three.js does not put `onBeforeCompile` in the
+default program cache key and a material can silently inherit a program compiled
+before its patch was attached. That is ruled out: the bridge decks carry **no
+texture map at all** — they are plain `BoxGeometry` with a flat colour — and they
+show a high-pass std of 6.40 with a p99 residual of 33.5, which can only have come
+from this patch. The system works. Whatever is eating the perturbation on this one
+mesh was not identified.
+
+**And the other guess was wrong too.** The channel's baked vertex colours looked
+like the obvious suspect for flattening it, so `vertexColors` was turned off on the
+material and the frame re-measured: **9.32 → 9.32**, not a thing changed. It is not
+the vertex colours.
+
+**A measurement trap worth more than the finding.** The first attempt at this read
+that the patch had not applied at all — and it had not, but not for the reason the
+reading suggested. `paint` runs in a layout effect keyed on `[instance, paintKey]`,
+and after an HMR edit neither of those changes, so the new closure is never called
+and the old one stays on the material. Measuring after an HMR edit silently
+measures the *previous* build. Anything driven by a `paint` callback has to be
+measured after a full page load, and the state has to be read back rather than
+assumed: the flag was absent, which is what caught it.
+
+So the channel is improved and still not finished: 8.3 against the sand's 20.2, and
+the route to closing that is genuinely open.
 
 ### Comparing two frames, and refusing to compare the wrong ones
 
