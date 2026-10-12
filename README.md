@@ -1153,6 +1153,43 @@ Verified end to end in the browser, both ways:
 | fixed | `[]` |
 | clone reverted | `657v/4m — 28 instances, 1 distinct position, all at (4, 0, 30)` |
 
+### The water under the Great Loom was a painted plank
+
+Standing at the Flow Foundry, the loom's water channel is a thirty-unit bar
+lying across the sand in front of the frame — and it was the least water-like
+surface in the game. Measured from a frame at a settled camera, taking a tight
+interior patch of its top face against the sand a few metres either side of it:
+
+| surface | luminance std | mean luminance |
+| --- | --- | --- |
+| the channel, before | **2.77** | 156.2 |
+| the sand just above it | 22.76 | 116.9 |
+| the sand just below it | 16.55 | 109.8 |
+
+Two point seven against twenty-three. It had no surface variation at all, and it
+was *blown out* — brighter than the sand it sat on, which is why the loom's own
+shadow barely showed as it crossed the bar.
+
+The cause is a baked material. `landmarks.py` builds the channel with the
+`water` material, which `common.py` defines with `emission=PALETTE["water"]` at
+`emission_strength=0.5` and `roughness=0.18`. That is the same flat emissive
+that made the canal water read as turquoise cardboard three rounds ago, on the
+same concept, in the same world — the canal got measured and fixed, this one was
+never looked at.
+
+Dropping the emission and roughening the surface takes it to **8.32**, three
+times the relief, and the mean falls from 156.2 to 110.3 so the channel sits
+with the ground instead of above it; the shadow crossing it now reads.
+
+It is painted in `World.tsx` rather than fixed in `landmarks.py`, because that is
+a Blender material and changing it would mean regenerating the GLB — and this is
+the same recipe the canal already uses, applied to the one mesh whose material is
+called `water`. `water_normal.png` cannot be attached to it the way the canal's
+is, because the mesh carries **no UVs** (drei names it `beam_low_3` after the
+merge, and it is 24 vertices); giving it ripple relief needs the triplanar map
+`detail.ts` builds for the stone. That is the remaining half and it is not done
+here.
+
 ### Comparing two frames, and refusing to compare the wrong ones
 
 Rendering an A/B of a visual change is easy to get wrong in a way that produces

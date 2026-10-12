@@ -366,7 +366,32 @@ export function Landmark({
     }
   })();
 
-  return <Asset name={model} fallback={fallback} />;
+  return (
+    <Asset
+      name={model}
+      fallback={fallback}
+      // The water channel under the Great Loom is the only thing in the
+      // landmarks using the `water` material, and it is baked with a strong
+      // flat emission. Measured from the frame, that left it with a luminance
+      // standard deviation of 2.8 against 22.8 for the sand directly beside
+      // it — it was a painted plank, and the loom's own shadow barely showed on
+      // it. Dropping the emission and roughening the surface takes it to 8.3,
+      // which is where the shadow crossing it reads properly.
+      //
+      // Painted here rather than in `landmarks.py` because that is a Blender
+      // material: changing it would mean regenerating the GLB, and this is the
+      // same recipe the canal's water already uses. It still has no surface
+      // relief — the mesh carries no UVs, so it would need the triplanar map
+      // `detail.ts` builds for the stone.
+      paint={(mesh) => {
+        const material = mesh.material as THREE.MeshStandardMaterial;
+        if (!material?.name || material.name !== 'water') return;
+        material.emissiveIntensity = 0.1;
+        material.roughness = 0.35;
+        material.needsUpdate = true;
+      }}
+    />
+  );
 }
 
 function SynthesisTree({ restored }: { restored: boolean }) {
