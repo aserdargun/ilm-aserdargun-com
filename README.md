@@ -65,6 +65,7 @@ source rather than being opaque binary files:
 | `tools/blender/render_preview.py` | Contact-sheet renders for review |
 | `tools/blender/ground_texture.py` | Tiling normal + roughness maps for the terrain |
 | `tools/blender/measure_texture.py` | Measures texture anisotropy without Blender |
+| `tools/measure_frame.py` | Compares two rendered frames, and refuses incomparable ones |
 
 Eleven files are downloaded, about 1.4 MB in total: the Weaver, the puzzle
 console, a landmark for each of the eight regions (the hub's is the Synthesis
@@ -1029,6 +1030,62 @@ land beyond the sampled bands. The perceived emptiness was mostly real and mostl
 perspective compression. The underlying inconsistency — a constant count spread
 across a 1.83× range of areas — is now impossible to reintroduce by accident,
 which is the durable part.
+
+### Comparing two frames, and refusing to compare the wrong ones
+
+Rendering an A/B of a visual change is easy to get wrong in a way that produces
+a confident, completely wrong number. Four times in three rounds of this project
+that happened, each of them looking like a clean measurement:
+
+| what went wrong | what it reported |
+| --- | --- |
+| diffed a strip of frame that was shadowed sand, not the water | "the water never changes" |
+| the browser was sitting on the title menu | "the canal surface never changes" (it measured the teal *Continue* button) |
+| a counter incremented only inside a guard, so one sample was taken | "every disc has exactly one colour" |
+| an HMR remount moved the camera between the two shots | "SMAA changes 54% of the frame" |
+
+None of these is detectable from the pixels: the frames genuinely differ. A diff
+cannot tell a changed world from a moved camera, because both are a large
+difference between two images. So `tools/measure_frame.py` refuses the
+comparison instead, and the refusals are the feature:
+
+```bash
+# the ordinary case, with the camera recorded alongside each shot
+/usr/bin/python3 tools/measure_frame.py a.png b.png --meta a.json b.json
+
+# to ignore whatever animates, pass a third frame from one of the two states
+/usr/bin/python3 tools/measure_frame.py a.png b.png --meta a.json b.json --control b1.png
+
+# prove the tool can fail before trusting what it says
+/usr/bin/python3 tools/measure_frame.py --selftest
+```
+
+It exits **2** and prints `INCOMPARABLE` when the cameras differ by more than
+`--camera-tol` (0.001 world units by default), when either shot has no camera
+metadata at all, when the quality tier or the drawing buffer differ, or when the
+player moved. The metadata is the small JSON the browser probe already produces;
+only `camera` is required. With `--control` it also reports how much of the frame
+was animating and excludes it, which is the difference between "the change did
+nothing" and "the change did nothing except where something was moving".
+
+The self-test is ten checks and it earns its place: a camera move, missing
+metadata and a quality change all have to be refused, a real change has to *not*
+be refused, identical frames have to measure exactly zero, and the motion mask
+has to demonstrably exclude what it claims to. One of those ten failed the first
+time it ran, and it was the check that was wrong rather than the tool — it
+expected a 12-pixel slide of a bright slab to change a large fraction of the
+frame, but a slide moves only the slab's *edges*, since its interior is the same
+colour either side. The assertion now measures the contrast that actually moved,
+and the whole-frame-coverage case is tested separately with a tint. A test whose
+failure means nothing is the same problem one level down from a measurement whose
+failure means nothing.
+
+Run against the SMAA pair from the antialiasing round, with the camera recorded:
+`verdict: comparable`, `cameraOffset: 0.0`, 1.16% of pixels changed by more than
+4/255, and the hard-silhouette fraction falling from 0.192% to 0.176% — the same
+numbers that round reported by hand. Run against the pair that round got wrong,
+with no camera metadata: `verdict: INCOMPARABLE`, exit 2, "do not quote these
+numbers".
 
 ### The medium tier has no antialiasing, and buying it back is not worth the frame
 
