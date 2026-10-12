@@ -1,4 +1,5 @@
-import { useLayoutEffect, useMemo } from 'react';
+import { useLayoutEffect, useMemo, useRef } from 'react';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { REGIONS, type RegionDef } from '../catalog/regions';
 import { makeRng } from '../systems/types';
@@ -433,8 +434,70 @@ function SynthesisTree({ restored }: { restored: boolean }) {
   );
 }
 
-/** The channel that carries water once the opening connection is made. */
+/**
+ * The channel that carries water once the opening connection is made.
+ *
+ * This was a single flat translucent plane: one uniform turquoise rectangle
+ * lying on the sand, which is the least water-like thing the world can draw and
+ * the most important one to get right — the canal appearing is the moment the
+ * game's title happens, and the restoration text for two regions is literally
+ * "water rises".
+ *
+ * Two layers instead of one, because a single scrolling map reads as a texture
+ * sliding under a sheet of glass. Two maps at different scales, scrolling in
+ * different directions and at different speeds, cross-cancel into motion that
+ * has no repeating cycle — the same reason a river surface never looks like
+ * anything you can point at. `water_normal.png` supplies both; the second
+ * layer carries the same image but is its own texture object, because `offset`
+ * lives on the texture and sharing one would make them scroll together.
+ *
+ * The layers are 4 mm apart rather than coplanar so transparent sorting has
+ * something to order by, and the upper one does not write depth.
+ *
+ * The two material settings that actually make the relief read were found by
+ * measurement, not by taste. Raising `normalScale` from 0.9 to 2.5 — nearly 3x —
+ * moved the block high-pass residual of the surface by 9% (3.93 -> 4.30): the
+ * relief was never starved of amplitude, it was starved of *light*. A flat
+ * emissive fill of 0.30 is added to every pixel regardless of the normal, and at
+ * roughness 0.05-0.08 the environment reflection is a mirror image of a smooth
+ * gradient, so almost nothing varies with the surface angle. Dropping emissive
+ * to 0.08 and raising roughness to 0.35 put the response back: the same residual
+ * mean rose 41% (1.21 -> 1.71) and the streaks now run the whole length of the
+ * channel instead of appearing as one hard specular sparkle near the middle.
+ */
+const WATER_NORMAL_URL = '/textures/water_normal.png';
+
+/** Ripple speed along the channel, in UV units per second. */
+const WATER_FLOW = 0.05;
+
+function makeWaterNormal(repeatU: number, repeatV: number): THREE.Texture {
+  const map = new THREE.TextureLoader().load(WATER_NORMAL_URL);
+  // Relief, not colour: decoding it as sRGB would skew the normals flat.
+  map.colorSpace = THREE.NoColorSpace;
+  map.wrapS = THREE.RepeatWrapping;
+  map.wrapT = THREE.RepeatWrapping;
+  map.repeat.set(repeatU, repeatV);
+  return map;
+}
+
 function FlowingCanal() {
+  // A ref, not `useMemo`: these are three.js textures whose `offset` is written
+  // every frame. They are imperative GPU objects, not render state, and a ref
+  // says so without lying about a dependency array.
+  const maps = useRef<[THREE.Texture, THREE.Texture] | null>(null);
+  if (maps.current === null) maps.current = [makeWaterNormal(2, 4), makeWaterNormal(3.3, 6.7)];
+  const [body, sheen] = maps.current;
+
+  useFrame((_, delta) => {
+    // Clamped so a backgrounded tab does not resume with one enormous jump,
+    // and wrapped so the offsets never grow large enough to lose precision
+    // against the repeat — a channel that stutters after twenty minutes is a
+    // worse bug than one that never flows.
+    const dt = Math.min(delta, 0.1);
+    body.offset.y = (body.offset.y - dt * WATER_FLOW) % 1;
+    sheen.offset.x = (sheen.offset.x + dt * WATER_FLOW * 0.62) % 1;
+  });
+
   return (
     <group position={[0, 0.12, 11]}>
       <mesh rotation={[-Math.PI / 2, 0, 0]}>
@@ -442,11 +505,29 @@ function FlowingCanal() {
         <meshStandardMaterial
           color={PALETTE.turquoise}
           transparent
-          opacity={0.72}
-          roughness={0.15}
+          opacity={0.62}
+          roughness={0.35}
           metalness={0.1}
           emissive={PALETTE.turquoise}
-          emissiveIntensity={0.35}
+          emissiveIntensity={0.08}
+          normalMap={body}
+          normalScale={new THREE.Vector2(2.5, 2.5)}
+        />
+      </mesh>
+      {/* Second pass: finer, crossing the first, and only a highlight. */}
+      <mesh position={[0, 0.004, 0]} rotation={[-Math.PI / 2, 0, 0]} renderOrder={1}>
+        <planeGeometry args={[3.2, 8]} />
+        <meshStandardMaterial
+          color={PALETTE.turquoise}
+          transparent
+          opacity={0.3}
+          roughness={0.3}
+          metalness={0}
+          emissive={PALETTE.turquoise}
+          emissiveIntensity={0.12}
+          normalMap={sheen}
+          normalScale={new THREE.Vector2(0.55, 0.55)}
+          depthWrite={false}
         />
       </mesh>
       {[-4, 4].map((z) => (

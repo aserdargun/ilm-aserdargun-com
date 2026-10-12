@@ -29,6 +29,9 @@ SIZE = 512
 # `main()` next to the tilt it actually measured, so the two can be compared.
 SOIL_PEAK_SLOPE = 0.6
 STONE_PEAK_SLOPE = 0.95
+# Water is much flatter than either. Its highlight is the whole read, and a
+# steep map turns a canal into crumpled foil.
+WATER_PEAK_SLOPE = 0.22
 
 
 def periodic_value_noise(period, cells, seed):
@@ -160,6 +163,55 @@ def stone_height_field(size=SIZE):
     return height
 
 
+def water_height_field(size=SIZE):
+    """
+    Ripples for the canal surface.
+
+    Water is not grit. The ground's fBm is isotropic at every octave, which is
+    right for sand and wrong here: real ripples are organised — a train of
+    crests crossing the surface, each a long ridge rather than a blob. So the
+    field is a handful of crossed sine trains plus one octave of fine detail to
+    break their edges.
+
+    Every train uses **integer** wave numbers in both axes. That is what makes
+    the result tile exactly: the field is a sum of sinusoids whose periods
+    divide the image, so the left edge meets the right one with no seam. Random
+    frequencies would look fine in isolation and break the moment the texture
+    repeats, which on a canal is the one thing the eye is guaranteed to catch —
+    the whole point of the surface is that it moves.
+
+    The trains are biased towards the +V axis, which elongates the crests along
+    U. The canal scrolls the map along V, so the crests travel down the channel
+    rather than sliding sideways across it.
+    """
+    axis = np.arange(size) / float(size)
+    X, Y = np.meshgrid(axis, axis, indexing="ij")
+    tau = 2.0 * math.pi
+
+    # (kx, ky, amplitude). Integer pairs only; see above.
+    trains = (
+        (1, 3, 1.00),
+        (1, 5, 0.72),
+        (2, 7, 0.46),
+        (1, 9, 0.30),
+        (3, 12, 0.22),
+        (5, 16, 0.14),
+    )
+    height = np.zeros((size, size), dtype=np.float64)
+    for kx, ky, amp in trains:
+        # Phases are fixed constants, not noise: the map must be identical on
+        # every machine that regenerates it.
+        height += amp * np.sin(tau * (kx * X + ky * Y) + kx * 0.7 + ky * 0.3)
+
+    # One octave of fine detail, kept low so it roughens the crest edges
+    # without turning the whole surface into noise again.
+    height += 0.9 * fbm(size, 6, 3, seed=3313)
+
+    height -= height.mean()
+    height /= max(np.abs(height).max(), 1e-9)
+    return height * 0.5 + 0.5
+
+
 def roughness_map(height, size=SIZE):
     """
     Roughness variation, from a *different* noise than the normals.
@@ -213,10 +265,16 @@ def main():
     # scales it back down again per material.
     stone = normal_map(stone_height_field(), peak_slope=STONE_PEAK_SLOPE)
 
+    # The canal. Unlike the other two this one is never seen still, so its map
+    # is scrolled across the surface at runtime; a seamless tile is not optional
+    # here in the way it is everywhere else.
+    water = normal_map(water_height_field(), peak_slope=WATER_PEAK_SLOPE)
+
     for name, rgb, peak_slope in (
         ("ground_normal", normal, SOIL_PEAK_SLOPE),
         ("ground_rough", rough_rgb, None),
         ("stone_normal", stone, STONE_PEAK_SLOPE),
+        ("water_normal", water, WATER_PEAK_SLOPE),
     ):
         path = save_image(name, rgb)
         if peak_slope is None:
