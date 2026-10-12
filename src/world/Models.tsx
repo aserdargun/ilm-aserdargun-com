@@ -207,6 +207,24 @@ function AssetMesh({
   const resolved = useMemo(() => scale ?? MODEL_SCALE[name] ?? 1, [scale, name]);
   const detailMap = useSurfaceDetailMap();
 
+  /**
+   * Each `<Asset>` renders its own copy of the loaded scene.
+   *
+   * `useModel` is a cache: every call with the same name hands back the *same*
+   * Object3D. Rendering that object from more than one `<primitive>` asks
+   * three.js to give one node twenty-eight parents, and the last one to mount
+   * wins — so the twenty-eight puzzle consoles in this world were all drawing
+   * their authored plinth at a single spot near the spawn, and not one console
+   * had a plinth where the player actually stands. The landmarks were fine
+   * only because each of them is a different file.
+   *
+   * A deep clone gives every instance its own transform tree. Geometry and
+   * materials stay shared, which is what makes this cheap: the console is 657
+   * vertices across four meshes, and `applySurfaceDetail` is guarded by
+   * `PATCH_FLAG`, so the shared materials are still patched exactly once.
+   */
+  const instance = useMemo(() => (scene ? scene.clone(true) : null), [scene]);
+
   // Synced in a layout effect rather than assigned during render: an inline
   // arrow would otherwise give `paint` a new identity on every render and drag
   // the effect below along with it. Layout effects run in declaration order, so
@@ -220,35 +238,35 @@ function AssetMesh({
   // this has to land before the browser paints so the landmark is never shown
   // untextured while three.js recompiles the program.
   useLayoutEffect(() => {
-    if (!scene) return;
+    if (!instance) return;
     if (CREATURE_MODELS.has(name)) {
       // Opt these out by name rather than skipping them here: the scene-wide
       // pass in `Scene.tsx` walks every material in the world, and it has no
       // way to know which mesh belongs to a creature.
-      scene.traverse((child: unknown) => {
+      instance.traverse((child: unknown) => {
         const mesh = child as Mesh & { material?: { userData?: Record<string, unknown> } };
         const material = mesh.material;
         if (material?.userData) material.userData[NO_DETAIL_FLAG] = true;
       });
       return;
     }
-    applySurfaceDetail(scene, detailMap);
-  }, [scene, detailMap, name]);
+    applySurfaceDetail(instance, detailMap);
+  }, [instance, detailMap, name]);
 
   // Per-model state painted onto the loaded geometry, the way `StageConsole`
   // keeps its state-driven mark in code while the plinth stays a model.
   useLayoutEffect(() => {
-    if (!scene || !paintRef.current) return;
-    scene.traverse((child: unknown) => {
+    if (!instance || !paintRef.current) return;
+    instance.traverse((child: unknown) => {
       const mesh = child as Mesh;
       if (mesh.isMesh) paintRef.current?.(mesh);
     });
-  }, [scene, paintKey]);
+  }, [instance, paintKey]);
 
   useEffect(() => {
     // Trailing colour-space correction so PBR materials match the procedural
     // meshes rendered elsewhere in the scene.
-    scene?.traverse((child: unknown) => {
+    instance?.traverse((child: unknown) => {
       const mesh = child as Mesh;
       // A loaded GLB carries no shadow flags: the glTF format has no concept
       // of them, so every landmark was floating until it was told to cast and
@@ -272,12 +290,12 @@ function AssetMesh({
         (material as { vertexColors: boolean }).vertexColors = true;
       }
     });
-  }, [scene]);
+  }, [instance]);
 
-  if (!scene || visible === false) return null;
+  if (!instance || visible === false) return null;
   return (
     <primitive
-      object={scene}
+      object={instance}
       position={position}
       rotation={rotation}
       scale={resolved}

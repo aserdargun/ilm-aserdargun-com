@@ -1031,6 +1031,57 @@ perspective compression. The underlying inconsistency — a constant count sprea
 across a 1.83× range of areas — is now impossible to reintroduce by accident,
 which is the durable part.
 
+### Twenty-eight puzzle consoles shared one plinth, at the wrong place
+
+Every puzzle console in the world is supposed to stand on an authored plinth:
+`<Asset name="console" visible={!done} …>` renders the GLB, and the state-driven
+mark that floats above it stays in code. Walking up to one on the Cartographer's
+Terrace showed the mark rotating in mid-air with nothing underneath it, and its
+own shadow falling on the sand it was supposed to be standing on.
+
+The cause is a cache. drei's `useModel` is memoised by name, so all 28 `<Asset>`
+calls with `name="console"` were handed the **same Object3D**. Rendering one
+three.js node from 28 `<primitive>` elements asks for 28 parents; the last one to
+mount wins, and the rest are silently drawn in the wrong place. Measured on the
+running build, before the fix:
+
+| GLB | instances | distinct world positions |
+| --- | --- | --- |
+| the eight landmarks | 1 each | 1 each — all correct |
+| `weaver.glb` (the player) | 1 | 1 — correct |
+| **`console.glb`** | **28** | **1** |
+
+All 28 plinths — 4 meshes, 657 vertices each — were stacked at world (4, 0, 30),
+just east of the spawn point, spanning (2.1, 0, 28.35)–(5.9, 2.65, 31.65). Not
+one of the 28 consoles had a plinth where the player stands. The console is the
+only model in the game used more than once, which is exactly why the landmarks
+were never affected: each of those is a different file, so each gets its own
+cached scene and its own single parent.
+
+`AssetMesh` now renders `scene.clone(true)` per instance. Geometry and materials
+stay shared, so the cost is 28 transform trees over one 657-vertex mesh, and
+`applySurfaceDetail` is still applied once because it is guarded by
+`PATCH_FLAG` on the shared materials. After the fix the same probe returns
+**28 plinths at 28 distinct positions**, the first of which is the hub console at
+(0, 11) — where it had never been drawn at all.
+
+**How it went unnoticed for so long.** The two states in which a console is on
+screen are both wrong-looking, which is why it never read as a missing object:
+when the stage is complete, `visible={!done}` hides the plinth entirely, so a
+finished console legitimately has a floating mark; and when the stage is open,
+the mark still floats, on the sand, looking like the same thing. Only standing
+next to an *unfinished* console on an island other than the spawn shows a plinth
+that should be there and is not. Two of the screens taken while chasing this were
+also of the wrong state: `unlockAll()` completes every stage, which hides every
+plinth in the game, so the first look at a console measured the finished state.
+
+This one has no unit test, and it should be said plainly rather than papered
+over with one: the defect is in how a cached Object3D is parented by the
+renderer, and no amount of testing `three` would catch a regression here. The
+check that does catch it is a scene-graph one — count the GLB's instances and
+their distinct world positions, and require the two numbers to match — and it
+runs in about a second against a loaded page.
+
 ### Comparing two frames, and refusing to compare the wrong ones
 
 Rendering an A/B of a visual change is easy to get wrong in a way that produces
