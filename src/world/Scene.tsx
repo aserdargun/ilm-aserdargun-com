@@ -594,7 +594,7 @@ function WorldGeometry({
   useEffect(() => {
     registerBridges(bridges);
     // Walkable area = the islands plus only the spans that have been built.
-    initNavigation(openRegions);
+    initNavigation(openRegions, bridges);
     // Props register themselves from their own geometry; only the static world
     // is cleared and rebuilt here.
     clearColliders('landmarks');

@@ -29,7 +29,17 @@ export interface WalkableArea {
 let areas: WalkableArea[] = [];
 let openRegions = '';
 
-function buildAreas(openRegionIds: Set<string>): WalkableArea[] {
+/** Deck width assumed when a caller does not say how wide it built the span. */
+const DEFAULT_BRIDGE_WIDTH = 12;
+
+/** What a caller passes so the corridor can follow the deck it drew. */
+export interface BridgeSpan {
+  to: [number, number];
+  width: number;
+}
+
+function buildAreas(openRegionIds: Set<string>, spans: BridgeSpan[]): WalkableArea[] {
+  const spansByTarget = new Map(spans.map((s) => [`${s.to[0]},${s.to[1]}`, s]));
   const list: WalkableArea[] = REGIONS.map((region) => ({
     kind: 'disc' as const,
     x: region.anchor[0],
@@ -47,6 +57,15 @@ function buildAreas(openRegionIds: Set<string>): WalkableArea[] {
     if (region.id === 'hub') continue;
     if (!openRegionIds.has(region.id)) continue;
 
+    // The corridor is derived from the deck that was actually built, rather
+    // than carrying its own copy of the number. It used to hold a literal 5.6
+    // while the deck was drawn from `Bridge.width`, so the two were correct by
+    // coincidence and unrelated by construction — the same shape of drift that
+    // left the opening bridge walkable with nothing drawn on it. A 12-wide
+    // deck still gives 5.6 here and a 5.2 lane after the margin.
+    const span = spansByTarget.get(`${region.anchor[0]},${region.anchor[2]}`);
+    const deckHalfWidth = (span?.width ?? DEFAULT_BRIDGE_WIDTH) / 2;
+
     list.push({
       kind: 'bridge' as const,
       x: 0,
@@ -57,7 +76,7 @@ function buildAreas(openRegionIds: Set<string>): WalkableArea[] {
       // Matches the drawn causeway. The corridor is generous on purpose:
       // camera-relative walking drifts, and a narrow span would leave players
       // pinned against an invisible wall instead of on the bridge.
-      halfWidth: 5.6,
+      halfWidth: deckHalfWidth - 0.4,
       margin: 0.4,
     });
 
@@ -92,17 +111,27 @@ function buildAreas(openRegionIds: Set<string>): WalkableArea[] {
 let openRegionSet = new Set<string>();
 
 /** Rebuilt whenever a bridge is laid or a region is restored. */
-export function initNavigation(openRegionIds: Iterable<string>): void {
+export function initNavigation(
+  openRegionIds: Iterable<string>,
+  spans: BridgeSpan[] = [],
+): void {
   const next = new Set(openRegionIds);
-  const signature = [...next].sort().join(',');
+  // The signature covers the spans as well as the regions. Keyed on the
+  // regions alone, a rebuild with different deck widths was skipped as
+  // "unchanged" while the areas kept the widths they were first built with —
+  // the same shape as guarding `setColorAt` on `instanceColor` being non-null.
+  const signature = `${[...next].sort().join(',')}|${spans
+    .map((s) => `${s.to[0]},${s.to[1]},${s.width}`)
+    .sort()
+    .join(';')}`;
   if (signature === openRegions && areas.length > 0) return;
   openRegionSet = next;
   openRegions = signature;
-  areas = buildAreas(openRegionSet);
+  areas = buildAreas(openRegionSet, spans);
 }
 
 function ensureAreas(): WalkableArea[] {
-  if (areas.length === 0) areas = buildAreas(openRegionSet);
+  if (areas.length === 0) areas = buildAreas(openRegionSet, []);
   return areas;
 }
 

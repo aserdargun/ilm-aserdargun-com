@@ -676,13 +676,29 @@ confident wrong number. Reading the scene and projecting properly:
 | deck, half-width | 6 | |
 | central strip | 4.32 | `width * 0.36` |
 | railings | ±5.8 | `width / 2 - 0.2`, emissive turquoise, 0.3 × 0.6 × span |
-| walkable corridor | ±5.2 | `halfWidth: 5.6` − `margin: 0.4` |
+| walkable corridor | ±5.2 | derived: `width / 2 - 0.4` minus a 0.4 margin |
 
 So the player can walk to 5.2, which is 0.6 short of a railing and 0.8 short of
 the deck edge. `isWalkable` and `distanceToWalkable` agree with that, and
 `__ilm.blocking.offWalkableBy` agrees with them — checked in one call, at the
 player's *settled* position rather than the one the teleport asked for, which is
 the third way that measurement went wrong.
+
+**The corridor now follows the deck instead of restating it.** `buildAreas` used
+to hold a literal `halfWidth: 5.6` while the deck was drawn from
+`Bridge.width`. The two agreed, but by coincidence: the walkable surface was
+not derived from the geometry, so the two could have drifted the way the opening
+bridge did without anything noticing. `initNavigation` now takes the spans it
+was given and computes `width / 2 - 0.4`, which for the only width in use is
+exactly the 5.6 it held before. `tests/bridge-corridor.test.ts` pins that the
+corridor scales with the deck it was built from, so the coupling is now a
+property rather than a coincidence.
+
+Rebuilding navigation also had the same class of guard bug as `instanceColor`:
+the early return that skips an unchanged rebuild compared only the *set of open
+regions*, not the spans, so a rebuild carrying different deck widths was skipped
+while the areas kept the widths they were first built with. The signature covers
+both now.
 
 **Checked and found sound.** The suspicion was that `Bridge.width` is a full
 width (`Player.ts` and `navigation.ts` read it as a half-width and as
