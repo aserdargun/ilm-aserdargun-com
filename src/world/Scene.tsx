@@ -417,6 +417,13 @@ function SceneContents() {
   return (
     <>
       <color attach="background" args={[PALETTE.midnight]} />
+      {/* Aerial perspective. The range is deliberately much longer than the
+          islands: the eight walkable discs are coplanar and are always viewed
+          from about 5 m above a flat plane, so from any one of them the others
+          are seen almost edge-on and sit below the horizon. There is no large
+          distant surface for fog to act on, and retuning these two numbers moves
+          0.03-0.16% of a frame. See "There is nothing far away to fade" in the
+          README before spending a round on it. */}
       <fog attach="fog" args={[HORIZON_COLOR, 110, 520]} />
       <SkyDome />
       <Lighting quality={game.settings.quality} target={player.current.position} region={shadowRegion} />

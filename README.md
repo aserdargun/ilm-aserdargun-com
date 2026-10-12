@@ -970,6 +970,65 @@ browser had been restarted and was sitting on the title menu, so three
 screenshots "measured" the teal *Continue* button. Both said the same wrong thing
 with high confidence. A measurement is only as good as the state it was taken in.
 
+### There is nothing far away to fade
+
+The obvious next depth cue after the canal is aerial perspective, and the scene
+does have fog: `<fog args={[HORIZON_COLOR, 110, 520]} />` in `Scene.tsx`, matched
+to the exact horizon tone the sky gradient uses. The range looked wrong, so it
+was measured.
+
+| | value |
+| --- | --- |
+| island radii | 34 – 46 |
+| landmark anchors from the hub | 124 – 184 |
+| furthest mesh in the scene | 202 |
+| nearest edge-to-edge gap between two islands | ~65 |
+
+three.js smoothsteps the fog factor, so at the far anchors
+`smoothstep(110, 520, 181)` is **0.080**. The ramp really is calibrated past the
+content. Retuning it to 70–330 gives 0.39 at the far anchors and 0.11 at 124 —
+a real change in the arithmetic.
+
+It changes almost nothing on screen. Measured as a pixel diff between the two
+settings at a pinned camera:
+
+| viewpoint | fraction of frame that moves |
+| --- | --- |
+| hub, looking north | 0.16% |
+| collective gardens, looking back at the hub | 0.03% |
+
+Connected components of the difference isolate one region — the undersides of two
+far islands, 7,310 pixels. Everything else in the frame is either nearer than the
+new `near` value or is sky.
+
+The reason is geometric, and it is worth writing down so nobody spends a round
+rediscovering it. **The eight walkable discs are coplanar and are always viewed
+from about 4.7 m above a flat plane.** From any island, the others are seen
+almost exactly edge-on, so their top surfaces foreshorten to nothing and their
+bodies fall below the horizon line. The large surfaces in any frame are your own
+ground (0–40 units) and the sky — there is no third distance for fog to work on.
+The range stays at 110–520 with a comment saying why.
+
+Two other suspicions from the same round died under measurement, and are recorded
+for the same reason. The ground looked like a flat painted plain; its vertex
+colours are in fact **451–629 distinct colours per disc** with a luminance range
+of 61–81% of the mean. And the island rim read as a hard black outline; the 0.1
+luminance percentile is 5.4 (hub), 10.6 (terrace), 10.1 (gardens), with only
+0.02–0.04% of pixels below luminance 4 — it is a dark, detailed shadow, not a
+crush. The Cartographer's Terrace does look paler than the hub, and that is its
+declared palette: `stone: #b5a184` against the hub's `#a89277`.
+
+**Three of this round's measurements were wrong, and all three failed the same
+way: they were confident.** The first pixel diff was taken against a strip of the
+frame that was shadowed sand rather than water — the water plane's corners now get
+projected from the scene instead of guessed at. The second was taken after the
+browser had restarted onto the title menu, so three screenshots measured the teal
+*Continue* button while reporting that the canal's surface never changed. The
+third was a bug in my own loop: a counter incremented only inside the guard that
+decided whether to record a colour, so the unique-colour count was 1 for every
+disc and the ground looked like a single flat fill. A number that agrees with your
+hypothesis is not evidence for it — check what the instrument actually measured.
+
 ### Assets degrade, they do not break
 
 `src/world/Models.tsx` loads every model through an error boundary and a
