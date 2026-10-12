@@ -1490,7 +1490,29 @@ had streamed in.
 
 | Tier | Viewport | Drawing buffer | Median FPS | Worst frame |
 | --- | --- | --- | --- | --- |
-| high | 1440×810 @ DPR 2 | 2520×1417 (3.57 MP) | **61.2 FPS** | 33.7 ms |
+| high | 1440×810 @ DPR 2 | 2520×1417 (3.57 MP) | **120 FPS** | 10.3 ms |
+| medium | 1440×810 @ DPR 2 | 2160×1215 (2.62 MP) | **120 FPS** | 10.3 ms |
+| low | 1440×810 @ DPR 2 | 1800×1012 (1.82 MP) | **120 FPS** | 10.4 ms |
+| low, mobile emulation | 390×844 @ DPR 3 | 487×1055 (0.51 MP) | **120 FPS** | 9.4 ms |
+
+Every tier reads exactly 120.0, which is the display's refresh cap: at a pinned
+1440×810 the scene is not the thing deciding the frame rate any more. **The
+informative number here is the worst frame**, 9.3–10.4 ms against an 8.33 ms
+budget — every tier sustains the cap and none of them runs away from it.
+
+Because the cap hides the real cost, the figure that moves when work is added
+has to be taken above it. At 2560×1440 @ DPR 2 (4480×2520, 11.29 MP) the same
+build falls to **30.9 FPS**, and that is the configuration used to price changes.
+Adding 707 scattered instances (see "The scatter gave every island the same
+number") measured 30.9 against 31.3 FPS for the old counts at the same camera:
+about **1%**, below the run-to-run spread.
+
+The earlier figures in this table (55.4, 61.2, 80.9, 92.0, 98.8, 100.7, 101.2)
+were all below the cap, and none of them is comparable with the rows above — the
+scene went from being frame-bound to being refresh-bound, and the two states
+were also measured under different machine load. They are left in place below
+because each records what a particular change cost at the time, not because they
+measure the same thing as this table.
 | medium | 1440×810 @ DPR 2 | 2160×1215 (2.62 MP) | **80.9 FPS** | 18.6 ms |
 | low | 1440×810 @ DPR 2 | 1800×1012 (1.82 MP) | **98.8 FPS** | 18.4 ms |
 | low, mobile emulation | 390×844 @ DPR 3 | 487×1055 (0.51 MP) | **100.0 FPS** | 18.3 ms |
