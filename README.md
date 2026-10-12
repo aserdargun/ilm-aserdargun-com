@@ -1081,6 +1081,14 @@ perspective compression. The underlying inconsistency — a constant count sprea
 across a 1.83× range of areas — is now impossible to reintroduce by accident,
 which is the durable part.
 
+**Re-measured later against where the change actually landed**, by differencing
+the two frames and taking the windows out of the biggest-changed cells rather
+than out of convenient ones: ground coverage 5.96% → 7.01% (**×1.18**), with the
+ground's high-pass std going 6.60 → 7.16. That confirms the figure above. It also
+caught the weakness in how it was first taken — one of the two original boxes sat
+in a region that did not change at all (×1.00), because the boxes were picked
+before the diff showed where the new objects ended up.
+
 ### Twenty-eight puzzle consoles shared one plinth, at the wrong place
 
 Every puzzle console in the world is supposed to stand on an authored plinth:
