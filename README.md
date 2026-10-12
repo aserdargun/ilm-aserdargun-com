@@ -1371,13 +1371,13 @@ had streamed in.
 
 | Tier | Viewport | Drawing buffer | Median FPS | Worst frame |
 | --- | --- | --- | --- | --- |
-| high | 1440×810 @ DPR 2 | 2520×1417 (3.57 MP) | **55.4 FPS** | 37.1 ms |
-| medium | 1440×810 @ DPR 2 | 2160×1215 (2.62 MP) | **92.0 FPS** | 27.9 ms |
-| low | 1440×810 @ DPR 2 | 1800×1012 (1.82 MP) | **100.7 FPS** | 13.2 ms |
-| low, mobile emulation | 390×844 @ DPR 3 | 487×1055 (0.51 MP) | **101.2 FPS** | 13.7 ms |
+| high | 1440×810 @ DPR 2 | 2520×1417 (3.57 MP) | **61.2 FPS** | 33.7 ms |
+| medium | 1440×810 @ DPR 2 | 2160×1215 (2.62 MP) | **80.9 FPS** | 18.6 ms |
+| low | 1440×810 @ DPR 2 | 1800×1012 (1.82 MP) | **98.8 FPS** | 18.4 ms |
+| low, mobile emulation | 390×844 @ DPR 3 | 487×1055 (0.51 MP) | **100.0 FPS** | 18.3 ms |
 
-The DPR cap is what separates the tiers: 1.75, 1.5 and 1.25. The high tier is
-the median of three 5-second runs (57.5 / 55.4 / 54.6); the medium tier of two.
+The DPR cap is what separates the tiers: 1.75, 1.5 and 1.25. Every tier is the
+median of three 10-second runs; the high tier was 61.0 / 61.3 / 61.2.
 
 **Where these numbers came from, and what moved them.** The 119 / 119 / 120.5 /
 120.5 figures two rounds ago were measured on a world where the ground was not
@@ -1396,6 +1396,14 @@ paid nothing measurable despite its shadow map going from 1024 to 1280.
 Every tier is still above 50 FPS and the medium and low tiers are effectively at
 the refresh cap, so the right call is to keep the correctness rather than trade
 it back.
+
+**The canal round moved these too.** Two extra draw calls over 3.2 × 8 units are
+not what cost or bought anything: high went 55.4 → **61.2** and medium 92.0 →
+**80.9**, low and mobile stayed flat. Those two moved in opposite directions by
+amounts no two-plane change can explain, so they are machine noise on a shared
+box rather than a measurement of the canal. They are recorded because a table
+that silently keeps old numbers when new ones are available is a table nobody
+can trust; read the low and mobile rows, which were stable to within a frame.
 
 Hardware string as reported by WebGL:
 `ANGLE (Apple, ANGLE Metal Renderer: Apple M4 Pro)`.
