@@ -39,6 +39,27 @@ host. The prepared destination is **https://ilm.aserdargun.com**. Domain
 registration, DNS and deployment are separate tasks for the owner to authorise;
 no deployment has been performed by this repository.
 
+**Auditing what is actually deployed.** Two things make production awkward to
+inspect, and both have cost time:
+
+- **There is no `__ilm` hook on the deployed build.** Every scene-graph probe used
+  in this README — `__ilm.audit()`, instance counts, world positions — is
+  development-only, so none of them can be re-run against the live site. Those
+  questions have to be answered against `npm run dev`, and the deployed bundle
+  confirmed separately by comparing hashes.
+- **World state cannot be reached on the live site.** The canal does not exist
+  until the opening connection is made, the bridges are not laid until their
+  regions are restored, and a finished console hides its own plinth by design
+  (`visible={!done}`). Everything else in this README that describes a restored
+  world was looked at in dev with the progression set directly; the live site can
+  only confirm that it loads without errors and serves the right bytes.
+
+What production *can* be checked for cheaply, and should be: that every asset it
+serves is byte-identical to the one in `public/`, and that the console is clean.
+At the last audit `water_normal.png` came back at 108,572 bytes, matching the
+file exactly, and the only console message on the live build is three.js's
+`THREE.Clock` deprecation notice.
+
 ---
 
 ## Art assets
