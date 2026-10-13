@@ -1308,6 +1308,37 @@ numbers that round reported by hand. Run against the pair that round got wrong,
 with no camera metadata: `verdict: INCOMPARABLE`, exit 2, "do not quote these
 numbers".
 
+### Occlusion was halved for a frame-bound build
+
+`PostFx.tsx` ran N8AO at `halfRes={!full}` with 8 samples outside the high tier,
+on the reasoning that ambient occlusion is a low-frequency term and a halved
+buffer is indistinguishable. That reasoning was priced against a build that was
+frame-bound, and it is also the wrong term to halve: contact darkening is
+exactly the signal that shows up as a hard contact edge, which is precisely what
+a half-resolution buffer cannot resolve.
+
+Both the AO pass and the SMAA pass were therefore measured on the deployed build
+rather than asserted, because the dev-only `__ilm` hook swamps a difference this
+size. The medium tier at 2160×1215:
+
+| | FPS | worst frame |
+| --- | --- | --- |
+| before (half-res AO, 8 samples) | 120.0 | 9.4 ms |
+| after (full-res AO, 16 samples) | 120.0 | 9.4 ms |
+
+Free, to a tenth of a millisecond. The image difference is 3.35% of the frame by
+more than 2/255 and 2.57% by more than 8/255, the contact-shadow pixel fraction
+barely moves (0.2590 → 0.2595) and mean luminance is 95.32 against 95.39 — the
+change lands where ambient occlusion acts and moves nothing else. That is what a
+resolution change should look like; a global exposure shift would have meant the
+pass had changed the scene's lighting rather than its contact term.
+
+The pattern across these two rounds is the worth keeping: **every quality tier
+setting that was chosen while the scene was frame-bound is now suspect**, because
+the cost it was weighed against no longer exists. The tiers are not automatically
+too conservative — but each one has to be re-priced on a build that is not the
+build the number came from.
+
 ### Antialiasing: the price was quoted against the wrong world
 
 `Scene.tsx` opens the canvas with `antialias: true`, and `PostFx.tsx` runs the
