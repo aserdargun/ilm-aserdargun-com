@@ -41,15 +41,17 @@ const GROUND_TILE_SIZE = 6;
 /**
  * Strength of the ground's surface relief, in tangent-space slope.
  *
- * This is a module constant, not an inline `new THREE.Vector2(...)`, and that is
- * not tidiness. An inline Vector2 is a fresh object on every render, so R3F sees
- * a changed prop and writes it back onto the material every time the component
- * re-renders — measured, a `normalScale` set to 8 from the console was back to
- * its declared 0.55 within 50 ms. It also meant the value could not be tuned at
- * all: every attempt to price the map at a stronger setting silently measured
- * the unchanged scene, which is why 0.55 looked like a well-chosen number for as
- * long as it was there. With the value hoisted, a runtime write now survives
- * 1200 ms untouched.
+ * This is a module constant rather than an inline `new THREE.Vector2(...)`, and
+ * that is not tidiness. With the literal inline, a `normalScale` written onto the
+ * material from outside was back to its declared 0.55 within 50 ms — measured by
+ * writing 8 and reading it back at 50, 300 and 1500 ms. With the value hoisted,
+ * the same write survives 1200 ms untouched. What puts it back is not recorded
+ * here; only the two ends of that measurement are.
+ *
+ * The consequence was worse than an untunable slider. Every attempt to price
+ * this map at a stronger setting was measuring the unchanged scene and reporting
+ * that the map did nothing, which is why 0.55 looked like a well-chosen number
+ * for as long as it was there.
  *
  * The number itself is measured. At 0.55 the ground's rendered luminance was
  * indistinguishable from the same scene with no normal map at all — below the
@@ -70,8 +72,8 @@ const GROUND_NORMAL_SCALE = 1.5;
 /**
  * The same value as a Vector2, built once.
  *
- * R3F compares a Vector2 prop by identity, so handing it a new one re-applies
- * the value on every render. This is the object the material actually holds.
+ * This is the object the JSX names, so what the material holds and what the
+ * declaration says are the same thing rather than two copies of a number.
  */
 const GROUND_NORMAL_SCALE_VECTOR = new THREE.Vector2(GROUND_NORMAL_SCALE, GROUND_NORMAL_SCALE);
 

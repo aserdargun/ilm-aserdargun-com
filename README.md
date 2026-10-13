@@ -1574,13 +1574,16 @@ strength. Handing the same material a synthetic map settled where the fault was
 not: it moved **13.04%** of the frame against a 0.22% baseline. The shader was
 sampling a normal map the whole time.
 
-The fault was one line of JSX. `normalScale={new THREE.Vector2(0.55, 0.55)}`
-builds a fresh object on every render, so R3F sees a changed prop and writes it
-back onto the material every time the component re-renders. **Measured: a
-`normalScale` set to 8 from the console was back to 0.55 within 50 ms.** That is
-why every attempt to price the map measured the unchanged scene and concluded
-the map was the problem. Hoisted to a module constant, the same write now
-survives 1200 ms untouched, and the value can be tuned for the first time.
+The fault was one line of JSX. With `normalScale={new THREE.Vector2(0.55, 0.55)}`
+written inline, **a `normalScale` set onto the material from outside was back to
+0.55 within 50 ms** — measured by writing 8 and reading it back at 50, 300 and
+1500 ms. Hoisted to a module constant, the same write survives 1200 ms
+untouched. What exactly re-applies the declaration is not recorded here; only
+those two measurements are.
+
+That is why every attempt to price the map measured the unchanged scene and
+concluded the map was the problem, and why 0.55 survived as a plausible number
+for so long.
 
 Once it could be tuned, the map turned out to be set far too weak as well.
 At 1.5 it moves **5.3%** of the frame by more than 4/255, mean absolute

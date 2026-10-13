@@ -34,12 +34,15 @@ export const PALETTE = {
 /**
  * Normal-map strengths, held as constants rather than written inline.
  *
- * `normalScale={new THREE.Vector2(x, y)}` builds a fresh object on every render,
- * so R3F writes it back onto the material every time the component re-renders.
- * Measured on the ground disc: a value set from outside was back to its declared
- * 0.55 within 50 ms. Anything tuned at runtime therefore measures the unchanged
- * scene and looks like it did nothing. See `GROUND_NORMAL_SCALE_VECTOR` in
- * `Atmosphere.tsx` for the measurement that caught it.
+ * These were written inline as `new THREE.Vector2(x, y)`, and with the literal
+ * form a value set on the material from outside was back to its declared number
+ * within 50 ms — measured on the ground disc, which had the same shape. Anything
+ * tuned at runtime therefore measured the unchanged scene and looked like it did
+ * nothing. See `GROUND_NORMAL_SCALE_VECTOR` in `Atmosphere.tsx`.
+ *
+ * These two never broke: their values were edited in source, which is the one
+ * thing an inline declaration could not undo. What they could not do was be
+ * measured at runtime at all.
  */
 const CANAL_NORMAL_SCALE = new THREE.Vector2(2.5, 2.5);
 const CANAL_SHEEN_NORMAL_SCALE = new THREE.Vector2(0.55, 0.55);
