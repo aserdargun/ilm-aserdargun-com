@@ -84,7 +84,15 @@ export function GameCanvas() {
   const quality = useGame().settings.quality;
   // A 3x phone at full resolution is three million pixels a frame; capping the
   // ratio keeps the fill rate survivable and the memory footprint small.
-  const dprCap = quality === 'low' ? 1.25 : quality === 'medium' ? 1.5 : 1.75;
+  //
+  // Medium sits at the same cap as high. It was 1.5, which is 36% fewer pixels,
+  // and the deployed build holds 120 Hz on the refresh cap with a 9.4 ms worst
+  // frame at that size — the headroom was never there to spend, and the tier was
+  // quietly rendering a softer image than the machine could have drawn. Priced on
+  // production; see "Medium was rendering a softer image than the machine could
+  // draw" in the README. Low keeps 1.25: it is the phone-first tier and the one
+  // whose fill rate is genuinely the constraint.
+  const dprCap = quality === 'low' ? 1.25 : 1.75;
   return (
     <Canvas
       shadows={quality !== 'low'}
