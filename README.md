@@ -1308,7 +1308,7 @@ numbers that round reported by hand. Run against the pair that round got wrong,
 with no camera metadata: `verdict: INCOMPARABLE`, exit 2, "do not quote these
 numbers".
 
-### The medium tier has no antialiasing, and buying it back is not worth the frame
+### Antialiasing: the price was quoted against the wrong world
 
 `Scene.tsx` opens the canvas with `antialias: true`, and `PostFx.tsx` runs the
 medium tier through an `EffectComposer` with `multisampling={0}` and no SMAA. The
@@ -1333,20 +1333,40 @@ MSAA at 4 samples costs **38% of the frame rate** — about 9 ms a frame — to 
 and what it buys was measured on a camera-verified A/B pair: hard silhouette
 steps (adjacent-column luminance jumps over 60/255) drop from 0.197% to 0.180%,
 **8.6%**, while the ground's fine texture is left essentially alone
-(block high-pass std 11.97 → 11.87, −0.8%). Paying 7.4% of the frame rate for
-8.6% of the edges is a bad trade, and MSAA is five times worse. The gap stays,
-and the reason it stays is now a measurement rather than a wrong premise.
+(block high-pass std 11.97 → 11.87, −0.8%). MSAA is five times worse than SMAA
+and stays off.
 
-**How the measurement nearly went wrong, twice.** The first A/B compared two
+**And then SMAA went on the medium tier anyway, because that 7.4% was priced
+against the wrong world.** All of the above was measured while the scene was
+frame-bound. Re-measuring the deployed build at a pinned viewport put every tier —
+high, medium, low, mobile — pinned to the 120 Hz refresh with a worst frame of
+9.3–10.4 ms. At that point the scene is no longer what decides the frame rate,
+and a pass costing 7.4% of a frame the GPU was finishing early is absorbed by the
+cap rather than paid for. Measured on production after the change:
+
+| tier, 2160×1215 | before | after |
+| --- | --- | --- |
+| FPS | 120.0 | **120.0** |
+| worst frame | 10.3 ms | **9.4 ms** |
+
+Free. The medium tier now has edge antialiasing for the first time in its life,
+and whole-frame hard edges on the live medium build read 0.00149 against 0.00200
+without it. The lesson is bigger than the pass: **a cost measured against a
+frame-bound build stops being a cost the moment the build is not frame-bound**,
+and quality tiers tuned against the old number were quietly being held back.
+
+**How the measurement nearly went wrong, three times.** The first A/B compared two
 screenshots taken a few seconds apart and reported that SMAA changed **54%** of
 the frame — far too much for an edge filter. The two shots were of *different
 views*: an HMR remount had reset the camera between them. The second comparison
 looked fine until the crop was inspected and the two panels turned out to show a
-rock in one and the canal in the other. Every A/B in this project now settles the
-camera first and reads its position back, and a pair is only compared when the
-two positions are equal to three decimals. That is the fourth time this session a
-confident number came out of a frame that was not the thing being measured; the
-first three are in "There is nothing far away to fade".
+rock in one and the canal in the other. The third was not a screenshot problem at
+all: measured in development, SMAA came out **10% faster than having no SMAA at
+all**, because the dev-only `__ilm` hook walks the whole scene graph every frame
+and swamps a difference this small. Every A/B now settles the camera first and
+reads its position back, a pair is only compared when the two positions agree to
+three decimals, and a performance question is only priced on a build with nothing
+else rendering.
 
 ### There is nothing far away to fade
 
@@ -1809,7 +1829,7 @@ had streamed in.
 | Tier | Viewport | Drawing buffer | Median FPS | Worst frame |
 | --- | --- | --- | --- | --- |
 | high | 1440×810 @ DPR 2 | 2520×1417 (3.57 MP) | **120 FPS** | 10.3 ms |
-| medium | 1440×810 @ DPR 2 | 2160×1215 (2.62 MP) | **120 FPS** | 10.3 ms |
+| medium | 1440×810 @ DPR 2 | 2160×1215 (2.62 MP) | **120 FPS** | 9.4 ms |
 | low | 1440×810 @ DPR 2 | 1800×1012 (1.82 MP) | **120 FPS** | 10.4 ms |
 | low, mobile emulation | 390×844 @ DPR 3 | 487×1055 (0.51 MP) | **120 FPS** | 9.4 ms |
 
@@ -1827,8 +1847,7 @@ about **1%**, below the run-to-run spread.
 
 The earlier figures in this table (55.4, 61.2, 80.9, 92.0, 98.8, 100.7, 101.2)
 were all below the cap, and none of them is comparable with the rows above — the
-scene went from being frame-bound to being refresh-bound, and the two states
-were also measured under different machine load. They are left in place below
+scene went from being frame-bound to being refresh-bound, and the two stateswere also measured under different machine load. They are left in place below
 because each records what a particular change cost at the time, not because they
 measure the same thing as this table.
 | medium | 1440×810 @ DPR 2 | 2160×1215 (2.62 MP) | **80.9 FPS** | 18.6 ms |
