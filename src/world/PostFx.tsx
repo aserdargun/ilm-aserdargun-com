@@ -40,13 +40,18 @@ export function PostProcessing({ quality }: { quality: Quality }) {
         // occlusion into the frame and takes no blendFunction, so there is
         // nothing to configure beyond its sampling.
         aoRadius={2.2}
-        aoSamples={full ? 16 : 8}
+        aoSamples={16}
         distanceFalloff={1.0}
         screenSpaceRadius={false}
-        // AO is a low-frequency term — it darkens creases and contact points —
-        // so sampling it at half resolution is indistinguishable on the medium
-        // tier and costs a quarter as much.
-        halfRes={!full}
+        // Full resolution on every tier. It was halved outside high on the
+        // reasoning that AO is a low-frequency term, priced against a build
+        // that was frame-bound. The deployed build is refresh-bound (every tier
+        // pinned to 120 Hz, worst frame 9.4-10.4 ms), so that price no longer
+        // applies -- and contact darkening is precisely the term that shows up
+        // as a hard contact edge, which is the half-resolution pass cannot
+        // resolve. Measured on production before and after; see "Occlusion was
+        // halved for a frame-bound build" in the README.
+        halfRes={false}
         intensity={1.6}
       />
       <Bloom
