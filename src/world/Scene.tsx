@@ -85,14 +85,14 @@ export function GameCanvas() {
   // A 3x phone at full resolution is three million pixels a frame; capping the
   // ratio keeps the fill rate survivable and the memory footprint small.
   //
-  // Medium sits at the same cap as high. It was 1.5, which is 36% fewer pixels,
-  // and the deployed build holds 120 Hz on the refresh cap with a 9.4 ms worst
-  // frame at that size — the headroom was never there to spend, and the tier was
-  // quietly rendering a softer image than the machine could have drawn. Priced on
-  // production; see "Medium was rendering a softer image than the machine could
-  // draw" in the README. Low keeps 1.25: it is the phone-first tier and the one
-  // whose fill rate is genuinely the constraint.
-  const dprCap = quality === 'low' ? 1.25 : 1.75;
+  // Medium sits between its old 1.5 and high's 1.75, and that is a measurement
+  // rather than a compromise: at 1.75 the tier holds 117.4 FPS with a 17.5 ms
+  // worst frame against a 8.33 ms budget, so it cannot hold the cap cleanly any
+  // more; at 1.5 it held 120.0 FPS at 9.4 ms with 36% of the pixels unused.
+  // 1.6 is the ratio that spends the headroom without dropping a frame. Low
+  // keeps 1.25 — phone-first, and the one whose fill rate really is the
+  // constraint.
+  const dprCap = quality === 'low' ? 1.25 : quality === 'medium' ? 1.6 : 1.75;
   return (
     <Canvas
       shadows={quality !== 'low'}
