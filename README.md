@@ -1604,6 +1604,24 @@ the thirty-to-hundred-unit band** — the increase is smallest exactly where
 minification would hurt. At 3.0 it would be 30% there, which is one more reason
 that value was not kept.
 
+The same question was then put to `stone_normal.png` — 281 KB, applied to 77
+materials by a triplanar shader patch in `src/world/detail.ts`, with its
+strength compiled into the fragment body rather than set as an R3F prop, so it
+was never exposed to the inline-Vector2 problem in the first place. It is **not**
+inert, and it is not mistuned either. Standing in front of the Great Loom with
+every compiled program's strength uniform set together, switching it off moved
+1.54% of the frame against a 0.47% baseline: the map is doing real work at its
+authored 0.42. Raising it to 0.7 changes the stone by an amount that does not
+survive looking at the two frames side by side.
+
+The header's warning that anything past 0.5 shimmers along every silhouette is a
+claim, not a measurement. It was not tested; there was nothing here to fix, so it
+stays as written.
+
+Two normal maps, one technique, opposite answers: the ground's was doing nothing
+and was half a hidden number away from doing something, the landmarks' is doing
+its job at the value it was given.
+
 The same inline-Vector2 footgun was on both of the canal's normal-scale props
 and is fixed with them. It never broke the canal — those values were edited in
 source, which is the one thing the prop could not undo — but it meant the canal
