@@ -39,6 +39,43 @@ const ROUGH_MAP_URL = '/textures/ground_rough.png';
 const GROUND_TILE_SIZE = 6;
 
 /**
+ * Strength of the ground's surface relief, in tangent-space slope.
+ *
+ * This is a module constant, not an inline `new THREE.Vector2(...)`, and that is
+ * not tidiness. An inline Vector2 is a fresh object on every render, so R3F sees
+ * a changed prop and writes it back onto the material every time the component
+ * re-renders — measured, a `normalScale` set to 8 from the console was back to
+ * its declared 0.55 within 50 ms. It also meant the value could not be tuned at
+ * all: every attempt to price the map at a stronger setting silently measured
+ * the unchanged scene, which is why 0.55 looked like a well-chosen number for as
+ * long as it was there. With the value hoisted, a runtime write now survives
+ * 1200 ms untouched.
+ *
+ * The number itself is measured. At 0.55 the ground's rendered luminance was
+ * indistinguishable from the same scene with no normal map at all — below the
+ * difference between two consecutive frames — so the map was not doing its job.
+ * Handing the same material a synthetic map proved the path was alive (13.04%
+ * of the frame moved), which located the fault in the amplitude rather than in
+ * the shader.
+ *
+ * 1.5 moves 5.3% of the frame by more than 4/255, mean absolute difference 1.08,
+ * at 104.9 FPS against 104.7 before it. 3.0 moves 17.1% and mean 2.66, and is
+ * worse to look at: the tooth reads as blotches rather than grain, because the
+ * cool rim light reaches the tilted faces and tints them. Half the measured gain
+ * is the better image, and the whole of it is free — same shader, same texture,
+ * same bandwidth.
+ */
+const GROUND_NORMAL_SCALE = 1.5;
+
+/**
+ * The same value as a Vector2, built once.
+ *
+ * R3F compares a Vector2 prop by identity, so handing it a new one re-applies
+ * the value on every render. This is the object the material actually holds.
+ */
+const GROUND_NORMAL_SCALE_VECTOR = new THREE.Vector2(GROUND_NORMAL_SCALE, GROUND_NORMAL_SCALE);
+
+/**
  * A vertical gradient dome.
  *
  * A flat background colour makes the world look like it is sitting inside a
@@ -384,10 +421,9 @@ export function TerrainDisc({ region }: { region: RegionDef }) {
           roughness={0.96}
           metalness={0}
           normalMap={normalMap}
-          // Restrained on purpose: a strong normal map on a disc this large turns
-          // the ground into visual static, and the low facet count means the
-          // lighting cannot resolve fine relief anyway.
-          normalScale={new THREE.Vector2(0.55, 0.55)}
+          // The value the map was measured at. See `GROUND_NORMAL_SCALE` for
+          // why this is a constant and why it used to be unreadable.
+          normalScale={GROUND_NORMAL_SCALE_VECTOR}
           roughnessMap={roughnessMap}
         />
       </mesh>

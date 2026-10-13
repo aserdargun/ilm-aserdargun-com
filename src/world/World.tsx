@@ -31,6 +31,19 @@ export const PALETTE = {
   leaf: '#8fd46a',
 } as const;
 
+/**
+ * Normal-map strengths, held as constants rather than written inline.
+ *
+ * `normalScale={new THREE.Vector2(x, y)}` builds a fresh object on every render,
+ * so R3F writes it back onto the material every time the component re-renders.
+ * Measured on the ground disc: a value set from outside was back to its declared
+ * 0.55 within 50 ms. Anything tuned at runtime therefore measures the unchanged
+ * scene and looks like it did nothing. See `GROUND_NORMAL_SCALE_VECTOR` in
+ * `Atmosphere.tsx` for the measurement that caught it.
+ */
+const CANAL_NORMAL_SCALE = new THREE.Vector2(2.5, 2.5);
+const CANAL_SHEEN_NORMAL_SCALE = new THREE.Vector2(0.55, 0.55);
+
 /** Region anchors laid out on a ring around the hub. */
 export const REGION_POSITIONS: Record<RegionId, { x: number; z: number; y: number }> =
   REGIONS.reduce(
@@ -536,7 +549,7 @@ function FlowingCanal() {
           emissive={PALETTE.turquoise}
           emissiveIntensity={0.08}
           normalMap={body}
-          normalScale={new THREE.Vector2(2.5, 2.5)}
+          normalScale={CANAL_NORMAL_SCALE}
         />
       </mesh>
       {/* Second pass: finer, crossing the first, and only a highlight. */}
@@ -551,7 +564,7 @@ function FlowingCanal() {
           emissive={PALETTE.turquoise}
           emissiveIntensity={0.12}
           normalMap={sheen}
-          normalScale={new THREE.Vector2(0.55, 0.55)}
+          normalScale={CANAL_SHEEN_NORMAL_SCALE}
           depthWrite={false}
         />
       </mesh>

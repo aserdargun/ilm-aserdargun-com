@@ -1555,11 +1555,11 @@ loom channel's old 148-against-109 reading was an emissive channel, not an
 albedo one. If you go looking for a blown-out island, you are not going to find
 one.
 
-### The ground's normal map does nothing, and the reason is still open
+### The ground's normal map was doing nothing, and it was not the map's fault
 
 `ground_normal.png` is 358 KB — the second-largest asset in the game — and it is
 bound to all eight island grounds at `normalScale 0.55`. Raising that to 3.0,
-five and a half times the authored strength, changes the rendered image by
+five and a half times the authored strength, changed the rendered image by
 **less than the difference between two consecutive frames of the same state**:
 
 | view | normalScale 0.55 → 3.0 | two frames, no change at all |
@@ -1567,32 +1567,33 @@ five and a half times the authored strength, changes the rendered image by
 | resting camera | 0.88% of pixels differ | 0.72% |
 | close, looking at the feet | 0.96% of pixels differ | 1.10% |
 
-The standard deviation of lit terrain luminance does not move either: 5.98 →
-5.17 on the hub, 12.34 → 12.29 on the mirrors. On flat ground with one
+The standard deviation of lit terrain luminance did not move either: 5.98 →
+5.17 on the hub, 12.34 → 12.29 on the mirrors. On flat ground under one
 directional light, a working normal map raises both numbers at three times the
-strength. To confirm the path itself was alive, the same material was handed a
-synthetic map at the same scale — it moved **13.04%** of the frame against a
-0.22% baseline. So the shader is sampling a normal map; the shipped one carries
-no shading.
+strength. Handing the same material a synthetic map settled where the fault was
+not: it moved **13.04%** of the frame against a 0.22% baseline. The shader was
+sampling a normal map the whole time.
 
-What it carries is real, so it is not a placeholder: 512², tiled 11.3 times
-across a disc, 72.5 texels per world unit, red and green with a standard
-deviation of 0.12 in normal units, blue flat at 254. Re-running
-`tools/blender/ground_texture.py` reproduces all four maps **byte for byte**,
-so the shipped asset is current. The generator normalises the field so the
-steepest single pixel reaches `peak_slope`, and its printed `peak_tilt=0.143`
-against `requested_slope=0.60` is `1 - nz`, a decoded proxy that is on target —
-an earlier reading of that line as "the generator misses its target by 4x" was
-wrong, and nothing was changed on the strength of it.
+The fault was one line of JSX. `normalScale={new THREE.Vector2(0.55, 0.55)}`
+builds a fresh object on every render, so R3F sees a changed prop and writes it
+back onto the material every time the component re-renders. **Measured: a
+`normalScale` set to 8 from the console was back to 0.55 within 50 ms.** That is
+why every attempt to price the map measured the unchanged scene and concluded
+the map was the problem. Hoisted to a module constant, the same write now
+survives 1200 ms untouched, and the value can be tuned for the first time.
 
-**No fix is shipped for this, deliberately.** The measurement bounds the effect;
-it does not explain it, and deleting an asset whose mechanism is not understood
-is how the wrong thing gets deleted. The open question is worth writing down
-rather than solving by accident: a map with 0.12 of normal deviation, tiled that
-densely, should shade. Either it is being sampled at a mip level that has
-averaged it flat, or something downstream of `normalScale` is discarding it. It
-is the second-largest download in the game, so if it is dead the win is real —
-but that call belongs to whoever can finish the diagnosis.
+Once it could be tuned, the map turned out to be set far too weak as well.
+At 1.5 it moves **5.3%** of the frame by more than 4/255, mean absolute
+difference 1.08, at **104.9 FPS against 104.7** — the whole gain is free, same
+shader, same texture, same bandwidth. 3.0 moves 17.1% and mean 2.66 and was
+**rejected**: the tooth reads as blotches rather than grain, because the cool
+rim light reaches the tilted faces and tints them. Half the measured gain is the
+better image.
+
+The same inline-Vector2 footgun was on both of the canal's normal-scale props
+and is fixed with them. It never broke the canal — those values were edited in
+source, which is the one thing the prop could not undo — but it meant the canal
+was untunable in exactly the same silent way.
 
 ### Four things this round ruled out
 
