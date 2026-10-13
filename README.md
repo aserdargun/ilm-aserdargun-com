@@ -1308,6 +1308,39 @@ numbers that round reported by hand. Run against the pair that round got wrong,
 with no camera metadata: `verdict: INCOMPARABLE`, exit 2, "do not quote these
 numbers".
 
+### Medium was rendering a softer image than the machine could draw
+
+The medium tier capped `devicePixelRatio` at 1.5 while high ran at 1.75 — 36%
+fewer pixels and a visibly softer image — because the scene used to be
+frame-bound. The deployed build is refresh-bound, so that reasoning no longer
+applies, and the ratio is the highest-leverage knob in the file: it multiplies
+the pixel count directly, and every other post-processing setting is downstream
+of it.
+
+It was not a straight swap, because measuring it produced three answers rather
+than one. All three on the deployed build at 1440×810:
+
+| DPR | drawing buffer | FPS | worst frame |
+| --- | --- | --- | --- |
+| 1.5 (was) | 2160×1215 (2.62 MP) | 120.0 | 9.4 ms |
+| **1.6 (now)** | **2304×1296 (2.99 MP)** | **120.0** | **9.4 ms** |
+| 1.75 (tried) | 2520×1417 (3.57 MP) | 117.4 | 17.5 ms |
+
+Going straight to 1.75 was wrong and the number said so: at a 17.5 ms worst
+frame against an 8.33 ms budget the tier can no longer hold the 120 Hz cap
+cleanly, and one dropped frame is worth more to a player than 14% more pixels.
+1.6 buys a fifth more resolution than the tier had, at an identical worst frame.
+
+Low keeps 1.25. It is the phone-first tier and the one whose fill rate genuinely
+is the constraint — the mobile case at 390×844 DPR 3 is what still has to
+survive.
+
+The method is the point as much as the number. Each candidate was put on
+production and measured there, because the dev-only `__ilm` hook walks the scene
+graph every frame and swamps a difference this size; and when the first answer
+came back "not catastrophic" rather than "correct", the middle was measured
+instead of taken.
+
 ### Occlusion was halved for a frame-bound build
 
 `PostFx.tsx` ran N8AO at `halfRes={!full}` with 8 samples outside the high tier,
@@ -1860,7 +1893,7 @@ had streamed in.
 | Tier | Viewport | Drawing buffer | Median FPS | Worst frame |
 | --- | --- | --- | --- | --- |
 | high | 1440×810 @ DPR 2 | 2520×1417 (3.57 MP) | **120 FPS** | 10.3 ms |
-| medium | 1440×810 @ DPR 2 | 2160×1215 (2.62 MP) | **120 FPS** | 9.4 ms |
+| medium | 1440×810 @ DPR 2 | 2304×1296 (2.99 MP) | **120 FPS** | 9.4 ms |
 | low | 1440×810 @ DPR 2 | 1800×1012 (1.82 MP) | **120 FPS** | 10.4 ms |
 | low, mobile emulation | 390×844 @ DPR 3 | 487×1055 (0.51 MP) | **120 FPS** | 9.4 ms |
 
