@@ -911,10 +911,21 @@ function Weaver({ state }: { state: React.MutableRefObject<PlayerState> }) {
 
     if (import.meta.env.DEV) {
       const w = window as unknown as { __weaverFrame?: Record<string, unknown> };
+      // The rendered box, so "is the Weaver standing on the ground" is a number
+      // and not a guess from a screenshot. `setFromObject` walks the bind-pose
+      // geometry, which is exactly the measure wanted: the boots' resting
+      // height, not a mid-stride crouch.
+      const box = new THREE.Box3().setFromObject(group.current);
       w.__weaverFrame = {
         frames: ((w.__weaverFrame?.frames as number) ?? 0) + 1,
         hasGltf: !!gltf,
         mixerTime: gltf ? +gltf.mixer.time.toFixed(3) : null,
+        player: state.current.position.toArray().map((n) => +n.toFixed(3)),
+        grounded: state.current.grounded,
+        box: {
+          min: box.min.toArray().map((n) => +n.toFixed(3)),
+          max: box.max.toArray().map((n) => +n.toFixed(3)),
+        },
         clips: gltf
           ? Object.fromEntries(
               Object.entries(gltf.actions).map(([k, a]) => [

@@ -7,6 +7,9 @@ import {
   preloadSurfaceDetail,
   useSurfaceDetailMap,
 } from './detail';
+import { instanceFor } from './placement';
+
+export { CHARACTER_SCALE, CHARACTER_Y_OFFSET, instanceFor } from './placement';
 
 /**
  * Blender-authored asset loading.
@@ -95,13 +98,6 @@ export const CLIP_FOR_STATE: Record<LocomotionState, string> = {
 export const LOCOMOTION_STATES: readonly LocomotionState[] = [
   'idle', 'walk', 'run', 'turnLeft', 'turnRight',
 ];
-
-/**
- * The source model is authored at 3.36 units tall with its feet at y = -1.16.
- * Scaling and lifting it here puts the boots on the ground at world y = 0.
- */
-export const CHARACTER_SCALE = 0.6;
-export const CHARACTER_Y_OFFSET = 0.7;
 
 export const ALL_MODEL_NAMES = [
   'weaver',
@@ -223,7 +219,7 @@ function AssetMesh({
    * vertices across four meshes, and `applySurfaceDetail` is guarded by
    * `PATCH_FLAG`, so the shared materials are still patched exactly once.
    */
-  const instance = useMemo(() => (scene ? scene.clone(true) : null), [scene]);
+  const instance = useMemo(() => (scene ? instanceFor(scene) : null), [scene]);
 
   // Synced in a layout effect rather than assigned during render: an inline
   // arrow would otherwise give `paint` a new identity on every render and drag
