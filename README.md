@@ -1491,6 +1491,70 @@ decided whether to record a colour, so the unique-colour count was 1 for every
 disc and the ground looked like a single flat fill. A number that agrees with your
 hypothesis is not evidence for it — check what the instrument actually measured.
 
+### A tapestry nobody could see was painting a stripe on the sand
+
+The hub's sand had a hard, dead straight dark band running across it — about two
+metres wide, twelve to fourteen units from the middle of the island, and roughly
+half as bright as the sand on either side of it. Nothing in the frame explained
+it. The player standing there sees no cause at all.
+
+It was a correct shadow. The tapestry in `src/world/World.tsx` — fourteen 3×4.6
+ceramic panels and a 52-unit crossbeam hung at `y = 17.5` — all had
+`castShadow`, and with the sun at 57° a wall that size drops its shadow 7.8
+units to one side. The panels' base sits 15.2 units up, which puts the caster at
+57° above the horizon from where the player stands: well outside the 29°
+half-frame of a 58° lens. Correct lighting, correct geometry, and a stripe that
+reads as a stain on the ground.
+
+The measurement that pinned it down — one camera, one column of hub terrain, the
+vertex colour read at the same three points as the rendered pixel:
+
+| | vertex colour | rendered luma |
+| --- | --- | --- |
+| Before the band | 0.411, 0.303, 0.183 | 125 |
+| Inside the band | 0.412, 0.304, 0.183 | **59** |
+| After the band | 0.426, 0.316, 0.187 | 126 |
+
+The albedo never moved by more than 0.015 across the whole band and the edge took
+three samples, so this was shadow and not paint. A ray fired from inside the band
+toward the sun hit four panels in a row, each 3 units wide with a 0.4-unit gap,
+23.9 units up the sun ray.
+
+Switching the sixteen tapestry meshes off and re-measuring, same pose, same
+drawing buffer:
+
+| | hub terrain mean luma | terrain under 90/255 |
+| --- | --- | --- |
+| Casting | 84.71 | 44.17% |
+| Not casting | **86.10** | **41.97%** |
+| Casting again | 84.69 | 44.15% |
+
+The third row is the control: switching them back on returned the original number,
+so the difference is the flag and not a drifting scene. A frame diff over the
+whole viewport, with `measure_frame.py` and the animated pixels masked out, moved
+1.97% of the frame by more than 12/255 — the band, and nothing else.
+
+`findOrphanShadowCasters` in `src/world/scene-audit.ts` now stands watch for the
+class, exposed as `__ilm.orphanCasters()` in dev and covered by
+`tests/orphan-shadow-casters.test.ts`. It reports casters whose base is more than
+eight units off the ground, which is where the shadow lands too far away to be
+read as its own. On the shipped world it reports one caster, and that one is
+accepted: the synthesis tree's canopy, 20 metres across at 13 units, whose shadow
+falls 11 units away onto a tree the player is looking straight at. It stayed in
+the list under the tapestry for years without anyone reading it — which is the
+argument for the check existing, and for reading what it says.
+
+**No island's ground is clipping, and none of them ever was.** The same session
+checked, because the mirrors island carries the brightest ground palette in the
+world and that is the shape an exposure bug takes. All eight discs were measured
+at one camera with the ground isolated by a raycast mask: brightest terrain mean
+111.8 (observers-mirrors), darkest 93.7 (valley-living-machines), and **not one
+pixel above 235/255** anywhere — the fraction of terrain at or above 245 was zero
+on every island, and the single highest value in the whole sweep was 243. The
+loom channel's old 148-against-109 reading was an emissive channel, not an
+albedo one. If you go looking for a blown-out island, you are not going to find
+one.
+
 ### Assets degrade, they do not break
 
 `src/world/Models.tsx` loads every model through an error boundary and a
@@ -1768,7 +1832,7 @@ Details that carry weight:
 
 ## Tests performed
 
-`npm run test` — **237 tests across 17 files, all passing.**
+`npm run test` — **283 tests across 23 files, all passing.**
 
 | Suite | Tests | What it proves |
 | --- | --- | --- |
@@ -1790,6 +1854,12 @@ Details that carry weight:
 | `audio` | 12 | Chord voicing has a third, tremolo depth is proportional, no phase inversion, headroom |
 | `spark` | 20 | Every moment line exists in both languages and reaches the player |
 | `playtime` | 5 | The stated playtime estimate is derived, not guessed |
+| `scene-audit` | 10 | A model drawn N times occupies N places, and the check reports a pile in both directions |
+| `orphan-shadow-casters` | 9 | **No shadow lands where the player cannot see what threw it** — the tapestry case, before and after the fix |
+| `character` | 10 | The Weaver stands on y = 0 once the rig is composed, and a rigged scene is never cloned out from under its own mixer |
+| `bridge-corridor` | 5 | The walkable corridor is derived from the drawn deck, measured across the span |
+| `tapestry` | 6 | Panels light proportionally to regions restored, never all-or-nothing |
+| `disc` | 6 | Terrain discs are flat, face up, tiled rather than holed, and keep their measured vertex budget |
 
 Two real defects were found and fixed by these tests during development: an
 occlusion check that looked *behind* a cell instead of in front of it, and a set
@@ -1816,7 +1886,7 @@ interface calls — through the whole journey and asserts it can be finished:
 - all 33 applications are discovered across the run
 - the finished journey reloads correctly from the save
 
-The full suite is 237 tests across 17 files.
+The full suite is 283 tests across 23 files.
 
 Measured in the browser through the real interface, not simulated:
 

@@ -586,8 +586,24 @@ function UnfinishedTapestry({ restoredCount = 0 }: { restoredCount?: number }) {
   );
   return (
     <group>
+      {/* Nothing in here casts. Seventeen units up and forty-seven across, the
+          tapestry is a wall as far as the light is concerned: it dropped a hard,
+          fifty-percent-dark band straight across the middle of the hub, eight
+          units past wherever the player was standing. Measured on hub terrain,
+          a single screen column went 125 -> 61 luma over three samples, on
+          ground whose vertex colour never moved by more than 0.015 across the
+          whole band — so it was shadow, not albedo. A controlled A/B at one
+          camera with these sixteen casters switched off lifted terrain mean
+          luma 84.71 -> 86.10 and moved 2.2 points of terrain out of the sub-90
+          band; switching them back on returned 84.69.
+
+          The cause was invisible at the moment it did the damage: at the
+          resting camera the tapestry sits 57 degrees up, outside the frame, so
+          the band had nothing to explain it and read as a stain on the sand.
+          Panels, beam and frame go together — leaving the beam casting would
+          only trade one unexplained line for another. */}
       {/* the crossbeam the tapestry hangs from */}
-      <mesh position={[0, 20.4, 0]} castShadow>
+      <mesh position={[0, 20.4, 0]}>
         <boxGeometry args={[52, 0.7, 0.7]} />
         <meshStandardMaterial color={PALETTE.copperDark} flatShading roughness={0.75} metalness={0.4} />
       </mesh>
@@ -595,7 +611,7 @@ function UnfinishedTapestry({ restoredCount = 0 }: { restoredCount?: number }) {
         // `restoredCount` is panels, not regions — the scene already multiplied.
         const lit = isPanelLit(i, restoredCount / PANELS_PER_REGION);
         return (
-          <mesh key={i} position={panel.position} castShadow>
+          <mesh key={i} position={panel.position}>
             {/* A thin box rather than a plane: a plane has no edge to catch the
                 sun, and fourteen of them in a row read as paper cut-outs. */}
             <boxGeometry args={[3.1, 4.6, 0.09]} />
@@ -610,7 +626,7 @@ function UnfinishedTapestry({ restoredCount = 0 }: { restoredCount?: number }) {
         );
       })}
       {/* the loom frame at one end of the tapestry */}
-      <mesh position={[26, 16.5, 0]} rotation={[0, 0, Math.PI / 2]} castShadow>
+      <mesh position={[26, 16.5, 0]} rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[0.5, 0.5, 10, 8]} />
         <meshStandardMaterial color={PALETTE.copper} metalness={0.7} roughness={0.3} />
       </mesh>

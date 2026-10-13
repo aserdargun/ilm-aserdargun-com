@@ -34,7 +34,7 @@ import {
 import { PropScatter, preloadProps } from './Props';
 import { Lighting, type ShadowRegion } from './Lighting';
 import { applySurfaceDetail, useSurfaceDetailMap } from './detail';
-import { findPiledModels, isGltfRoot, placedModels } from './scene-audit';
+import { findOrphanShadowCasters, findPiledModels, isGltfRoot, placedModels } from './scene-audit';
 import { PostProcessing } from './PostProcessing';
 import { HORIZON_COLOR, SkyDome, TerrainDisc } from './Atmosphere';
 import { regionAt } from './Player';
@@ -313,6 +313,11 @@ function SceneContents() {
         // scene, which throws nothing, renders every mesh, and looks perfectly
         // healthy in a frame count.
         audit: () => findPiledModels(placedModels(scene, isGltfRoot)),
+        // Casters lifted so high that the shadow they drop lands where the player
+        // cannot see what threw it. The hub's tapestry was one: a hard band at
+        // half the ground's brightness, with its caster 57 degrees up and outside
+        // the frame. Empty on a sound scene.
+        orphanCasters: () => findOrphanShadowCasters(scene),
         // Deepest overlap between the player and any collider; should stay <= 0.
         // What is holding the player: the nearest collider, and how far the
         // player is from walkable ground.
