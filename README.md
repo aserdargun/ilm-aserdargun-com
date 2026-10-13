@@ -1555,6 +1555,73 @@ loom channel's old 148-against-109 reading was an emissive channel, not an
 albedo one. If you go looking for a blown-out island, you are not going to find
 one.
 
+### The ground's normal map does nothing, and the reason is still open
+
+`ground_normal.png` is 358 KB — the second-largest asset in the game — and it is
+bound to all eight island grounds at `normalScale 0.55`. Raising that to 3.0,
+five and a half times the authored strength, changes the rendered image by
+**less than the difference between two consecutive frames of the same state**:
+
+| view | normalScale 0.55 → 3.0 | two frames, no change at all |
+| --- | --- | --- |
+| resting camera | 0.88% of pixels differ | 0.72% |
+| close, looking at the feet | 0.96% of pixels differ | 1.10% |
+
+The standard deviation of lit terrain luminance does not move either: 5.98 →
+5.17 on the hub, 12.34 → 12.29 on the mirrors. On flat ground with one
+directional light, a working normal map raises both numbers at three times the
+strength. To confirm the path itself was alive, the same material was handed a
+synthetic map at the same scale — it moved **13.04%** of the frame against a
+0.22% baseline. So the shader is sampling a normal map; the shipped one carries
+no shading.
+
+What it carries is real, so it is not a placeholder: 512², tiled 11.3 times
+across a disc, 72.5 texels per world unit, red and green with a standard
+deviation of 0.12 in normal units, blue flat at 254. Re-running
+`tools/blender/ground_texture.py` reproduces all four maps **byte for byte**,
+so the shipped asset is current. The generator normalises the field so the
+steepest single pixel reaches `peak_slope`, and its printed `peak_tilt=0.143`
+against `requested_slope=0.60` is `1 - nz`, a decoded proxy that is on target —
+an earlier reading of that line as "the generator misses its target by 4x" was
+wrong, and nothing was changed on the strength of it.
+
+**No fix is shipped for this, deliberately.** The measurement bounds the effect;
+it does not explain it, and deleting an asset whose mechanism is not understood
+is how the wrong thing gets deleted. The open question is worth writing down
+rather than solving by accident: a map with 0.12 of normal deviation, tiled that
+densely, should shade. Either it is being sampled at a mip level that has
+averaged it flat, or something downstream of `normalScale` is discarding it. It
+is the second-largest download in the game, so if it is dead the win is real —
+but that call belongs to whoever can finish the diagnosis.
+
+### Four things this round ruled out
+
+The same session chased the island palettes and found the measurement was wrong
+before the finding was. A per-island sweep read **one frame through eight
+masks**, so every island reported the same number to three decimals — a spread
+of 1.006, which is what a mask bug looks like when you are unlucky enough for it
+to be unremarkable. Redone at each island's own pose, with the camera read back
+and compared before a single pixel was counted:
+
+- **Nothing is clipping.** Across all eight discs, at one camera, behind a raycast
+  mask: brightest terrain mean 111.8, darkest 92.3, and **not one pixel above
+  235/255**. The mirrors island is the brightest ground in the world and it is
+  not close to blown out.
+- **The ambient is 45–61% of the ground's brightness**, at every island, measured
+  by switching the sun off and reading what was left. That is a lot, but it does
+  not flatten the islands: the ambient-only render actually spreads *wider*
+  (1.76×) than the full one (1.57×).
+- **The synthesis tree's shadow is not why the hub is dark.** Turning it off
+  moves hub terrain mean luminance 85.78 → 87.11, about 1.5%, and costs the
+  shadow's own explanation. The 42% of hub ground below 90/255 is not the tree.
+- **The albedo-to-brightness link could not be measured.** On flat, unshadowed
+  ground under the sun alone it must be near-perfect, and it came out near zero.
+  The cause was the instrument: `face.a/b/c` index the *index buffer* on an
+  indexed geometry, so the per-pixel albedo was read from the wrong vertices.
+  Fixing that moved the number without making it meaningful, and the honest
+  conclusion is that face-averaged albedo is not a per-pixel albedo at all.
+  Measuring it properly needs barycentric interpolation, which is not written.
+
 ### Assets degrade, they do not break
 
 `src/world/Models.tsx` loads every model through an error boundary and a
