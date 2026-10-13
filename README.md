@@ -1593,6 +1593,17 @@ shader, same texture, same bandwidth. 3.0 moves 17.1% and mean 2.66 and was
 rim light reaches the tilted faces and tints them. Half the measured gain is the
 better image.
 
+The risk a stronger ground map carries is minification shimmer at distance, and
+it is bounded here by the shape of the world rather than by the strength. At the
+resting camera, terrain beyond thirty units is **4.6% of the terrain pixels** and
+past a hundred units is 0.4% — the eight discs are coplanar and read almost
+edge-on, the same fact that made fog useless in "There is nothing far away to
+fade". The high-frequency energy of the ground, measured as the mean step to the
+right-hand neighbour, rises 47% underfoot between 0.55 and 1.5 but only **21% in
+the thirty-to-hundred-unit band** — the increase is smallest exactly where
+minification would hurt. At 3.0 it would be 30% there, which is one more reason
+that value was not kept.
+
 The same inline-Vector2 footgun was on both of the canal's normal-scale props
 and is fixed with them. It never broke the canal — those values were edited in
 source, which is the one thing the prop could not undo — but it meant the canal
