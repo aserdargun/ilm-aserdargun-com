@@ -70,7 +70,15 @@ export function PostProcessing({ quality }: { quality: Quality }) {
           frame rate (67.4 -> 62.4 FPS) and removes 8.6% of the hard silhouette
           steps while barely touching the ground texture (-0.8%). MSAA costs
           five times that. High is the tier where the money is worth spending. */}
-      {full ? <SMAA /> : <></>}
+      {/* Every tier, not just high. Measured on the deployed build, the medium
+          tier was pinned to the 120 Hz refresh with a worst frame of 10.3 ms, so
+          there is frame budget here that the old table -- taken when the scene
+          was frame-bound and this read as unaffordable -- did not know about.
+          Cost is 7.4% at 3840x2160; the question is whether the shipped buffer
+          can absorb it, and that is only answerable on production, where the
+          dev-only __ilm hook is not walking the scene graph every frame and
+          swamping a difference this small. */}
+      <SMAA />
     </EffectComposer>
   );
 }
