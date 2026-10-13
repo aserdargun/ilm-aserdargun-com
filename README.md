@@ -1926,6 +1926,43 @@ minutes. A first-time player will take longer because of reading the journal,
 backtracking and wrong guesses, but the honest reading is that the route is
 short of the target and would need more content, not more polish, to reach it.
 
+### The character was in the air, and in pieces
+
+The Weaver rendered as its hat, torso, arms and staff floating apart in mid-air
+above a shadow cast correctly on the floor. Two independent causes, both invisible
+to every other check in the repo, and neither one a regression that any test was
+looking for.
+
+**The scene clone broke the rig.** `<Asset>` deep-clones every loaded scene so
+landmarks placed N times do not share a single parent — that is what fixed the
+twenty-eight puzzle consoles drawing at one spot, and it is not optional. A rigged
+GLB cannot survive it. `SkinnedMesh.copy` hands the clone the *source's*
+`Skeleton`, so the clone's own bone tree is never touched, while `Skeleton.update`
+reads `bone.matrixWorld` off the source's bones. The source scene is not in the
+render graph, so nothing ever calls `updateMatrixWorld` on those bones: they stay
+frozen in the bind pose no matter what the mixer writes into their local
+transforms. Every vertex is then skinned against a stale and internally
+inconsistent bone frame. `instanceFor` now returns rigged scenes uncloned, which is
+safe only because the one rigged model here is placed exactly once; a rigged GLB
+placed twice would need `SkeletonUtils.clone`, which is not a thing `clone(true)`
+does.
+
+**The vertical offset came from the wrong number.** `CHARACTER_Y_OFFSET` was 0.7,
+chosen because the lowest raw `POSITION` value in `weaver.glb` is y = -1.16. That
+vertex is a cape — `Plane.030`, a cloth panel whose geometry hangs below its own
+bone. Walk the node hierarchy instead and the soles of `Cube.153`/`Cube.154` sit at
+y = 0 exactly, so the lift floated the character 0.7 units. The scale was right
+throughout: the model is 3.00 units tall and 0.6 brings that to the 1.80 the
+silhouette was designed around.
+
+Both are now pinned by `tests/character.test.ts`, which parses the GLB, composes
+the bind-pose world box through the rig, and asserts the soles land on zero — so
+the number cannot drift back without a red test. Verified in the browser rather
+than only in the suite: the rendered world box measures `min.y = 0` while idle and
+while walking, `grounded` stays true, and the locomotion clip switches `Idle` →
+`Walking_A` on movement, which is itself the proof the animation is reaching the
+mesh that renders.
+
 ## Known limitations
 
 Reported honestly rather than presented as finished:
