@@ -1622,6 +1622,36 @@ Two normal maps, one technique, opposite answers: the ground's was doing nothing
 and was half a hidden number away from doing something, the landmarks' is doing
 its job at the value it was given.
 
+### The flat fill was the environment probe, not the hemisphere light
+
+`Lighting.tsx` said the hemisphere light was left at its authored level "so the
+ambient balance the art direction was authored against does not shift". Measured,
+that was not where the flatness came from. At the hub, with the sun switched off,
+the ambient still delivered **45–61%** of the terrain's brightness on every
+island — but moving the hemisphere between 0.4 and 0.14, a 65% cut, changed
+shadowed ground from 44.56 to 44.94. It moved up. The light that flattens the
+scene is the environment probe.
+
+Cutting the probe instead, and raising the sun to compensate, trades a flat fill
+for a shaped key:
+
+| | lit ÷ shadowed terrain | terrain spread | frame mean | FPS |
+| --- | --- | --- | --- | --- |
+| probe 1.0, sun 2.1 (was) | 2.722 | 38.56 | 75.94 | — |
+| **probe 0.6, sun 2.4** | **2.920 (+7.3%)** | **41.18 (+6.8%)** | 76.93 (+1.3%) | 106.4 |
+| probe 0.35, sun 2.6 | 3.051 (+12.1%) | 42.74 (+10.8%) | 77.50 | — |
+
+Deeper shadows are what let a faceted low-poly form read as a solid rather than a
+cut-out, and 0.6 buys that for a frame mean that barely moves. **0.35 was
+measured and rejected**: it looks punchier, but it darkens every metallic surface
+in the game along with everything else, and the last 5 points of contrast are not
+worth a world full of dead copper. Checked at the Great Loom before deciding,
+where the copper rings are the most environment-dependent surfaces there are.
+
+Re-measured after a full reload, from source and not from a runtime override:
+environmentIntensity 0.6, sun 2.4, hemisphere 0.4 and rim 0.62 untouched, and
+2.920 / 41.18 / 76.93 — the same numbers the live sweep produced.
+
 The same inline-Vector2 footgun was on both of the canal's normal-scale props
 and is fixed with them. It never broke the canal — those values were edited in
 source, which is the one thing the prop could not undo — but it meant the canal

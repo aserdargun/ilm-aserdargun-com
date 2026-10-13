@@ -23,8 +23,11 @@ import type { Quality } from '../game/store';
  * 2. **Image-based lighting.** Metallic surfaces get their colour from what
  *    they reflect, so without a probe they render as flat dark shapes. See
  *    `environment.ts`.
- * 3. **Tone.** The hemisphere light stays as a cheap sky/ground fill so the
- *    ambient balance the art direction was authored against does not shift.
+ * 3. **Tone.** The hemisphere light stays at the authored level. It was assumed
+ *    to be the "ambient balance the art direction was authored against"; measured,
+ *    it is not the one that flattens the scene — moving it between 0.4 and 0.14
+ *    changed shadowed ground by 0.4 luma. The environment probe is. See
+ *    `SceneEnvironment`.
  */
 
 /** Half-width of the shadow box before an island is known, in world units. */
@@ -83,9 +86,26 @@ function SceneEnvironment() {
   useEffect(() => {
     const probe = createEnvironment(gl);
     const previous = scene.environment;
+    const previousIntensity = scene.environmentIntensity;
     scene.environment = probe;
+    // How much the probe is allowed to fill in. At 1 the probe was supplying most
+    // of the light on shadowed ground: measured at the hub with the sun off, the
+    // ambient delivered 45-61% of the terrain's brightness on every island, and
+    // switching the hemisphere light between 0.4 and 0.14 barely touched shadowed
+    // ground at all (44.56 -> 44.94). The probe, not the hemisphere, was the flat
+    // fill.
+    //
+    // At 0.6, with the sun raised to compensate so exposure stays where it was,
+    // the ratio of lit to shadowed terrain rises from 2.72 to 2.92 and the
+    // terrain's own spread from 38.6 to 41.1, for a frame mean that moves 1.2%.
+    // Deeper shadows is what lets a faceted low-poly form read as a solid.
+    // 0.35 was also measured and looks punchier still, but it darkens every
+    // metallic surface in the game along with everything else, and that is a
+    // worse trade than the last 5 points of contrast are worth.
+    scene.environmentIntensity = 0.6;
     return () => {
       scene.environment = previous;
+      scene.environmentIntensity = previousIntensity;
       probe.dispose();
     };
   }, [gl, scene]);
@@ -154,7 +174,11 @@ function Sun({ quality, target, region }: LightingProps) {
       <directionalLight
         ref={light}
         color={SUN_COLOR}
-        intensity={2.1}
+        // Raised from 2.1 with the probe pulled back to 0.6, so that moving light
+        // from the ambient fill onto the key is a change of balance rather than a
+        // change of exposure: frame mean 75.94 -> 76.87, lit-over-shadowed terrain
+        // 2.72 -> 2.92.
+        intensity={2.4}
         castShadow={shadowsOn}
         shadow-mapSize-width={mapSize}
         shadow-mapSize-height={mapSize}
