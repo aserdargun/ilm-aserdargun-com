@@ -200,6 +200,26 @@ from periodic value noise:
 | `ground_rough.png` | Dry/worn variation, from an independent noise field |
 | `water_normal.png` | Canal ripples; integer wave numbers so the tile does not seam |
 
+**All eight discs audited.** The discs carry their large-scale variation in vertex
+colours rather than in a texture, so "is this island flat" is a question about
+those attributes. Measured on the running build, per island's top surface:
+
+| island | distinct colours | luminance range | as % of mean | sd |
+| --- | --- | --- | --- | --- |
+| hub | 458 | 0.185 | 61.4% | 0.043 |
+| cartographers-terrace | 505 | 0.186 | 59.7% | 0.039 |
+| flow-foundry | 451 | 0.145 | 63.4% | 0.030 |
+| memory-council-city | 532 | 0.182 | 62.8% | 0.036 |
+| adaptation-cloud-harbor | 541 | 0.170 | 65.2% | 0.033 |
+| collective-gardens | 629 | 0.223 | **81.2%** | 0.042 |
+| observers-mirrors | 577 | 0.230 | 60.7% | 0.053 |
+| valley-living-machines | 523 | 0.144 | 75.8% | 0.028 |
+
+There is no outlier: the flattest island is 59.7% and the fullest 81.2%, and the
+standard deviations do not trend with radius the way a resolution shortfall would.
+Mean luminance does vary a lot — 0.190 on the valley against 0.378 on the mirrors
+— and that is the declared palettes, not a defect.
+
 ```bash
 /Applications/Blender.app/Contents/MacOS/Blender \
   --background --factory-startup --python tools/blender/ground_texture.py
