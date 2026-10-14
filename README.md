@@ -1559,6 +1559,21 @@ one.
 
 ### The ground's normal map was doing nothing, and it was not the map's fault
 
+**The ground texture is not under-resolved, and it is worth saying so before anyone
+goes looking.** The runtime state of all eight island grounds is a 512² normal map and
+a 512² roughness map, both with `repeat` left at 1 and `wrapS/wrapT` = `RepeatWrapping`
+(1000). That reads at first like the map is stretched once across a 68–92 unit disc,
+which would be **0.36–0.66 texels per world unit** and a strong case for re-baking it
+four to sixteen times larger. It is not. `repeat` is 1 because the tiling lives in the
+geometry: the disc UVs run −5.67…5.67 on the hub and scale with the radius, so one UV
+unit is **6.0 world units** on every island and the map lands at a uniform
+**85.3 texels per world unit** — about 1.2 cm per texel, with the player roughly 150
+texels tall. Anisotropy is 8 of a supported 16, with mipmaps on.
+
+The check that settles it is the number, not the property: `texelsPerUnit` computed from
+the disc's measured UV span. Reading `wrapS: 1000` as ClampToEdge (it is 1001) would
+have produced a confident, wrong, and very expensive recommendation.
+
 `ground_normal.png` is 358 KB — the second-largest asset in the game — and it is
 bound to all eight island grounds at `normalScale 0.55`. Raising that to 3.0,
 five and a half times the authored strength, changed the rendered image by
