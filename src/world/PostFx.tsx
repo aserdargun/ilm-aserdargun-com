@@ -30,6 +30,7 @@ export function PostProcessing({ quality }: { quality: Quality }) {
   // all, and the difference is one measurement away.
   const bloom = useRef<BloomEffect>(null);
   const vignette = useRef<VignetteEffect>(null);
+  const ao = useRef<unknown>(null);
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -37,6 +38,7 @@ export function PostProcessing({ quality }: { quality: Quality }) {
     w.__postfx = {
       get bloom() { return bloom.current; },
       get vignette() { return vignette.current; },
+      get ao() { return ao.current; },
       quality,
     };
   }, [quality]);
@@ -59,6 +61,7 @@ export function PostProcessing({ quality }: { quality: Quality }) {
       enableNormalPass
     >
       <N8AO
+        ref={ao}
         // N8AO is a group pass rather than an effect: it composites its own
         // occlusion into the frame and takes no blendFunction, so there is
         // nothing to configure beyond its sampling.

@@ -1755,6 +1755,27 @@ This is what touching one thing does to the next: the vignette had been
 calibrated against an ambient fill twice the strength this world now has, and
 nothing had measured that.
 
+#### And occlusion, the other thing the ambient change touches, is fine
+
+The same question asked of N8AO, whose `intensity={1.6}` has carried no
+rationale and had no way to be questioned — the pass is a group pass rather than
+an effect in the chain, so it was not reachable. It is now.
+
+| AO intensity | frame mean | 1st percentile | under 10 | under 40 |
+| --- | --- | --- | --- | --- |
+| **1.6 (was)** | 82.55 | 5 | 3.21% | 16.26% |
+| 1.0 | 83.23 | 6 | 2.96% | 15.49% |
+| 0 (off) | 84.34 | 7 | 2.56% | 14.24% |
+
+Occlusion at 1.6 darkens the frame by **2.1%**, pushes nothing to black — the
+first percentile moves from 7 to 5 — and barely flattens anything, with the
+standard deviation going 40.43 → 40.17. That is a proportionate contribution,
+not the doubling the vignette was doing, so it stays where it is.
+
+Two of the three numbers in this chain turned out to be mistuned and one did not.
+That is the useful shape of an audit: the finding is not "everything was wrong",
+it is *which* things were wrong and by how much.
+
 The same inline-Vector2 footgun was on both of the canal's normal-scale props
 and is fixed with them. It never broke the canal — those values were edited in
 source, which is the one thing the prop could not undo — but it meant the canal
