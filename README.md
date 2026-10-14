@@ -1931,6 +1931,27 @@ that consequence being visible anywhere.
 
 This is why it stops at 2048: 4096 costs **11.2% of the frame rate** on high.
 
+#### The medium tier's resolution cap is also load-bearing
+
+Medium caps device pixel ratio at 1.6 against high's 1.75, and at the same window
+that is a real difference in what gets drawn: **2076×1288, 2.674M pixels, against
+2271×1408 and 3.198M** — medium resolves 16.4% fewer pixels. Measured on the medium
+tier by raising the cap in source and letting HMR apply it:
+
+| | pixels | FPS samples | mean |
+| --- | --- | --- | --- |
+| dpr 1.6 (source) | 2,673,888 | 99.4 · 104.9 · 96.7 · 104.9 | 101.5 |
+| dpr 1.75 | 3,197,568 | 82.3 · 96.6 · 97.9 · 96.0 · 97.8 · 102.1 · 103.2 | 96.6 |
+
+**−4.8% of the frame rate**, for what the extra pixels buy: at the same window size
+the higher render carries **+2.4% horizontal and +3.6% vertical edge energy** — real,
+but small, and largely redundant with SMAA, which already runs on every tier. Left at
+1.6.
+
+The first sample at 1.75 came in at 82.3 and made the cost look like 9.1%. It was the
+frame immediately after HMR rebuilt the framebuffers; the median of the seven is 97.8,
+and it is the median that the decision should have used from the start.
+
 ### Four things this round ruled out
 
 The same session chased the island palettes and found the measurement was wrong
