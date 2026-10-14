@@ -2144,6 +2144,29 @@ The seventh bridge's two ends could not be resolved from the bounding spheres al
 its long axis was estimated from a rail layer rather than the deck — so it is counted
 but not measured. The six hub-radial ones are unambiguous.
 
+#### …and the rails now cast, which was the free half of it
+
+The player's shadow is the part that needs a wider box and cannot have one. The
+bridge's *own* shadow could have been had for nothing, and was simply missing: of the
+six layers that build a bridge, the deck had `receiveShadow` and **none of them had
+`castShadow`**, the rails included. A turquoise rail that casts nothing reads as a
+stripe painted onto the deck rather than a raised thing standing on it.
+
+Measured at one bridge with a same-setting control pair:
+
+| | mean abs. diff | past 4/255 | past 12/255 |
+| --- | --- | --- | --- |
+| rails casting → not | **2.148** | **3.34%** | **2.53%** |
+| casting → casting (control) | 0.181 | 0.50% | 0.23% |
+
+**11.9× the noise floor**, taking **65.8 luma** off the band the rail shadows onto,
+and free: two samples each measured **97.2 FPS casting and 97.4 not** — both rails are
+24-vertex boxes. It does not alias either; high-frequency energy on the distant bridges
+moved by −0.0%, the near one by +0.1%.
+
+The deck still does not cast, because it is half a unit thick over open sky with
+nothing underneath to receive it.
+
 ### Four things this round ruled out
 
 The same session chased the island palettes and found the measurement was wrong
