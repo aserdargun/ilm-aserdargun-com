@@ -1871,6 +1871,62 @@ which reads the shader define the switch actually wrote: `AgXToneMapping(texel)`
 `ACESFilmicToneMapping(texel)`. The mode property on the effect instance is a
 deprecated getter and does not track the change on its own.
 
+### …and three ways of paying the shadow cost back, none of which is a good trade
+
+The shadow cost above is a real number, so the next question is whether any of it can
+be bought back without giving the gain up. Four candidates were measured at one camera
+on the high tier. None passed.
+
+**The vignette is not the culprit.** Sorting the frame by radius, the crush
+concentrates in the 60–80% annulus — 34.6% of the frame — and that is not the corners:
+
+| darkness | frame mean | 60–80% ring ≤2/255 | corner mean | corner ≤4/255 |
+| --- | --- | --- | --- | --- |
+| **0.42 (source)** | 73.5 | **1.8878%** | 56.0 | 3.0107% |
+| 0.35 | 74.6 | 1.7115% | 59.8 | 1.4370% |
+| 0.28 | 75.3 | 1.5691% | 62.8 | 0.8416% |
+| 0 (off) | 75.9 | **1.4868%** | 66.7 | 0.5057% |
+
+With the vignette switched off entirely the annulus still carries **1.4868%**. Only
+0.401 of its 1.888 percentage points — **21%** — is the vignette, so turning it down
+cannot fix the crush it appears to cause.
+
+The rule that picked 0.42 has also stopped holding. It was "below about 0.3 the
+corners stop responding", because what remained there was geometry rather than
+effect. Under ACES the corners do not stop: 0.28 → 0 still lifts the corner mean from
+62.8 to 66.7. The curve has no knee, so there is no floor to stop at.
+
+**Where the black actually is.** Mapping every ≤2/255 pixel across the frame: the sky
+carries **0.0000%** and the bottom quarter 0.0462%, while the middle half carries
+1.1726%. A single 233×725 region at the left edge — the loom's overhang and the
+panels under it — holds **82.7% of every near-black pixel in the frame**. Cropping it
+shows what it is: a genuine void beneath the overhang, and panels whose weave still
+reads. It is not a defect that a light can repair.
+
+**The rim is the wrong light for it.** The rim is the one source whose job is vertical
+faces, so it is the obvious candidate. Raising it:
+
+| rim | dark face mean | lit sand mean | dark face ≤2/255 |
+| --- | --- | --- | --- |
+| **0.62 (source)** | 12.52 | 96.43 | 15.415% |
+| 1.10 | 13.11 (+4.7%) | 99.37 (+3.0%) | 14.937% |
+| 1.60 | 13.57 (+8.4%) | 102.23 (+6.0%) | 14.292% |
+
+In absolute terms, taking the rim to 1.6 buys **+1.05 luma on the dark face and pays
++5.80 luma on the sunlit sand** — 5.5× less effective where it is needed than where it
+is not. The percentage column makes it look like a win precisely because the dark face
+started so low; only the absolute figures are comparable across the two surfaces. It is
+the same trade already rejected for the environment probe at 0.35.
+
+**The hemisphere was not re-measured**, because it was measured once already and the
+answer was that it does nothing: moving it between 0.4 and 0.14 changed shadowed
+ground by 0.38 luma. There is nothing there to recover.
+
+So the shadow cost stands, deliberately, and 0.42 stands with it. The useful output of
+this round is the negative one: the number that looked like a vignette problem is 79%
+tone curve, the geometry underneath it is a void rather than a dark material, and the
+only light that reaches it costs more than it returns.
+
 ### Assets degrade, they do not break
 
 `src/world/Models.tsx` loads every model through an error boundary and a
