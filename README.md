@@ -2167,6 +2167,32 @@ moved by −0.0%, the near one by +0.1%.
 The deck still does not cast, because it is half a unit thick over open sky with
 nothing underneath to receive it.
 
+#### The audit that would have caught it
+
+`findOrphanShadowCasters` asks whether a shadow lands where the player cannot connect
+it to. The rails needed the complementary question — whether something the player is
+looking at is **not attached to the ground at all**, because the tie is missing — and
+it had no home until now. `findMissingShadowCasters` in `src/world/scene-audit.ts`
+asks it, and `__ilm.missingCasters()` exposes it beside the orphan-caster screen.
+
+It reports ten meshes on the shipped world, and all ten are deliberate exceptions:
+
+| reported | why it is right |
+| --- | --- |
+| 7 bridge decks | half a unit thick over open sky, nothing underneath to receive |
+| 2 canal steps | 0.4 tall; the shadow would be a hairline |
+| 1 synthesis-tree column | a 24-unit turquoise light shaft at the hub — a beam, not an object |
+
+The band is a **full unit** above the ground rather than half, and that is a finding
+rather than a guess: a rail is two boxes. The turquoise post stands on the deck and
+the copper cap stands on the post, at 0.75 units, so a band stopping at the deck would
+have caught fourteen of the twenty-eight rails and declared the job finished. The
+first version of this test said two of four where it should have said four, and that
+was the threshold being wrong rather than the rails being partly innocent.
+
+Ten tests, and the count is a contract: if a future prop lands on the sand without
+`castShadow`, this is the check that says so.
+
 ### Four things this round ruled out
 
 The same session chased the island palettes and found the measurement was wrong
@@ -2610,7 +2636,7 @@ Details that carry weight:
 
 ## Tests performed
 
-`npm run test` — **283 tests across 23 files, all passing.**
+`npm run test` — **293 tests across 24 files, all passing.**
 
 | Suite | Tests | What it proves |
 | --- | --- | --- |
@@ -2664,7 +2690,7 @@ interface calls — through the whole journey and asserts it can be finished:
 - all 33 applications are discovered across the run
 - the finished journey reloads correctly from the save
 
-The full suite is 283 tests across 23 files.
+The full suite is 293 tests across 24 files.
 
 Measured in the browser through the real interface, not simulated:
 

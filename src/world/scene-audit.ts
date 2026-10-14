@@ -153,3 +153,77 @@ export function findOrphanShadowCasters(root: THREE.Object3D): OrphanCasterRepor
   });
   return out.sort((a, b) => b.baseHeight - a.baseHeight || b.span - a.span);
 }
+
+/**
+ * The other direction: an object standing on the ground that casts nothing.
+ *
+ * `findOrphanShadowCasters` asks whether a shadow is landing somewhere it cannot be
+ * explained from. This asks the complementary question — whether something the player
+ * is looking at is not attached to the ground at all, because the thing tying it down
+ * is missing.
+ *
+ * It is the same class of defect as the orphan caster and was found the same way,
+ * by walking: on a bridge the turquoise rails had no shadow, so they read as a
+ * stripe painted onto the deck rather than a raised thing standing on it. Neither
+ * rail had `castShadow`. Fourteen panels and a beam had once had it, wrongly, high
+ * in the air; here twenty-eight boxes 0.16 to 0.7 units thick did not have it at
+ * all, and nobody could tell, because the deck they sit on *does* receive shadows
+ * and so the frame looks correctly lit.
+ *
+ * The thresholds are deliberately loose, and the function returns everything it
+ * finds rather than judging. `GROUND_CASTER_BOTTOM_MAX` is 1 rather than a
+ * half-unit because a rail is two boxes: the turquoise post stands on the deck and
+ * the copper cap stands on the post, at 0.75 units. A band that stopped at the deck
+ * would have caught fourteen of the twenty-eight and called the job done.
+ *
+ * On the shipped world it reports those twenty-eight rails plus the seven bridge
+ * decks and two canal steps, and every one of the nine extras is a deliberate
+ * exception. A deck is half a unit thick over open sky with nothing underneath to
+ * receive it; a canal step's shadow would be a hairline. Reading the list is the
+ * job, which is why it exists next to the orphan-caster screen and not instead of
+ * it.
+ */
+export const GROUND_CASTER_BOTTOM_MIN = -0.2;
+export const GROUND_CASTER_BOTTOM_MAX = 1;
+export const GROUND_CASTER_MIN_SIZE = 0.4;
+
+export interface MissingCasterReport {
+  name: string;
+  /** Lowest world-space point, in units. Sitting at the ground is the condition. */
+  bottom: number;
+  height: number;
+  /** Largest horizontal extent, in units. */
+  span: number;
+}
+
+/**
+ * Lists meshes resting on the ground that do not cast a shadow.
+ *
+ * Returns `[]` on a scene with nothing suspicious, which is the point.
+ */
+export function findMissingShadowCasters(root: THREE.Object3D): MissingCasterReport[] {
+  const out: MissingCasterReport[] = [];
+  root.updateWorldMatrix(true, true);
+  root.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    if ((mesh as unknown as { castShadow?: boolean }).castShadow) return;
+    const geometry = mesh.geometry;
+    if (!geometry?.getAttribute?.('position')) return;
+    geometry.computeBoundingBox();
+    const box = geometry.boundingBox;
+    if (!box) return;
+    const world = box.clone().applyMatrix4(o.matrixWorld);
+    if (world.min.y < GROUND_CASTER_BOTTOM_MIN || world.min.y > GROUND_CASTER_BOTTOM_MAX) return;
+    const height = world.max.y - world.min.y;
+    const span = Math.max(world.max.x - world.min.x, world.max.z - world.min.z);
+    if (height < GROUND_CASTER_MIN_SIZE || Math.max(span, height) < GROUND_CASTER_MIN_SIZE * 2) return;
+    out.push({
+      name: o.name || '(unnamed)',
+      bottom: +world.min.y.toFixed(2),
+      height: +height.toFixed(2),
+      span: +span.toFixed(2),
+    });
+  });
+  return out.sort((a, b) => b.span * b.height - a.span * a.height);
+}

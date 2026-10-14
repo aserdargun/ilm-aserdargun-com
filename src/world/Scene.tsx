@@ -34,7 +34,7 @@ import {
 import { PropScatter, preloadProps } from './Props';
 import { Lighting, type ShadowRegion } from './Lighting';
 import { applySurfaceDetail, useSurfaceDetailMap } from './detail';
-import { findOrphanShadowCasters, findPiledModels, isGltfRoot, placedModels } from './scene-audit';
+import { findMissingShadowCasters, findOrphanShadowCasters, findPiledModels, isGltfRoot, placedModels } from './scene-audit';
 import { PostProcessing } from './PostProcessing';
 import { HORIZON_COLOR, SkyDome, TerrainDisc } from './Atmosphere';
 import { regionAt } from './Player';
@@ -318,6 +318,12 @@ function SceneContents() {
         // half the ground's brightness, with its caster 57 degrees up and outside
         // the frame. Empty on a sound scene.
         orphanCasters: () => findOrphanShadowCasters(scene),
+        // The other direction: something standing on the ground that casts nothing,
+        // and so is not attached to it. The bridge rails were one — no shadow, so
+        // a turquoise stripe painted on the deck rather than a raised thing on it.
+        // Reports the seven bridge decks and two canal steps on the shipped world,
+        // every one a deliberate exception. Empty of surprises is the goal.
+        missingCasters: () => findMissingShadowCasters(scene),
         // Deepest overlap between the player and any collider; should stay <= 0.
         // What is holding the player: the nearest collider, and how far the
         // player is from walkable ground.
