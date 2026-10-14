@@ -1900,6 +1900,37 @@ units on margin — would buy about 13% more texels per unit, a quarter of what 
 delivers, for a change that would be invisible by comparison and would reopen a shadow
 box whose fit was deliberately reworked. Not taken.
 
+#### The medium tier was the only one still paying for a smaller shadow map
+
+The comment that scaled the shadow map by tier — "a phone rendering a 1024 map over
+the same box is trading detail for frame rate whether it wants to or not" — stopped
+being true when the low tier stopped drawing shadows at all. `shadowsOn` is false
+there, so medium was left as the only tier paying for a smaller map with nothing
+bought in return.
+
+Measured on the medium tier itself rather than extrapolated from high, with a
+same-setting control pair:
+
+| | mean abs. diff | pixels past 4/255 | vs control |
+| --- | --- | --- | --- |
+| control (2048 → 2048) | 0.2124 | 0.388% | — |
+| **1280 → 2048** | **0.3939** | **1.697%** | **1.85×** |
+
+That is the same ratio high shows for the same step (0.3636 against a 0.1913 control,
+1.9×), so the tier that was behind was not behind for a reason. It is free there:
+three samples each measured **112.4 FPS at 1280 and 110.2 at 2048**, with the two
+ranges almost entirely overlapping. Medium runs refresh-bound at 112, so there is
+nothing here to spend.
+
+The map size does more than remove stair-steps, which is worth knowing before
+tuning it again: the shadow texel is the unit `shadow.radius` is counted in, so a
+smaller map silently widens the penumbra as well. At 1280, `radius` 0.5 is 0.034
+world units across; at 2048 it is 0.021. Medium was not just coarser, it was
+blurrier by half again — and it inherited the fixed radius from the high tier without
+that consequence being visible anywhere.
+
+This is why it stops at 2048: 4096 costs **11.2% of the frame rate** on high.
+
 ### Four things this round ruled out
 
 The same session chased the island palettes and found the measurement was wrong

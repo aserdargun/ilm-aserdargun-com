@@ -124,10 +124,26 @@ function Sun({ quality, target, region }: LightingProps) {
   const light = useRef<THREE.DirectionalLight>(null);
   const fitted = useRef<number>(-1);
   const shadowsOn = quality !== 'low';
-  // The box is fitted to an island whose radius can reach 46, so the map is
-  // sized to hold at least the ~20 texels/unit the hub used to get. The old
-  // fixed ±46 box never dropped below 11 texels/unit on medium either.
-  const mapSize = quality === 'high' ? 2048 : 1280;
+  // 2048 on both tiers that render shadows at all, up from 2048 on high and
+  // 1280 on medium. The tier-scaling comment this replaces was true when low
+  // still drew a 1024 map; it no longer does — `shadowsOn` is false there, so
+  // the medium tier was the only one left paying for a smaller map with nothing
+  // bought in return.
+  //
+  // The box is fitted to an island whose radius can reach 46, so this puts the
+  // hub at 23.3 texels per world unit and the council at 18.3, against 14.5 and
+  // 11.4 at 1280. The shadow map's texel is also the unit `shadow.radius` is
+  // counted in, so a smaller map silently widens the penumbra as well as the
+  // stair-steps.
+  //
+  // Measured on the medium tier itself, not extrapolated: 1280 -> 2048 moves
+  // 1.70% of the frame past 4/255 against a 0.39% same-setting control, 1.85x
+  // the noise floor — the same ratio the high tier shows for the same step
+  // (1.9x). It is free there: three samples each measured 112.4 FPS at 1280 and
+  // 110.2 at 2048, with the two ranges almost entirely overlapping. Going the
+  // other way is not — 4096 costs 11.2% of the frame rate on high, which is why
+  // this stops at 2048.
+  const mapSize = 2048;
 
   useFrame(() => {
     const lamp = light.current;
