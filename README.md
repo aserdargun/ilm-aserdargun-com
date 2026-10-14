@@ -170,7 +170,9 @@ here — with a composer the scene is written to an offscreen target first, so a
 renderer-side tone map would compress the range *before* bloom reads it, and
 bloom would find nothing above its threshold. `PostProcessing.tsx` switches the
 renderer's tone mapping off and restores it on unmount, and the composer's own
-`ToneMapping` effect maps the final frame instead.
+`ToneMapping` effect maps the final frame instead — set to **ACES Filmic**, which
+was chosen over AgX on measurement. See "The tone curve was the thing washing the
+world out" below.
 
 The module is **loaded lazily**. The low tier renders none of these effects, so
 it should not download their ~162 KB of shader code. Splitting them out kept
@@ -1808,6 +1810,63 @@ and compared before a single pixel was counted:
   Fixing that moved the number without making it meaningful, and the honest
   conclusion is that face-averaged albedo is not a per-pixel albedo at all.
   Measuring it properly needs barycentric interpolation, which is not written.
+
+### The tone curve was the thing washing the world out
+
+Every number in the light rig above was tuned against **AgX**, and that turned out to
+be the constraint nobody had questioned. AgX is the better-behaved curve in
+isolation — it holds shadow detail where ACES crushes it — but on a world lit like
+this one it reads washed: the stone goes cream, the coral goes pale salmon, and the
+midtones lose the separation that makes geometry legible at distance.
+
+Measured at two fixed cameras, each with a **same-mode control pair** so the frames
+could be proven repeatable before a single pixel was counted:
+
+| camera | control (AgX→AgX / ACES→ACES) | mean abs. diff | pixels past 4/255 |
+| --- | --- | --- | --- |
+| hub (0, 0) | ACES → ACES | 0.359 / 255 | 0.65% |
+| council (138, −84) | ACES → ACES | 0.442 / 255 | 1.18% |
+
+Sharpness matched to three decimals across each control pair (0.8012 vs 0.8011 at the
+hub, 0.9353 vs 0.9376 at the council), so the A/B that follows is signal, not drift.
+
+| | mean luma | 1st pct | chroma (all) | chroma (>40% luma) | midtone contrast | shadow contrast | clipped |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| **hub — AgX** | 82.58 | 5.35 | 0.4539 | 0.3065 | 0.0044 | 0.0031 | 0.0000% |
+| **hub — ACES** | 73.70 | 2.35 | 0.5574 | 0.4193 | 0.0064 | 0.0022 | 0.0024% |
+| | −10.8% | −56% | **+22.8%** | **+36.8%** | **+45.5%** | −29.4% | |
+| **council — AgX** | 110.57 | 34.44 | 0.2331 | 0.1903 | 0.0039 | 0.0017 | 0.0001% |
+| **council — ACES** | 107.96 | 18.01 | 0.3097 | 0.2522 | 0.0057 | 0.0013 | 0.0023% |
+| | −2.4% | −47.7% | **+32.8%** | **+32.6%** | **+44.2%** | −28.0% | |
+
+The change is global rather than regional: **66% of the hub frame and 82% of the
+council frame** move by more than 4/255, and after excluding what animates — 1.0% and
+1.3% of the frame — the numbers barely move (10.92 and 11.13 mean absolute
+difference). Whole-frame local contrast rises 15% at the hub and **33%** at the
+council.
+
+**The cost is real and was kept on purpose.** Shadow local contrast falls about 29%
+at both cameras and pixels below 8/255 go from 1.85% to 5.95% of the hub frame — ACES
+has a harder toe than AgX, and this world is lit at night, so the toe is where it
+lands. That was checked by looking rather than assumed: at the hub the loom's woven
+texture still reads in the darkest third of the frame, and the floating island's
+underside stays legible as a shape rather than becoming a hole. Highlights also newly
+clip, but **0.0023% of the frame — about 100 pixels of 4,179,560** — which is the
+number that decides it is not a highlight rolloff problem.
+
+**There is no in-between setting, and the reason is worth recording.** The effect
+exposes a `blendMode.opacity`, which reads like a dial for how much ACES to apply.
+Writing 0.7 produced a frame that matched the full setting to three decimals on every
+statistic — chroma 0.5579 vs 0.5574, midtone contrast 0.0065 vs 0.0064 — i.e. smaller
+than the animation noise the control pair had just measured. A control that cannot be
+reached is not a control, so the choice is the two curves or nothing.
+
+One trap for anyone repeating this: `ToneMappingMode` is an enum whose AgX member is
+**7**, not 8. `8` is `NEUTRAL`, and the failure is silent — the frame renders, it is
+just the wrong curve. The live check is `__postfx.tone.defines.get('toneMapping(texel)')`,
+which reads the shader define the switch actually wrote: `AgXToneMapping(texel)` vs
+`ACESFilmicToneMapping(texel)`. The mode property on the effect instance is a
+deprecated getter and does not track the change on its own.
 
 ### Assets degrade, they do not break
 

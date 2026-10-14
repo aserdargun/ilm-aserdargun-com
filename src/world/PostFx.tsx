@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Bloom, EffectComposer, N8AO, SMAA, ToneMapping, Vignette } from '@react-three/postprocessing';
 import { BlendFunction, KernelSize, ToneMappingMode } from 'postprocessing';
-import type { BloomEffect, VignetteEffect } from 'postprocessing';
+import type { BloomEffect, ToneMappingEffect, VignetteEffect } from 'postprocessing';
 import type { Quality } from '../game/store';
 
 /**
@@ -31,6 +31,7 @@ export function PostProcessing({ quality }: { quality: Quality }) {
   const bloom = useRef<BloomEffect>(null);
   const vignette = useRef<VignetteEffect>(null);
   const ao = useRef<unknown>(null);
+  const tone = useRef<ToneMappingEffect>(null);
 
   useEffect(() => {
     if (!import.meta.env.DEV) return;
@@ -39,6 +40,7 @@ export function PostProcessing({ quality }: { quality: Quality }) {
       get bloom() { return bloom.current; },
       get vignette() { return vignette.current; },
       get ao() { return ao.current; },
+      get tone() { return tone.current; },
       quality,
     };
   }, [quality]);
@@ -93,8 +95,32 @@ export function PostProcessing({ quality }: { quality: Quality }) {
         kernelSize={KernelSize.LARGE}
       />
       {/* Owns the tone response, because the renderer's was switched off in
-          `PostProcessing.tsx` to keep bloom working on real HDR values. */}
-      <ToneMapping mode={ToneMappingMode.AGX} />
+          `PostProcessing.tsx` to keep bloom working on real HDR values.
+
+          ACES Filmic, down from AgX. AgX is the better-behaved curve in
+          isolation -- it holds shadow detail where ACES crushes it -- but on this
+          world it reads washed: the stone goes cream, the coral goes pale salmon,
+          and the midtones lose the separation that makes the geometry legible.
+
+          Measured at two fixed cameras, AgX then ACES, each with a same-mode
+          control pair to prove the frames were repeatable (hub: mean absolute
+          difference 0.36/255 between two identical ACES frames; council: 0.44).
+          Chroma rises 23% at the hub and 33% at the council, 33-37% on pixels
+          above 40% luminance, and midtone local contrast rises 45% and 44% --
+          the whole frame moves, not a region of it (66% and 82% of pixels past
+          4/255, with the animated mask only 1.0% and 1.3%).
+
+          The cost is real and was kept deliberately: shadow local contrast falls
+          29% and 28%, and pixels below 8/255 go from 1.85% to 5.95% at the hub.
+          Checked visually rather than assumed -- the loom's woven texture still
+          reads in the darkest third of the frame. Highlights also newly clip,
+          but only 0.0023% of the frame, about 100 pixels of 4.18M.
+
+          There is no in-between setting. `blendMode.opacity` looked like a dial
+          for how much ACES to apply, and writing 0.7 changed the frame by less
+          than the animation noise -- every statistic matched the full setting to
+          three decimals. A control that cannot be reached is not a control. */}
+      <ToneMapping ref={tone} mode={ToneMappingMode.ACES_FILMIC} />
       {/* 0.42, down from 0.62, and the number is a consequence rather than a
           preference. Pulling the environment probe back to 0.6 darkened the
           whole scene, and the vignette multiplies whatever it is given — so a
