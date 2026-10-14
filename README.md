@@ -2096,6 +2096,28 @@ which reads the shader define the switch actually wrote: `AgXToneMapping(texel)`
 `ACESFilmicToneMapping(texel)`. The mode property on the effect instance is a
 deprecated getter and does not track the change on its own.
 
+#### What ACES did to the emissive accents
+
+The 39 emissive materials in the world top out at a peak of 0.745 and 31 of them sit
+at 0.3; **not one crosses bloom's 0.72 threshold on its own**, so the accents were
+never the bloom seeds. What the tone curve changes is how they *read*, and it cuts
+both ways:
+
+| | accent luma | surrounding luma | ratio |
+| --- | --- | --- | --- |
+| turquoise, AgX | 107.5 | 89.2 | 1.206 |
+| **turquoise, ACES** | 98.2 | 79.9 | **1.229** |
+
+ACES renders the accents about 31% dimmer in absolute terms — it has a harder shoulder
+— and *more* separated from what surrounds them, because it darkens the surround more
+than the accent. The bloom seed population does not move at all: Bloom is upstream of
+`ToneMapping` in the chain, so it reads the pre-curve HDR buffer either way.
+
+What does move is the finished image: **0.0876% of the frame ends above 0.72 under ACES
+against 0.0268% under AgX**, peaking at 236 rather than 215. That is the contrast
+increase being spent where it was intended, and it is not clipping — nothing in the
+world reaches 250.
+
 ### …and three ways of paying the shadow cost back, none of which is a good trade
 
 The shadow cost above is a real number, so the next question is whether any of it can
