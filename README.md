@@ -2008,6 +2008,49 @@ at all, and it is an even mid-tone sand field under an even sky. Neither is a re
 problem; both are what the pose happens to contain. Low p99 is not a defect until you
 have looked at what fills the frame.
 
+### The tier nobody is given, and the device classes the detector has no name for
+
+The auto-detection is one line — `handheld ? 'low' : 'high'` — so **the medium tier is
+opt-in only**. It is reachable from the settings dropdown and nothing else. That matters
+because medium is not a degraded tier any more; it carries full-resolution AO, SMAA and
+the same 2048 shadow map as high.
+
+How far apart the two are, at one camera with a control pair:
+
+| | mean abs. diff | pixels past 4/255 | frame mean |
+| --- | --- | --- | --- |
+| high → high (control) | 0.297 | 0.70% | 73.50 / 73.47 |
+| high → medium | 0.750 | 1.64% | 73.46 |
+
+**2.5× the noise floor** — real, and about half the size of the shadow-radius change —
+but the frame brightness is identical to two decimals. The difference is scattered
+through the upper half of the frame, where the extra pixel ratio resolves distant
+detail; nothing in the foreground moves.
+
+Running the detector's predicate over device profiles shows what it has no name for:
+
+| profile | coarse | touch | narrow | verdict | tier |
+| --- | --- | --- | --- | --- | --- |
+| phone, portrait | yes | 5 | yes | handheld | low |
+| phone, landscape | yes | 5 | yes | handheld | low |
+| **tablet, portrait (iPad)** | yes | 5 | **no** | not handheld | **high** |
+| **tablet, landscape** | yes | 5 | **no** | not handheld | **high** |
+| desktop, narrow window | no | 0 | yes | not handheld | high |
+| **touch laptop, narrow window** | no | 10 | yes | **handheld** | **low** |
+| desktop | no | 0 | no | not handheld | high |
+
+A tablet never satisfies `min(w, h) <= 480` in either orientation, so both land on
+`high` — 2048 shadow maps, full-resolution AO, SMAA and a 1.75 pixel ratio. And a
+touch-capable laptop with a narrow window satisfies `touchPoints > 1 && narrow`, so a
+desktop-class machine is dropped to `low` because someone resized the window.
+
+Neither of those is corrected here. The visual gap between high and medium is
+measured and small, but **the frame rate either class would get is not measured at
+all**, and the rule this project has been holding is not to guess on behalf of devices
+nobody has measured. What is recorded is the shape of the decision: the tiers are
+close enough that the default is doing less than it looks, and the detector's two blind
+spots are a tablet and a narrow window.
+
 ### Four things this round ruled out
 
 The same session chased the island palettes and found the measurement was wrong
