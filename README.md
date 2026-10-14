@@ -1660,6 +1660,32 @@ frame keep their form, the sand's shadows are deeper and still attached to the
 thing throwing them, and no metallic surface visibly dies. Those two are a
 judgement from looking, not a number. The figures above are the hub's alone.
 
+#### What each light is actually worth
+
+Cutting the probe 40% made the balance worth writing down. Measured at the
+hub, each source removed from the rebalanced rig in turn, reading the ground the
+player stands on:
+
+| removed | ground brightness falls by | so it supplies |
+| --- | --- | --- |
+| sun | 28.88 | **42.3%** |
+| environment probe | 3.34 | 4.9% |
+| hemisphere | 2.73 | 4.0% |
+| rim | 1.25 | 1.8% |
+
+The contributions do not sum to 100% and should not: tone mapping is compressive
+and the occlusion pass removes more before the curve is applied. The useful
+reading is the ranking. The probe that used to be "45–61% of the ground's
+brightness" is now 4.9%, and the key light is six times the next source.
+
+**The rim cannot be judged on the ground.** At 1.8% it looks like a dead light,
+and that is the wrong surface to measure it on: a rim exists to separate a
+silhouette from the background, which is what happens on walls and towers, not on
+a floor whose normal points up. Measured over the whole frame it touches **38.5%
+of the pixels**, and switching it off moves **11.2%** of the frame by more than
+4/255. It is the second most consequential light in the scene and a ground-band
+statistic would have reported the opposite.
+
 The same inline-Vector2 footgun was on both of the canal's normal-scale props
 and is fixed with them. It never broke the canal — those values were edited in
 source, which is the one thing the prop could not undo — but it meant the canal
