@@ -1701,14 +1701,29 @@ Memory and Council, of 3.2 million pixels: **8** above 220/255, **124** above
 halo. The brightest pixel in the frame is 243, and only 35 pixels in 3.2 million
 have a saturated channel, so nothing is clipping to produce the glow.
 
-What could **not** be measured is the size of that halo. Turning the intensity
-from 0.62 to zero moves 3–4% of the frame by more than 2/255 — but so does
-turning it back to 0.62 again, because the Weaver, the water and the grass are
-all moving and no amount of averaging inside a state cancels a difference measured
-minutes apart. The reproducibility check failed, so the figure is not quoted.
-"A high threshold so only the emissive accents bloom" is a **verified** claim now
-rather than an assumed one, and that is the whole result. Nothing about the bloom
-was changed, because there was nothing here to fix.
+What could **not** be measured at first was the size of that halo. Reading the
+intensity from 0.62 to zero moved 3–4% of the frame by more than 2/255 — but so
+did putting it back to 0.62 again, because the Weaver, the water and the grass are
+all moving, and averaging inside a state does not cancel a difference measured
+minutes apart. That is what `tools/measure_frame.py` was built for, and it was
+sitting there unused: with a control frame from the same state it masks whatever
+moves and reports the rest.
+
+| bloom 0.62 vs 0, animasyon maskeli | karesin %97,7'si |
+| --- | --- |
+| 4/255'ten fazla değişen | **%0,574** |
+| 12/255'ten fazla değişen | %0,315 |
+| en büyük fark | 115 |
+
+The hand-rolled measurement said 3–4%. It was about six times too high, and all of
+the difference was the animation it had failed to mask — the Weaver, the water
+and the grass, in a scene where the thing being measured covers half a percent of
+the frame. A seed population of 0.026% spreading to a 0.57% halo is a
+twenty-fold glow for a handful of emissive accents, which is what a night world
+wants and roughly a fifth of what the broken number claimed.
+
+So the comment's claim is now a **verified** one rather than an assumed one, and
+nothing about the bloom was changed, because there was nothing here to fix.
 
 The same inline-Vector2 footgun was on both of the canal's normal-scale props
 and is fixed with them. It never broke the canal — those values were edited in
