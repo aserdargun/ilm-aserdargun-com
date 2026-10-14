@@ -1819,8 +1819,11 @@ isolation — it holds shadow detail where ACES crushes it — but on a world li
 this one it reads washed: the stone goes cream, the coral goes pale salmon, and the
 midtones lose the separation that makes geometry legible at distance.
 
-Measured at two fixed cameras, each with a **same-mode control pair** so the frames
-could be proven repeatable before a single pixel was counted:
+Measured at two fixed cameras on the **high** tier (2271×1408 drawing buffer,
+2596×1610 captures) — the only tier where the full chain runs, so the numbers do not
+carry over to medium, where bloom is at 0.42 instead of 0.62 and SMAA is absent. Each
+carries a **same-mode control pair** so the frames could be proven repeatable before a
+single pixel was counted:
 
 | camera | control (AgX→AgX / ACES→ACES) | mean abs. diff | pixels past 4/255 |
 | --- | --- | --- | --- |
