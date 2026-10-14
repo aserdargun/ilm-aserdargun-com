@@ -2098,43 +2098,51 @@ puts its largest steps at creases that happen not to cross the border, and the g
 roughness map scores 0.33 because it is a deliberately narrow 0.88–1.0 band whose
 interior steps are steeper than the wrap is. Nothing here is a seam.
 
-### The player's shadow stops halfway along every bridge
+### The player's shadow stops two thirds of the way along the bridges
 
 Walked to the bridge from the hub to the Cartographers' Terrace and the character has
 **no shadow at all** on the deck. Not a faint one — none, while the same character on
 the hub throws a crisp one two seconds earlier.
 
 The deck is not the reason. The bridge is six `BoxGeometry` layers, and the walking
-surface — `#c9b79a` at y = 0.6, radius 50, centred at (−63.6, −46.2) — has
-`receiveShadow: true`. It is receiving. What is missing is anything to receive *from*:
-**none of the six layers has `castShadow` set**, the rails included.
+surface — `#c9b79a` at y = 0.6 — has `receiveShadow: true`. It is receiving. What is
+missing is anything to receive *from*: **none of the six layers has `castShadow` set**,
+the rails included.
 
-And the real cause is coverage. Projecting the bridge onto the light's own axes, with
-the box half-width the code computes (`island.radius + SHADOW_SHOULDER` = 34 + 10 = 44):
+The real cause is coverage. Unlocking every region builds **seven** bridges — six
+radiating from the hub and one more — and each averages 163 units from rim to rim. With
+the box half-width the code computes (`island.radius + SHADOW_SHOULDER` = 34 + 10 = 44),
+projecting the walk onto the light's own axes:
 
-| along the bridge | light-space X | light-space Y | inside the box |
-| --- | --- | --- | --- |
-| 0% | 0.5 | 0.2 | yes |
-| 25% | 17 | 21 | yes |
-| 50% | 33 | 43 | yes, just |
-| 60% | 40 | 51 | **no** |
-| 100% | 66 | 85 | **no** |
+| bridge | shadow ends at | shadowless share |
+| --- | --- | --- |
+| hub → cartographers | 36% | 64% |
+| hub → flow-foundry | 32% | 68% |
+| hub → council | 32% | 68% |
+| hub → harbor | 34% | 66% |
+| hub → gardens | 34% | 66% |
+| hub → mirrors | 29% | 71% |
+| **mean** | **33%** | **67%** |
 
-**The player loses their shadow for roughly the last half of every bridge.** The box is
-fitted to the island, and a bridge is over a hundred units long, so this is not an
-oversight in the fitting — it is the fitting working as designed. `SHADOW_SHOULDER`'s
-comment already concedes the limit: the shoulder "only catches the small return cast of
-the next few units of deck".
+**Two thirds of every hub bridge is walked with no shadow at all**, and it is worst on
+the longest one. The box is fitted to the island and a bridge is over a hundred and sixty
+units long, so this is not a fitting mistake — it is the fitting working as designed.
+`SHADOW_SHOULDER`'s comment already concedes the limit: the shoulder "only catches the
+small return cast of the next few units of deck".
 
 The obvious repair is to widen the shoulder, and it is the wrong one. Taking it from 10
 to 40 takes the box from ±44 to ±74 and drops the hub from **23.3 texels per unit to
-13.9** — a 40% loss of shadow detail everywhere, to pay for a ribbon of deck that is a
-small part of the time. Keeping the box on the island instead of following the player
-is the fix already argued in `SHADOW_SHOULDER`, and re-opening it to save a shadow on a
-bridge would trade the whole island for it.
+13.9** — a 40% loss of shadow detail everywhere, to pay for the ribbon of deck where
+the player spends a fraction of the time. Keeping the box on the island instead of
+following the player is the fix already argued in `SHADOW_SHOULDER`, and re-opening it
+to save a shadow on a bridge would trade the whole island for it.
 
 So it stands, now measured rather than assumed: shadows end where the island ends, and
-on a bridge that is halfway along.
+on a bridge that is two thirds of the way along.
+
+The seventh bridge's two ends could not be resolved from the bounding spheres alone —
+its long axis was estimated from a rail layer rather than the deck — so it is counted
+but not measured. The six hub-radial ones are unambiguous.
 
 ### Four things this round ruled out
 
