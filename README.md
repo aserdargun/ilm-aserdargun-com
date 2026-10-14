@@ -2051,6 +2051,33 @@ nobody has measured. What is recorded is the shape of the decision: the tiers ar
 close enough that the default is doing less than it looks, and the detector's two blind
 spots are a tablet and a narrow window.
 
+#### What the generated maps actually contain, and why regenerating them is not the answer
+
+The soil's height field is `fbm(size, 8, 5)` — octaves at 8, 16, 32, 64 and **128** cells
+across a 512-pixel image, which is four pixels per lattice cell at the finest and looks
+like it should alias the moment the ground is minified. That is the obvious suspect for
+the distance shimmer above, and it is worth measuring rather than assuming: take the
+radial power spectrum of the three maps the generator writes.
+
+| map | below 0.125 cyc/px | 0.45–0.50 cyc/px (at Nyquist) |
+| --- | --- | --- |
+| ground_normal | **95.98%** | **0.01%** |
+| stone_normal | 98.79% | 0.00% |
+| water_normal | 99.99% | 0.00% |
+
+**The maps are extraordinarily low-pass.** A twentieth of a percent of the soil's energy
+sits in the top eighth of the band, and a hundredth of a percent is within a hair of
+Nyquist. The reason is the `gain=0.5` on each octave plus the normalisation to a peak
+slope: the finest octave carries 1/16th the amplitude of the coarsest, and by the time
+it is finite-differenced and rescaled the top of the band is empty.
+
+So the shimmer cannot be coming from the maps' spectral content, and regenerating them
+with a Nyquist rolloff would be a change with nothing to change. The height field is the
+derivative's integral, so its spectrum is concentrated at low frequencies more tightly
+still — the conclusion holds a fortiori. Combined with anisotropy 16 doing nothing, the
+distance shimmer is mip selection, not the source texture, and it stays where it was
+recorded: bounded by the world's shape, 4.6% of terrain beyond thirty units.
+
 ### Four things this round ruled out
 
 The same session chased the island palettes and found the measurement was wrong
