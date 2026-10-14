@@ -1652,6 +1652,14 @@ Re-measured after a full reload, from source and not from a runtime override:
 environmentIntensity 0.6, sun 2.4, hemisphere 0.4 and rim 0.62 untouched, and
 2.920 / 41.18 / 76.93 — the same numbers the live sweep produced.
 
+This is a global change, so it was not checked only where it was measured. The
+City of Memory and Council and the Adaptation Cloud Harbor — two of the eight
+islands this round had never actually looked at — were walked afterwards: the
+towers read as solid rather than as cut-outs, the workshop bench and the sky
+frame keep their form, the sand's shadows are deeper and still attached to the
+thing throwing them, and no metallic surface visibly dies. Those two are a
+judgement from looking, not a number. The figures above are the hub's alone.
+
 The same inline-Vector2 footgun was on both of the canal's normal-scale props
 and is fixed with them. It never broke the canal — those values were edited in
 source, which is the one thing the prop could not undo — but it meant the canal
