@@ -1952,6 +1952,33 @@ The first sample at 1.75 came in at 82.3 and made the cost look like 9.1%. It wa
 frame immediately after HMR rebuilt the framebuffers; the median of the seven is 97.8,
 and it is the median that the decision should have used from the start.
 
+### The environment probe is an ambient term, and its sun disc is not the highlight
+
+The 128×64 procedural probe drives every metal surface in the world, and its
+`environment.ts` comment claimed the shared sun direction "is what makes the
+specular highlight on a copper ring land on the side the sun is actually on".
+That was never measured. Measuring it, by switching `environmentIntensity` to zero
+at a fixed camera and separating the band into its specular pixels and the fill
+around them:
+
+| probe | highlight pixels (luma > 150) | fill pixels (luma ≤ 150) |
+| --- | --- | --- |
+| 0.6 (source) | RGB 141.7 · 152.3 · 159.0 | RGB 28.7 · 29.0 · 29.3 |
+| 0 | RGB 139.7 · 150.7 · 157.7 | RGB 22.7 · 22.7 · 22.7 |
+| **contribution of the probe** | **+0.90** | **+7.11** |
+
+The disc is worth almost nothing to the highlight and seven luma to the fill. The
+highlight on that ring is the directional light's own specular plus the sky, and it
+is *cooler* than the sun tint it was supposed to carry — RGB rises from red to blue,
+not the other way round. The file's claim has been narrowed to what the measurement
+supports; the probe is an ambient term in this world, and the comment now says so.
+
+**Nothing is clipping.** The band's peak is 219 and the whole frame peaks at 233.9,
+with zero pixels at or above 250 — so the disc's 2.6 energy is not blowing out a single
+metal anywhere, which was the other thing worth checking before touching it. What the
+probe *does* move is broad: switching it off changes 27.9% of the frame by more than
+4/255, but only 0.24% by more than 60, which is the signature of a fill term.
+
 ### Four things this round ruled out
 
 The same session chased the island palettes and found the measurement was wrong

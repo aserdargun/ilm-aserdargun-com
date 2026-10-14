@@ -13,9 +13,18 @@ import * as THREE from 'three';
  *
  * The gradient is authored to the same palette as the rest of the world
  * (`PALETTE.midnight` at the zenith, warm sandstone at the horizon), and the
- * sun disc is placed on `SUN_DIRECTION` — the exact vector the key light in
- * `Lighting.tsx` comes from. That shared direction is what makes the specular
- * highlight on a copper ring land on the side the sun is actually on.
+ * sun disc is placed on `SUN_DIRECTION` — the same vector the key light in
+ * `Lighting.tsx` comes from, so the ambient fill and the key agree on where
+ * the light is.
+ *
+ * What the sun disc is *not* doing was measured rather than assumed. This file
+ * used to claim that the shared direction is what puts a copper ring's specular
+ * highlight on the sunlit side. It does not: switching the probe off entirely
+ * moves those pixels by **+0.90** on average, against **+7.11** on the fill
+ * around them. The highlight on a metalness 0.7 / roughness 0.5 ring is the
+ * directional light's own specular, plus the sky — it is cooler than the sun
+ * tint. The probe is an ambient term here, and the disc's energy lands in the
+ * fill rather than in any reflection.
  */
 
 /** Shared key-light direction. Norm of the original light at [70, 90, 40]. */
