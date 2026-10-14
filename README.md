@@ -1863,6 +1863,43 @@ already the most softness this map can produce**: raising it to 6.0 lands at 0.3
 under the control, because past a certain point the disc is wider than the texels it
 is sampling and there is nothing left to average.
 
+#### And the other two shadow settings were already right
+
+Sharpening the shadow edge is exactly when acne and peter-panning become visible, so
+the other two numbers on that light were put through the same treatment.
+
+**`bias` and `normalBias` are doing real work, and it is not on the ground.** Zeroing
+both moves **25.5% of the frame** by more than 8/255, and a difference map puts it
+almost entirely on the left-hand loom, where the change is *negative* — those pixels go
+darker without the bias, which is self-shadowing. Open sunlit sand is unaffected
+either way, checked at 3× magnification: the relief is the normal map's, with no
+striping or stipple to attribute to acne.
+
+| bias / normalBias | loom mean luma | vs source | shadowed ground area |
+| --- | --- | --- | --- |
+| **−0.0006 / 0.035 (source)** | 39.527 | — | 14.053% |
+| −0.0003 / 0.018 | 39.436 | −0.091 | 14.103% (+0.35%) |
+| 0 / 0 | 32.221 | **−7.305** | 14.320% (+1.90%) |
+
+Half the bias produces **the same image** — 0.091 luma on the loom, 0.35% more shadow on
+the ground — while removing it entirely costs 7.3 luma of acne. So there is headroom on
+the axis of acne-versus-peter-panning and no reason to take it: the current values cost
+about a third of one percent of shadow area, and there is no contact defect to buy back.
+They also sit where the geometry puts them: at 2048 over an 88-unit box the texel is
+0.043 units, so `normalBias` 0.035 is **0.8 of a texel**.
+
+**Shadow resolution has headroom, and the only lever for it is expensive.** Doubling
+the high tier's shadow map to 4096 is a real change — 0.4539 mean against a 0.1913
+control, 2.4× the noise floor, with a maximum difference of 219 — and looking at it,
+the wand and the brim edge *inside* the player's shadow read more clearly. It costs
+**11.2% of the frame rate**: 2048 measured 102.9, 104.1, 103.8 and 4096 measured 91.4,
+90.7, 93.8. A subtle gain for a double-digit price is the wrong trade at this tier.
+
+The cheap alternative — trimming `SHADOW_SHOULDER`, which spends 20 of the hub's 88
+units on margin — would buy about 13% more texels per unit, a quarter of what 4096
+delivers, for a change that would be invisible by comparison and would reopen a shadow
+box whose fit was deliberately reworked. Not taken.
+
 ### Four things this round ruled out
 
 The same session chased the island palettes and found the measurement was wrong
