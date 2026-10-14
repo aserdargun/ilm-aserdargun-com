@@ -1686,6 +1686,30 @@ of the pixels**, and switching it off moves **11.2%** of the frame by more than
 4/255. It is the second most consequential light in the scene and a ground-band
 statistic would have reported the opposite.
 
+#### Bloom, which turned out to be doing exactly what its comment said
+
+Every parameter in the post chain is a number somebody chose, and until this
+round there was no way to ask the renderer what any of them did. `PostFx.tsx` now
+publishes the effect instances to `window.__postfx` in dev — for the same reason
+`scene-audit.ts` exists: the ground's normal map spent its life looking inert
+because nobody could reach the uniform that controlled it.
+
+The bloom threshold is live at **0.72**, with the blur pass and the mipmap blur
+both on. It is fed by a very small population, which is the point. At the City of
+Memory and Council, of 3.2 million pixels: **8** above 220/255, **124** above
+200, **844** above 180 — 0.026% of the frame. That seed is what spreads into the
+halo. The brightest pixel in the frame is 243, and only 35 pixels in 3.2 million
+have a saturated channel, so nothing is clipping to produce the glow.
+
+What could **not** be measured is the size of that halo. Turning the intensity
+from 0.62 to zero moves 3–4% of the frame by more than 2/255 — but so does
+turning it back to 0.62 again, because the Weaver, the water and the grass are
+all moving and no amount of averaging inside a state cancels a difference measured
+minutes apart. The reproducibility check failed, so the figure is not quoted.
+"A high threshold so only the emissive accents bloom" is a **verified** claim now
+rather than an assumed one, and that is the whole result. Nothing about the bloom
+was changed, because there was nothing here to fix.
+
 The same inline-Vector2 footgun was on both of the canal's normal-scale props
 and is fixed with them. It never broke the canal — those values were edited in
 source, which is the one thing the prop could not undo — but it meant the canal

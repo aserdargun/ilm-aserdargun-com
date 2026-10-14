@@ -1,5 +1,7 @@
+import { useEffect, useRef } from 'react';
 import { Bloom, EffectComposer, N8AO, SMAA, ToneMapping, Vignette } from '@react-three/postprocessing';
 import { BlendFunction, KernelSize, ToneMappingMode } from 'postprocessing';
+import type { BloomEffect, VignetteEffect } from 'postprocessing';
 import type { Quality } from '../game/store';
 
 /**
@@ -17,6 +19,27 @@ export function PostProcessing({ quality }: { quality: Quality }) {
   // High gets the full stack; medium keeps occlusion and drops the rest, which
   // is where the visual/cost ratio falls off a cliff.
   const full = quality === 'high';
+
+  // Dev-only handles on the effect instances.
+  //
+  // The parameters in this file are all numbers somebody chose, and until now
+  // there was no way to ask the renderer what any of them actually did. That is
+  // how the ground's normal map spent its life looking inert: nobody could reach
+  // the one uniform that controlled it. A bloom threshold of 0.72 is either
+  // catching the emissive turquoise the chain exists for, or catching nothing at
+  // all, and the difference is one measurement away.
+  const bloom = useRef<BloomEffect>(null);
+  const vignette = useRef<VignetteEffect>(null);
+
+  useEffect(() => {
+    if (!import.meta.env.DEV) return;
+    const w = window as unknown as { __postfx?: unknown };
+    w.__postfx = {
+      get bloom() { return bloom.current; },
+      get vignette() { return vignette.current; },
+      quality,
+    };
+  }, [quality]);
 
   return (
     <EffectComposer
@@ -55,6 +78,7 @@ export function PostProcessing({ quality }: { quality: Quality }) {
         intensity={1.6}
       />
       <Bloom
+        ref={bloom}
         // A high threshold so only the emissive accents bloom. Dropping it
         // starts blooming the sunlit stone, which reads as haze rather than
         // as light sources.
@@ -68,7 +92,7 @@ export function PostProcessing({ quality }: { quality: Quality }) {
       {/* Owns the tone response, because the renderer's was switched off in
           `PostProcessing.tsx` to keep bloom working on real HDR values. */}
       <ToneMapping mode={ToneMappingMode.AGX} />
-      <Vignette offset={0.28} darkness={0.62} blendFunction={BlendFunction.NORMAL} />
+      <Vignette ref={vignette} offset={0.28} darkness={0.62} blendFunction={BlendFunction.NORMAL} />
       {/* High only, and the gap is deliberate. The medium tier renders this
           composer with no edge antialiasing at all, and the two ways to buy it
           back were both measured at a fixed camera: SMAA costs 7.4% of the
