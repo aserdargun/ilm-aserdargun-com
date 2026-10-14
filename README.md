@@ -1979,6 +1979,35 @@ metal anywhere, which was the other thing worth checking before touching it. Wha
 probe *does* move is broad: switching it off changes 27.9% of the frame by more than
 4/255, but only 0.24% by more than 60, which is the signature of a fill term.
 
+### All eight islands, after a global tone-curve change
+
+A change to the tone curve is a change to every island at once, and two of the three
+values shipped this round — ACES Filmic and the shadow radius — are global. Neither had
+been looked at anywhere but the hub and the council. Walking all eight discs at their
+own arrival poses:
+
+| island | frame mean | p99 | peak | ≥250/255 |
+| --- | --- | --- | --- | --- |
+| cartographers-terrace | 126.7 | 192.4 | 247.8 | 0% |
+| flow-foundry | 79.3 | 202.4 | 245.3 | 0% |
+| collective-gardens | 113.9 | 142.2 | 176.5 | 0% |
+| adaptation-cloud-harbor | 80.5 | 132.1 | 245.1 | 0% |
+| hub | 73.5 | 142.2 | 241.5 | 0% |
+| valley-living-machines | 78.7 | 182.7 | 243.4 | 0% |
+| observers-mirrors | 112.9 | 176.2 | 233.0 | 0% |
+| memory-council-city | — | — | — | — |
+
+**Nothing clips anywhere.** The brightest frame in the world peaks at 247.8 and not one
+pixel reaches 250. The Mirrors island was the risk — it is the brightest ground here,
+and ACES raises contrast — and it is in fact the *second darkest* by peak.
+
+Two frames looked like findings and were not. Collective Gardens has the second-lowest
+p99 in the world, and it is because the teleport lands the camera inside a dune: one
+lit slope fills the screen and the player is off-frame. Cloud Harbor's p99 is the lowest
+at all, and it is an even mid-tone sand field under an even sky. Neither is a rendering
+problem; both are what the pose happens to contain. Low p99 is not a defect until you
+have looked at what fills the frame.
+
 ### Four things this round ruled out
 
 The same session chased the island palettes and found the measurement was wrong
