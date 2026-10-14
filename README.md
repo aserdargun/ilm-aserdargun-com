@@ -2078,6 +2078,26 @@ still — the conclusion holds a fortiori. Combined with anisotropy 16 doing not
 distance shimmer is mip selection, not the source texture, and it stays where it was
 recorded: bounded by the world's shape, 4.6% of terrain beyond thirty units.
 
+#### And the tiling claim holds
+
+`ground_texture.py` says every map it writes is "seamlessly tileable", and the discs
+repeat these eleven times across their radius, so a seam would be a grid of straight
+lines running through the ground. That is a claim about a property of the image, and it
+is testable: compare the step across the wrap (last column against first) with the step
+between interior columns. A seamless tile scores about 1.0; a seam scores far above it.
+
+| map | wrap / interior, X | wrap / interior, Y |
+| --- | --- | --- |
+| ground_normal | 0.98 | 0.98 |
+| stone_normal | 0.48 | 0.72 |
+| water_normal | 1.06 | 1.11 |
+| ground_rough | 0.33 | 0.31 |
+
+All four sit at or below 1.11. The stone map scores *below* 1 because its ridged term
+puts its largest steps at creases that happen not to cross the border, and the ground's
+roughness map scores 0.33 because it is a deliberately narrow 0.88–1.0 band whose
+interior steps are steeper than the wrap is. Nothing here is a seam.
+
 ### Four things this round ruled out
 
 The same session chased the island palettes and found the measurement was wrong
