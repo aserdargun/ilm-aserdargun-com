@@ -1621,6 +1621,31 @@ the thirty-to-hundred-unit band** — the increase is smallest exactly where
 minification would hurt. At 3.0 it would be 30% there, which is one more reason
 that value was not kept.
 
+**Anisotropy is not the lever either.** Since the shimmer worry above is really about
+minification, the obvious lever is the sampler's own filter: the ground map is set to 8
+of a supported 16, so 16 was measured. Distance is not a screen-space guess here — the
+ground is a flat plane under a pitched perspective camera, so image row maps to world
+distance analytically (`h / tan(pitch + rowOffset·fov)`), which puts the visible sand
+between 4 and 26 units from the player's eye.
+
+| ground distance | anisotropy 8 | two frames, no change | noise floor | anisotropy 16 |
+| --- | --- | --- | --- | --- |
+| 4–8 units | 2.4001 | 2.4020 | 0.08% | +0.15% |
+| 8–14 units | 6.4116 | 6.3633 | 0.75% | **−1.49%** |
+| 14–20 units | 7.9237 | 7.9189 | 0.06% | −0.06% |
+| 20–30 units | 8.3469 | 8.3447 | 0.03% | −0.01% |
+
+High-frequency energy only moves in one band, by 1.49% against a 0.75% noise floor —
+two times noise is not a result — and it costs **1.6% of the frame rate** (112.1 →
+110.3 FPS). Past fourteen units the change is indistinguishable from two consecutive
+frames of the same state. The far bands also cannot be read as shimmer at all: their
+energy *rises* with distance because the shoreline rim, the rocks and the canal enter
+the band, so what is being measured there is scene content rather than aliasing.
+
+Kept at 8. The shimmer risk above was already bounded by the world's shape, and this
+is the fourth measurement in a row to find the ground normal map is already at the
+setting it should be.
+
 The same question was then put to `stone_normal.png` — 281 KB, applied to 77
 materials by a triplanar shader patch in `src/world/detail.ts`, with its
 strength compiled into the fragment body rather than set as an R3F prop, so it
