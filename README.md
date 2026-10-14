@@ -1725,6 +1725,36 @@ wants and roughly a fifth of what the broken number claimed.
 So the comment's claim is now a **verified** one rather than an assumed one, and
 nothing about the bloom was changed, because there was nothing here to fix.
 
+#### And the vignette was about to drive the corners onto the floor
+
+Cutting the probe in the previous round darkened everything, and a vignette
+multiplies whatever it is given. Measured at the hub, the pixels at or below
+2/255 went from **0.172% of the frame to 0.472%** — a 2.7x rise in a change that
+did not mean to touch that end of the range.
+
+It was the corners, and it was the vignette rather than the lighting. Sorting the
+frame by distance from its centre, the outer fifth — 13.2% of the area — carried
+**1.958%** of its pixels at or below 2/255, against 0.001% in the 60-80% ring.
+With the vignette's darkness at zero and the lighting untouched, the same corners
+fell to **0.996%**: almost all of that black was the vignette, and the remainder
+is the geometry actually standing in them.
+
+| darkness | corner mean luma | corners at ≤2/255 |
+| --- | --- | --- |
+| 0.62 (was) | 47.8 | 1.958% |
+| **0.42** | **61.3** | 1.189% |
+| 0.28 | 67.4 | 1.011% |
+| vignette off | — | 0.996% |
+
+Below about 0.3 the corners stop responding, because what is left there is the
+dark geometry rather than the effect — so turning it down further would spend
+the vignette for nothing. 0.42 lifts corner detail by 28% and keeps the frame
+reading towards its centre.
+
+This is what touching one thing does to the next: the vignette had been
+calibrated against an ambient fill twice the strength this world now has, and
+nothing had measured that.
+
 The same inline-Vector2 footgun was on both of the canal's normal-scale props
 and is fixed with them. It never broke the canal — those values were edited in
 source, which is the one thing the prop could not undo — but it meant the canal

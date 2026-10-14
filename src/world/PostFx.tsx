@@ -92,7 +92,21 @@ export function PostProcessing({ quality }: { quality: Quality }) {
       {/* Owns the tone response, because the renderer's was switched off in
           `PostProcessing.tsx` to keep bloom working on real HDR values. */}
       <ToneMapping mode={ToneMappingMode.AGX} />
-      <Vignette ref={vignette} offset={0.28} darkness={0.62} blendFunction={BlendFunction.NORMAL} />
+      {/* 0.42, down from 0.62, and the number is a consequence rather than a
+          preference. Pulling the environment probe back to 0.6 darkened the
+          whole scene, and the vignette multiplies whatever it is given — so a
+          value calibrated when the ambient fill was twice as strong started
+          driving the corners onto the floor. Measured by radius: at 0.62 the
+          outer fifth of the frame, 13.2% of its area, carried 1.96% of its
+          pixels at or below 2/255, against 0.001% in the 60-80% ring. Those
+          were almost all vignette, not shadow: with the darkness at zero and
+          the lighting untouched, the same corners fell to 0.996%.
+
+          0.42 lifts mean corner brightness from 47.8 to 61.3 without removing
+          the effect — below about 0.3 the corners stop responding and the
+          remaining dark is the geometry actually standing in them, so turning
+          it down further would spend the vignette for nothing. */}
+      <Vignette ref={vignette} offset={0.28} darkness={0.42} blendFunction={BlendFunction.NORMAL} />
       {/* High only, and the gap is deliberate. The medium tier renders this
           composer with no edge antialiasing at all, and the two ways to buy it
           back were both measured at a fixed camera: SMAA costs 7.4% of the
