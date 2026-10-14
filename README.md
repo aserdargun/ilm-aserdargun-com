@@ -1823,6 +1823,46 @@ and is fixed with them. It never broke the canal — those values were edited in
 source, which is the one thing the prop could not undo — but it meant the canal
 was untunable in exactly the same silent way.
 
+### The shadow was too soft to name what was casting it
+
+`shadow-radius` was 2.4 and had never been questioned. It is worth being precise
+about what that number is even doing, because the chain has a trap in it: R3F's
+`shadows={true}` asks for `PCFSoftShadowMap`, **three.js has removed that type** and
+substitutes `PCFShadowMap` with a console warning
+(`WebGLShadowMap.js:99`), and of the three remaining shader branches only `PCF` and
+`VSM` read `shadow.radius` at all. So the value is live, and the shader spends it as
+`radius * texelSize` across a five-tap Vogel disc. At 2.4 on a 2048 map covering 88
+world units that is a sampling disc **0.10 units across** — a tenth of the player's
+height.
+
+Measured at the hub with a same-setting control pair, the difference is not subtle
+once you look at what the shadow is of:
+
+| radius | frame mean abs. diff | control pair | pixels past 4/255 | control |
+| --- | --- | --- | --- | --- |
+| **2.4 (was)** | — | 0.375 | — | 0.77% |
+| **0.5** | **0.587** | — | **3.10%** | — |
+| 0.25 | 0.751 | — | 3.40% | — |
+| 6.0 | 0.336 | — | 0.61% | — |
+
+At 2.4 the player's shadow on the sand is a smudge whose caster you cannot name. At
+0.5 the hat, the brim and the edge of it are all legible. The change moves the hub
+four times its noise floor, and Memory Council City confirms the direction at 1.238
+against a 0.695 control — weaker there only because that frame animates more. Frame
+standard deviation rises 46.19 → 46.94 at the council and high-frequency energy falls
+3.6%, which is what a crisper edge on a soft term looks like numerically.
+
+**It is free, and the first measurement said otherwise.** Five samples at 2.4 and
+three at 0.5 measured 99.65 and 100.4 FPS, inside the 98–104 spread of a *single*
+setting. A single reading at each had suggested a 5.7% gain, which was drift.
+
+**0.5 rather than 0.25** because the two are indistinguishable — 0.335 mean against a
+0.375 control, i.e. below noise — so 0.5 keeps a margin over the point where the
+sampling disc drops below one shadow texel and the shadow goes hard. And **2.4 was
+already the most softness this map can produce**: raising it to 6.0 lands at 0.336,
+under the control, because past a certain point the disc is wider than the texels it
+is sampling and there is nothing left to average.
+
 ### Four things this round ruled out
 
 The same session chased the island palettes and found the measurement was wrong
