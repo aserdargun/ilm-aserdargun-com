@@ -1168,6 +1168,58 @@ the Harbor and the Terrace read as warm sand and the Mirrors as pale grey-green,
 and the Mirrors being the *brightest* and *most* detailed of the eight is the
 clearest sign that "lighter" was never the right word.
 
+### Eight islands, one ground colour
+
+With the landmark out of frame the islands are indistinguishable from one
+another, and the reason is a single line of data. Measured on the fixed rig
+above — every island from 72% of its own radius on the same bearing, taking the
+ground pixels of the lower 45% of the frame:
+
+| island | ground hue | chroma |
+| --- | --- | --- |
+| hub | 37.0° | 0.419 |
+| cartographers-terrace | 34.5° | 0.384 |
+| flow-foundry | 39.0° | 0.351 |
+| memory-council-city | 37.1° | 0.353 |
+| adaptation-cloud-harbor | 36.8° | 0.382 |
+| collective-gardens | 44.7° | 0.373 |
+| observers-mirrors | 44.1° | 0.238 |
+| valley-living-machines | 39.0° | 0.343 |
+
+**A spread of 10.2°, and a mean pairwise distance of 4.1°.** Seven of the eight
+sit within five degrees of each other. Every `palette.stone` in
+`src/catalog/regions.ts` was the same warm grey — `#a89277`, `#b5a184`,
+`#948977`, `#ab9d84`, `#a2907a`, `#9e9679`, `#aca798`, `#8b8172` — and the
+accents were varied (turquoise, mint, coral, green, blue), which is why the
+props read as different and the ground did not. Eight landmarks, eight sets of
+rails, and one beach.
+
+The hues were spread while each island kept its own lightness and saturation,
+so nothing about the value structure changed:
+
+| island | stone before | stone after | ground after |
+| --- | --- | --- | --- |
+| hub | `#a89277` | `#a89677` | 40.6° |
+| cartographers-terrace | `#b5a184` | `#b5b284` | 49.4° |
+| flow-foundry | `#948977` | `#948277` | 29.8° |
+| memory-council-city | `#ab9d84` | `#8496ab` | 193.5° |
+| adaptation-cloud-harbor | `#a2907a` | `#a28f7a` | 35.7° |
+| collective-gardens | `#9e9679` | `#999e79` | 58.8° |
+| observers-mirrors | `#aca798` | `#98abac` | 123.0° |
+| valley-living-machines | `#8b8172` | `#8b7372` | 18.2° |
+
+**Mean pairwise hue distance 4.1° → 63.3°**, closest pair 4.9°. The five warm
+islands are now 18° to 59°, which is as far apart as eight pieces of earth can
+be while still reading as earth; the other three carry the cool end — the
+Council as blue stone, the Mirrors as cold pale, which is what an island of
+mirrors should be.
+
+Cost is nothing: the value lives in one hex per region and is read in
+`Atmosphere.tsx` to build the vertex colours at load, so no draw call, no
+material and no frame time changed. The props still read on the cool grounds,
+which was the risk worth checking first — the warm rocks and dark grass hold
+their contrast on blue stone and on the Mirrors' near-white.
+
 ### Twenty-eight puzzle consoles shared one plinth, at the wrong place
 
 Every puzzle console in the world is supposed to stand on an authored plinth:

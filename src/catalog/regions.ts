@@ -65,7 +65,7 @@ export const REGIONS: RegionDef[] = [
       en: 'Light spreads along a branch for each region restored',
     },
     palette: {
-      stone: '#a89277',
+      stone: '#a89677',
       accent: '#4fd6d0',
       water: '#3fb6c8',
       copper: '#c07a44',
@@ -103,7 +103,7 @@ export const REGIONS: RegionDef[] = [
       en: 'Routes draw themselves as light across the map',
     },
     palette: {
-      stone: '#b5a184',
+      stone: '#b5b284',
       accent: '#7fd0c4',
       water: '#49b0bd',
       copper: '#bd7a45',
@@ -141,7 +141,7 @@ export const REGIONS: RegionDef[] = [
       en: 'Channels fill with water and the loom arms run in time',
     },
     palette: {
-      stone: '#948977',
+      stone: '#948277',
       accent: '#3fd0d8',
       water: '#37c3d6',
       copper: '#c9803f',
@@ -179,7 +179,7 @@ export const REGIONS: RegionDef[] = [
       en: 'Archive cases ignite and the council ring steadies',
     },
     palette: {
-      stone: '#ab9d84',
+      stone: '#8496ab',
       accent: '#e08a6a',
       water: '#48b0b8',
       copper: '#c47a45',
@@ -217,7 +217,7 @@ export const REGIONS: RegionDef[] = [
       en: 'Harbour lights ignite and workloads trace a rising route',
     },
     palette: {
-      stone: '#a2907a',
+      stone: '#a28f7a',
       accent: '#63d6c0',
       water: '#3fb0c6',
       copper: '#cc8044',
@@ -255,7 +255,7 @@ export const REGIONS: RegionDef[] = [
       en: 'Swarms find a route and the flowers open',
     },
     palette: {
-      stone: '#9e9679',
+      stone: '#999e79',
       accent: '#8fd46a',
       water: '#4bbfae',
       copper: '#bf7a48',
@@ -293,7 +293,7 @@ export const REGIONS: RegionDef[] = [
       en: 'The mirrors clarify and the scene reveals its layers',
     },
     palette: {
-      stone: '#aca798',
+      stone: '#98abac',
       accent: '#9fb8e8',
       water: '#59b3c0',
       copper: '#b58155',
@@ -331,7 +331,7 @@ export const REGIONS: RegionDef[] = [
       en: 'The pump runs, water rises and the joints move',
     },
     palette: {
-      stone: '#8b8172',
+      stone: '#8b7372',
       accent: '#6fd2b0',
       water: '#3fb9c9',
       copper: '#c17c45',
