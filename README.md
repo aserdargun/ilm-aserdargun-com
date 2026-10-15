@@ -3170,9 +3170,26 @@ Reported honestly rather than presented as finished:
    environmental transformation happen in 3D, but the puzzles themselves are
    resolved in an overlay panel rather than by manipulating 3D objects directly.
    This is a deliberate readability and precision trade-off.
-4. **Regions are visible but lightly dressed.** All seven landmarks exist and
-   every region is reachable, but interior detail is procedural and lighter than
-   the hub's.
+4. **Regions are visible but lightly dressed, and the cause is still not known.**
+   All seven landmarks exist and every region is reachable, but the interior
+   detail is procedural and reads lighter than the hub's. Measured rather than
+   assumed, and the obvious explanations were all wrong:
+
+   | what was tried | measured | verdict |
+   | --- | --- | --- |
+   | the island's inner third is empty | quarter histogram **0 / 57 / 81 / 38** on the hub, **0 / 61 / 116 / 83** on the Cartographers' Terrace | the gap is real |
+   | …so drop `scatter`'s `minRadius` from `radius * 0.35` to 7/10/14 | innermost quarter 0 → 4–18 props, frame "stuff" coverage **38.41% → 38.40%** | no effect |
+   | …so widen the terrain's vertex-colour range, ±6% → ±13% lightness | local ground contrast 4.595 → 4.731 (**1.03×**) | no effect |
+   | …is the range even reaching the screen? push it to ×1.6 / ×0.35 | **1.5% of pixels** moved past 12/255; edge energy 0.816 → 0.818 | **the vertex colours are not reaching the visible surface** |
+
+   That last row is the finding. The Cartographers' Terrace and the Collective
+   Gardens are the two regions whose landmarks cannot fill the frame, and both
+   read as smooth pale sand from the arrival camera. Their ground does **not**
+   respond to its own vertex colours — not at a 13% range, not at a 2.6× one —
+   so whatever is being looked at is not the mesh those colours are written to.
+   Adding more props does not help, because the props are not what is missing;
+   the surface is. The next round should identify that surface first, and should
+   not spend another one on scatter.
 5. **Voice is text-only.** Spark uses short authored lines with deterministic
    behaviour; there is no speech synthesis or voice acting.
 6. **Audio is a synthesised ambient pad, not a score.** Every voice is tuned to
