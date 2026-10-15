@@ -178,7 +178,21 @@ export function SkyDome({ radius = 760 }: { radius?: number }) {
                 sin(az * 1.7) * 0.55 +
                 sin(az * 3.3 + 1.1) * 0.28 +
                 sin(az * 6.7 - 0.7) * 0.17;
-            // The ridge line, in units of view-direction height, so it sits
+
+            // Two ridges, because one band reads as a painted stripe and two
+            // read as land going away. The far one is higher — on a flat world
+            // the horizon is eye level, so distance lifts a silhouette toward
+            // it — and paler, which is what haze does to it.
+            float azF = az * 0.61 + 2.1;
+            float ridgeFar =
+                sin(azF * 1.3) * 0.55 +
+                sin(azF * 2.9 + 0.6) * 0.29 +
+                sin(azF * 5.3 - 1.4) * 0.16;
+            float farTop = 0.036 + ridgeFar * 0.019;
+            float farBand = smoothstep(farTop, farTop - 0.003, d.y) * smoothstep(-0.042, 0.004, d.y);
+            colour = mix(colour, uHorizon * 0.88, farBand * 0.8);
+
+            // The near ridge line, in units of view-direction height, so it sits
             // just above where the discs meet the sky and no higher.
             float ridgeTop = 0.030 + ridge * 0.014;
             float below = smoothstep(ridgeTop, ridgeTop - 0.004, d.y);

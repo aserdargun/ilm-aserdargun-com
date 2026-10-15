@@ -1311,11 +1311,27 @@ the horizon is. The profile is three sine terms in azimuth, a two-tone body so
 it is not one flat cut-out, and a fade below the discs so the void under an
 island is not filled in.
 
-**Free.** Three samples each, same scene, on the hub where the Great Loom fills
-the frame: without the ridge **84.4 / 77.7 / 78.5, median 78.5**; with it **86.6
-/ 79.9 / 80.1, median 80.1**. The ridge measures *faster* than the baseline,
-which is not a result a shader can produce — the two ranges are the same scene's
-noise, and the cost is below what three samples can resolve.
+Two ridges, because one band reads as a painted stripe and two read as land
+going away. The far one is **higher** — on a flat world the horizon is eye level,
+so distance lifts a silhouette toward it — and paler, which is what haze does to
+it. Measured over the same crop, the far band comes down **14.9 and 18.9 luma**
+at its own rows while the sky above the whole thing does not move.
+
+**Free, and honestly below what three samples can resolve.** Same scene, on the
+hub where the Great Loom fills the frame, three samples each:
+
+| | samples | median |
+| --- | --- | --- |
+| no ridge | 84.4 / 77.7 / 78.5 | **78.5** |
+| one ridge | 86.6 / 79.9 / 80.1 | **80.1** |
+| two ridges | 78.1 / 74.4 / 79.9 | **78.1** |
+
+The one-ridge build measures *faster* than no ridge at all, which is not a
+result a shader can produce. All three medians sit inside each other's ranges:
+the hub scene is noisy enough — an orbiting Spark, a moving camera — that a
+handful of ALU on one surface that never writes depth cannot be resolved in three
+samples. That is the honest reading, and it is the same one the medium-tier
+shadow map took: **free, because it is not measurable.**
 
 ### Twenty-eight puzzle consoles shared one plinth, at the wrong place
 
