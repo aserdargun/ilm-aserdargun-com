@@ -1234,6 +1234,18 @@ all eight, and the prop-to-ground separation stays between 56 and 84 luma. The
 figure that looked at risk was the Mirrors — a near-white ground under the warm
 `#9a8a72` pebbles — and it came out the highest contrast of the eight at 83.5.
 
+The second risk was the bridges. `DECK_TOP`'s walking surface is a fixed
+`#c9b79a` — a warm sand that was on every island in the world when that was the
+only colour there was, and is now the one thing that is **not** per-region.
+Measured on the deck mid-span, it reads **43.1°** on the Council bridge and
+**43.6°** on the Mirrors bridge: unchanged, as intended.
+
+That was worth checking, because a warm causeway running onto a blue-grey island
+could have been the seam. It is the opposite. Walking it: the deck stays warm,
+the Council stays blue, and the causeway reads as the thing that *carries you
+from one to the other* — which is what a bridge is for. One constant across the
+world is not a leftover here; it is the line between the eight places.
+
 The widest seam a bridge can cross is the hub to the Council, warm 40.6° against
 blue 193.5°, and it was walked rather than reasoned about: both islands read in
 one frame with the turquoise canal and the Council's pillars between them, and
