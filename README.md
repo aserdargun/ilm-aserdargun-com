@@ -1239,6 +1239,43 @@ blue 193.5°, and it was walked rather than reasoned about: both islands read in
 one frame with the turquoise canal and the Council's pillars between them, and
 the transition reads as two places rather than as a seam.
 
+Two things this round did **not** find, recorded so they are not looked for
+again.
+
+**The landmarks were already distinct.** They are what a camera at a region's
+anchor is looking at, so if any part of the world were going to be visually
+identical across the eight, it would be them. On the same rig, taking the band
+above the ground and treating anything darker than the sky as built matter:
+
+| island | silhouette | height (px) |
+| --- | --- | --- |
+| hub | 5.87% | 600 |
+| cartographers-terrace | 1.79% | 445 |
+| flow-foundry | 7.69% | 616 |
+| memory-council-city | 2.07% | 616 |
+| adaptation-cloud-harbor | 6.05% | 282 |
+| collective-gardens | 4.36% | 458 |
+| observers-mirrors | 8.29% | 321 |
+| valley-living-machines | 7.32% | 422 |
+
+Silhouette coverage runs from 1.79% to 8.29% — **a 4.6× range** — and the
+structure heights from 282 to 616 pixels. Eight shapes, not one shape eight
+times. The ground was the thing that was shared.
+
+**The colour reads locally, and that is the honest limit of it.** The eight
+discs are coplanar and the camera sits about five units above them, so from any
+one island the others are seen at a shallow angle: standing on the hub, the
+neighbouring islands enter the frame as bands along the left and right edges
+rather than as fields you can look across. Measured from the hub, non-sky matter
+first appears at y = 180 and is still edge-confined at y = 330 — the far islands
+never occupy the middle of the frame.
+
+So a player reads the new identity as the place they are standing, which is what
+they are looking at for the whole of a visit, and sees the neighbours as colour
+at the edge of vision rather than as landmarks. Widening that would mean raising
+the discs or tilting the camera, which is a world-shape change and not a colour
+one; it is worth a round of its own if the horizon ever looks empty.
+
 Cost is nothing: the value lives in one hex per region and is read in
 `Atmosphere.tsx` to build the vertex colours at load, so no draw call, no
 material and no frame time changed. The props still read on the cool grounds,
