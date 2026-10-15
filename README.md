@@ -2218,6 +2218,65 @@ player spends looking at it. The blob shadow is the one candidate that is both f
 and free of artefacts, and it has never been built. It deserves its own measurement
 rather than a paragraph inside this one.
 
+#### The blob shadow was built, measured, and it does not show
+
+A `ContactShadow` was written against the sun rather than the Weaver: same island,
+same shoulder, same `distance > radius + SHADOW_SHOULDER` test the shadow box uses,
+so it could never double-draw a real shadow. It was a soft 128×128 radial black quad,
+placed at `bearing × length` from the player, with `length = CHARACTER_HEIGHT /
+tan(SUN_ELEVATION)` derived from the shared sun direction instead of a guessed number.
+
+Two placements were measured on the hub → Cartographers' deck, each against the
+blob-off frame:
+
+| | frame mean abs. diff | share |
+| --- | --- | --- |
+| offset 0.5 × length | 0.3197 | 1.25% |
+| **offset 0.9 × length, 2.4 wide, opacity 0.45** | **0.2351** | **0.60%** |
+
+Moving it further from the hat made the number *smaller*, which is what a substitute
+shadow should never do. That is the clue, and it was worth building the tool to read
+it properly: `tools/diff_map.py` amplifies `|A − B|` into a heat map instead of only
+summing it, because a sum is dominated by whatever else moved. The map says plainly
+that the strong red in those two captures is the **orbiting marker on the bridge**,
+and that the character appears only as a one-pixel outline — sub-pixel drift between
+captures. The blob is not in either picture.
+
+Held still and isolated — same session, same frame, only the material toggled — the
+blob's own contribution at its own centre is:
+
+| window | blob on | blob off | delta |
+| --- | --- | --- | --- |
+| r = 30 px | 59.89 | 59.88 | **+0.02** |
+| r = 60 px | 59.55 | 59.53 | +0.03 |
+| r = 100 px | 58.94 | 58.90 | +0.04 |
+
+**Nothing.** Not a faint blob — nothing.
+
+**The mesh itself is not the problem**, which is the part worth keeping. Probed in
+place, with everything else held still:
+
+| probe | r = 30 px | what it proves |
+| --- | --- | --- |
+| as shipped | +0.02 | occluded, or not drawn |
+| `depthTest = false`, same opacity | **−22.10** | it *does* draw, at the right place, with the right texture |
+| 221 meshes hidden, `depthTest = true` | **−56.05** | geometry, texture, size and placement are all sound |
+| lifted 0.35 above the deck | −0.00 | not a depth-precision or z-fighting problem |
+
+A 45%-opacity black quad over ground at luma 57 must take about −26 luma. With the
+scene intact it takes +0.02, so **something opaque stands in front of it** from the
+gameplay camera. And the shape is wrong in a way no tuning fixes: at a 48° sun a
+1.5-unit character throws a shadow `1.5 / tan(48°) ≈ 1.35` units long, so the
+substitute was **2.4 × 2.95 units — larger than the character casting it** — sitting
+1.2 units from the player. From the play camera its footprint lands on the character.
+
+That is a redesign, not a parameter. A substitute shadow has to be either a small
+contact patch under the feet or a long streak away from them; at the true cast-shadow
+length there is nothing left to draw. The code was reverted rather than shipped, and
+the blob stays an unbuilt candidate — but it is now unbuilt with a measurement behind
+it, and with `diff_map.py` to make the next attempt's first reading a location rather
+than a total.
+
 #### The audit that would have caught it
 
 `findOrphanShadowCasters` asks whether a shadow lands where the player cannot connect
