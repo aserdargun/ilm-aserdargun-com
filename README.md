@@ -2167,6 +2167,36 @@ moved by −0.0%, the near one by +0.1%.
 The deck still does not cast, because it is half a unit thick over open sky with
 nothing underneath to receive it.
 
+#### Could occlusion stand in for the missing shadow? No — by a factor of twenty-seven
+
+The obvious cheap fix is that the shadow map does not cover the bridge, but the
+occlusion pass is screen-space and does not care about shadow boxes. On the bridge,
+outside the box entirely, N8AO is doing real work: switching it off moves **9.11% of
+the frame** past 4/255 and lifts the frame mean by 1.56.
+
+It is not doing it where it is needed. In the window around the player, at the same
+fraction of the frame:
+
+| | luma |
+| --- | --- |
+| the player's cast shadow at the hub (2nd vs 98th percentile) | **135.97** |
+| what AO contributes beside the player on the bridge | **5.00** |
+
+**AO supplies 3.7% of what the cast shadow supplies** — a twentieth of a twentieth.
+The bridge walk really is shadowless: the character is attached to the deck by nothing
+but its own silhouette, and on the hub that silhouette has a dark shape beside it that
+the bridge does not.
+
+That closes the cheap hypothesis and leaves two that are not. Widening the shoulder is
+the one already rejected, at 40% of the island's shadow resolution. Following the
+player is rejected too, for cutting island shadows off-centre — though a *hybrid* that
+recentres only once the player leaves the island's box is the obvious thing nobody has
+measured. The other is a fake contact blob, which is free and would need suppressing
+wherever the real shadow already lands.
+
+None of those is a decision to take on the strength of one bridge, which is why this
+is written down and not acted on.
+
 #### The audit that would have caught it
 
 `findOrphanShadowCasters` asks whether a shadow lands where the player cannot connect
