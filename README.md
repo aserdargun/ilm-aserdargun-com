@@ -1333,6 +1333,29 @@ handful of ALU on one surface that never writes depth cannot be resolved in thre
 samples. That is the honest reading, and it is the same one the medium-tier
 shadow map took: **free, because it is not measurable.**
 
+#### …and raising the islands is not a round of work, it is a rebuild
+
+The obvious next move from a flat world is to give the discs different heights.
+It was probed before any of it was built, by raising one island's groups **16
+units at runtime and taking one screenshot**.
+
+The world came apart in that frame. The player was left standing in open blue
+with an island's underside hanging overhead like a ceiling. Nothing had been
+implemented — no navigation change, no bridge, no ground sampler — because the
+raise was applied to a live scene graph and the frame simply stopped making
+sense.
+
+That is the answer, and it cost one screenshot to get. **Everything in this world
+assumes the discs are coplanar at y = 0**: the camera sits a fixed height above
+it, `DECK_TOP_Y` is 0 because the island tops are, the ground sampler answers in
+one plane, the sun's shadow target is that plane, and the bridges meet the
+shores there. Per-island heights are not a world-shape tweak; they are a change
+to every one of those at once, and the visual probe says the payoff is not
+obvious enough to pay for that on faith.
+
+The horizon ridge above is the version of this idea that costs nothing and was
+therefore the one worth building.
+
 ### Twenty-eight puzzle consoles shared one plinth, at the wrong place
 
 Every puzzle console in the world is supposed to stand on an authored plinth:
