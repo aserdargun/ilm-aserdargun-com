@@ -2746,7 +2746,7 @@ Details that carry weight:
 
 ## Tests performed
 
-`npm run test` — **293 tests across 24 files, all passing.**
+`npm run test` — **301 tests across 25 files, all passing.**
 
 | Suite | Tests | What it proves |
 | --- | --- | --- |
@@ -2772,6 +2772,7 @@ Details that carry weight:
 | `orphan-shadow-casters` | 9 | **No shadow lands where the player cannot see what threw it** — the tapestry case, before and after the fix |
 | `character` | 10 | The Weaver stands on y = 0 once the rig is composed, and a rigged scene is never cloned out from under its own mixer |
 | `bridge-corridor` | 5 | The walkable corridor is derived from the drawn deck, measured across the span |
+| `bridge-ground` | 8 | **The deck and the surface walked on it are one thing**: level with every island top, its drawn top face at that same height, a span read at its own half-width, and no walkable ground where there is no stone under it |
 | `tapestry` | 6 | Panels light proportionally to regions restored, never all-or-nothing |
 | `disc` | 6 | Terrain discs are flat, face up, tiled rather than holed, and keep their measured vertex budget |
 
@@ -2800,7 +2801,7 @@ interface calls — through the whole journey and asserts it can be finished:
 - all 33 applications are discovered across the run
 - the finished journey reloads correctly from the save
 
-The full suite is 293 tests across 24 files.
+The full suite is 301 tests across 25 files.
 
 Measured in the browser through the real interface, not simulated:
 
