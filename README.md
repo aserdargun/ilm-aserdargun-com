@@ -1282,6 +1282,41 @@ material and no frame time changed. The props still read on the cool grounds,
 which was the risk worth checking first — the warm rocks and dark grass hold
 their contrast on blue stone and on the Mirrors' near-white.
 
+### The horizon had nothing behind it
+
+The eight discs are coplanar, which the section above already measured: from the
+hub the furthest island never rises past y = 330 of 1610 and stays edge-confined.
+Past the nearest island there is therefore **no geometry at all**, and the sky
+dome carried a gradient, a sun and four sine terms of high cloud — and nothing
+standing on the horizon at all. The line where land met sky was a hard edge with
+no world behind it.
+
+The sky shader already had the right idiom for this: sines over the view
+direction, no texture, a handful of ALU on the one surface that never writes
+depth. The ridge uses the same one. It is painted *into* the dome, so the islands
+draw over it for free and no depth sorting is involved.
+
+Measured on the hub, before and after, over the same frame:
+
+| band | before | after | delta |
+| --- | --- | --- | --- |
+| sky, rows 60–150 | 36.83 | 36.83 | **+0.000** |
+| ridge line, row 255 | 53.17 | 46.05 | −7.12 |
+| ridge body, row 270 | 56.24 | 24.93 | −31.31 |
+| ground, rows 600–900 | 78.64 | 78.48 | −0.16 |
+
+**Surgical by measurement**: the sky above the ridge is unchanged to the third
+decimal and the ground is unchanged, and all of the change is in the band where
+the horizon is. The profile is three sine terms in azimuth, a two-tone body so
+it is not one flat cut-out, and a fade below the discs so the void under an
+island is not filled in.
+
+**Free.** Three samples each, same scene, on the hub where the Great Loom fills
+the frame: without the ridge **84.4 / 77.7 / 78.5, median 78.5**; with it **86.6
+/ 79.9 / 80.1, median 80.1**. The ridge measures *faster* than the baseline,
+which is not a result a shader can produce — the two ranges are the same scene's
+noise, and the cost is below what three samples can resolve.
+
 ### Twenty-eight puzzle consoles shared one plinth, at the wrong place
 
 Every puzzle console in the world is supposed to stand on an authored plinth:

@@ -161,6 +161,34 @@ export function SkyDome({ radius = 760 }: { radius?: number }) {
                 (0.35 + 0.65 * t);
             colour = mix(colour, colour + uGlow * 0.55, cloud * mask * 0.5);
 
+            // A far ridge standing on the horizon.
+            //
+            // The world is eight coplanar discs. Measured from the hub, the
+            // furthest of them never rises above y = 330 in a 1610-pixel frame
+            // and is edge-confined throughout — past the nearest island there
+            // is nothing at all, so the horizon is a hard line between land and
+            // gradient. This is the one piece of the backdrop that is missing.
+            //
+            // Same idiom as the cloud above it, deliberately: sines over the
+            // view direction, no texture, a handful of ALU on the one surface
+            // that never writes depth. It is painted *into* the dome, so the
+            // islands draw over it for free and no depth sorting is involved.
+            float az = atan(d.z, d.x);
+            float ridge =
+                sin(az * 1.7) * 0.55 +
+                sin(az * 3.3 + 1.1) * 0.28 +
+                sin(az * 6.7 - 0.7) * 0.17;
+            // The ridge line, in units of view-direction height, so it sits
+            // just above where the discs meet the sky and no higher.
+            float ridgeTop = 0.030 + ridge * 0.014;
+            float below = smoothstep(ridgeTop, ridgeTop - 0.004, d.y);
+            // Only where the ground would be: fades out below the discs so the
+            // void under an island is not filled in.
+            float onLand = below * smoothstep(-0.045, 0.004, d.y);
+            // Two tones, so the ridge is not one flat cut-out.
+            float shade = smoothstep(ridgeTop - 0.010, ridgeTop - 0.002, d.y);
+            colour = mix(colour, mix(uHorizon * 0.52, uHorizon * 0.78, shade), onLand * 0.92);
+
             gl_FragColor = vec4(colour, 1.0);
           }
         `,
