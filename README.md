@@ -1368,6 +1368,40 @@ obvious enough to pay for that on faith.
 The horizon ridge above is the version of this idea that costs nothing and was
 therefore the one worth building.
 
+### The ground was magnified five times where the player stands
+
+`GROUND_TILE_SIZE` was 6: one repeat of the normal map every six world units.
+The map is 512², the camera sits about 4.7 units up, and the ground underfoot is
+about three units ahead — so at the player's feet one repeat spans **2540 screen
+pixels** and the map lands at **0.20 texels per screen pixel**. That is a five-fold
+magnification, and it is why the ground read as a painted surface exactly where
+the player is looking down at it and got more convincing further away.
+
+The map itself was fine. Its channels average **127.5 / 127.5 / 253.2** with a
+spread of 15.4 / 15.2 / 1.9, which is a ground that tilts by about seven degrees
+— real relief, laid down correctly. The roughness map alongside it, though, has a
+5th-to-95th percentile range of **9 of 255**, which is to say it does nothing at
+all; it is 64 kB of a constant.
+
+At a tile of 2 the same map lands at 0.60 texels per screen pixel close in and is
+minified rather than blown up further out, where the anisotropy of 8 takes over.
+
+| | near-ground local contrast | frame mean luma |
+| --- | --- | --- |
+| tile 6 | 6.608 | 114.49 |
+| **tile 2** | **7.464 (+13%)** | 114.45 |
+
+Exposure does not move; the gain is surface detail and nothing else. The obvious
+way to lose this is a wallpaper — twenty repeats across an island — so it was
+checked rather than assumed: the row autocorrelation of the ground at lags 200 to
+600 is **flat and negative on both builds** (−0.05…−0.22), which is what a seamless
+map looks like and is not what a visible motif looks like. Looked at side by side,
+tile 6 is soft and tile 2 is grain.
+
+The anisotropy of 8 that was already set was doing nothing at the old tile size,
+because anisotropy only helps when a surface is *minified*, and at five times over
+it never was.
+
 ### Twenty-eight puzzle consoles shared one plinth, at the wrong place
 
 Every puzzle console in the world is supposed to stand on an authored plinth:

@@ -36,7 +36,21 @@ const ROUGH_MAP_URL = '/textures/ground_rough.png';
  * it. Six units puts a visible tooth underfoot while staying coarse enough not
  * to shimmer at distance.
  */
-const GROUND_TILE_SIZE = 6;
+/**
+ * World units per texture repeat.
+ *
+ * This is a viewing-distance number, not a taste one. The normal map is 512², the
+ * camera sits about 4.7 units up, and the ground it stands on is three units
+ * ahead — so at a tile of 6 one repeat spans **2540 screen pixels** and the map
+ * lands at **0.20 texels per screen pixel**: a five-fold magnification, which is
+ * why the ground reads smooth exactly where the player is looking down at it.
+ *
+ * At 2 the same map lands at 0.60 texels per pixel close in and is minified
+ * rather than blown up further out, where anisotropy takes over. The risk is the
+ * opposite failure — twenty repeats across an island and a wallpaper if the map
+ * has a motif — so it was measured and looked at rather than argued.
+ */
+const GROUND_TILE_SIZE = 2;
 
 /**
  * Strength of the ground's surface relief, in tangent-space slope.
