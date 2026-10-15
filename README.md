@@ -2258,29 +2258,67 @@ ceiling turned out to be the finding:
 
 Doubling the opacity bought **0.45 luma**, and a quad with no texture and no alpha —
 which cannot be accused of a blending subtlety — bought no more than the textured
-one. A plane of that size lying on open ground would read about **55**. It reads 2.
-So roughly **96% of the patch is not on visible ground**, and no opacity setting can
-reach what is hidden.
+one. The same quad on open ground reads 17, so the bridge's 2 is not a limit of the
+material: it is the camera angle, measured below.
 
-**Why it is hidden is structural, not a placement mistake.** `SUN_DIRECTION` is
-`(0.579, 0.745, 0.331)`: its horizontal part points toward **+x, +z**. The play
-camera trails the player at +z, so the camera sits on the **sun's side**. Every
-shadow in this world therefore falls *away* from the viewer and *behind* the thing
-casting it. A substitute drawn along the true bearing lands squarely in the
-character's silhouette. Offsetting it sideways until it clears would stop it being a
-shadow and make it a smudge beside the player — the exact failure the code comment
-predicted when it said the patch should read as the shadow it stands in for rather
-than as a mark under the player's feet.
+**The technique itself is not the limit — the camera angle and the texture are.** The
+same size of solid black quad, dropped on **open hub ground** where nothing stands in
+front of it and where the real cast shadow reads 135.97, measures:
 
-Set against the real thing, the best case is **2.60 luma against a cast shadow's
-135.97 — 1.9%, a fifty-second**. The AO figure of 3.7% was rejected because it
-supplied a twenty-seventh; this supplies a fifty-second, and unlike AO it cannot be
-pointed somewhere more useful, because the shadow direction is fixed by the sun.
+| patch on open hub ground | centre delta | share of a real cast shadow |
+| --- | --- | --- |
+| no patch (baseline, luma 33) | — | — |
+| **opaque black quad** | **−17.18** | **12.6%** |
+| soft 128×128 radial texture, opacity 1.0 | −1.44 | 1.1% |
 
-So the option is closed rather than deferred. A fake shadow cannot stand in for this
-camera, and the honest repair is the one already rejected on cost — a box that
-follows the player off the island — or nothing. `diff_map.py` stays: the next
-attempt's first reading is a location, not a total.
+A substitute shadow **can** darken visibly. But the two rows also say the soft radial
+version delivers **12× less** than the opaque one it was supposed to improve on: its
+gradient reaches alpha 1.0 at the centre and 0.66 at the half-way stop, so a window
+over the inner third should sit near 0.85 and land within a luma or two of the opaque
+row. It does not. Whatever the cause — the canvas texture's alpha is not arriving at
+the fragment the way the stops say it should — the consequence stands on its own: a
+patch built from that texture is not a softer shadow, it is a shadow that is not
+there.
+
+**Why the bridge view hides it.** `SUN_DIRECTION` is `(0.579, 0.745, 0.331)`: its
+horizontal part points toward **+x, +z**, and the play camera trails the player at +z,
+so the camera sits on the **sun's side**. Every shadow in this world therefore falls
+*away* from the viewer and *behind* the thing casting it. On open ground the ground
+continues past the character and the patch's outer half is still there to read; on a
+bridge the patch is 1.59 units long against a character 1.78 units tall standing
+directly in front of it, and almost none of it survives. Offsetting it sideways until
+it cleared would stop it being a shadow and make it a smudge beside the player — the
+failure the code comment predicted when it said the patch should read as the shadow it
+stands in for rather than as a mark under the player's feet.
+
+**The sun's azimuth was measured before accepting that.** Rotating the key light about
+its own axis, on the hub, with the player's screen position held fixed:
+
+| azimuth | visible-shadow contrast | pixels 15+ below the local median |
+| --- | --- | --- |
+| **29.8° (source)** | **48.2** | **14 701** |
+| 29.8° (same-setting control) | 48.2 | 14 794 |
+| 119.8° | 39.3 | 13 059 |
+| **−60.2°** | **55.0** | **19 010** |
+| **209.8°** | **53.1** | **19 248** |
+
+The metric says the other two buy **~30% more visible shadow** — and the metric is
+wrong, because what it counts is everything darker than the local median, and those
+azimuths put the **character itself** in shade. Caught by looking rather than by the
+number: at −60.2° the Weaver's face and robe go dark and the scene loses its subject.
+The source azimuth front-lights what the player is looking at, and the hidden shadow
+is the price. That is the right trade for a game, and it is now measured rather than
+assumed.
+
+So the option is closed **for the bridge**, not in general. An opaque substitute is
+worth **12.6%** of a cast shadow where the camera can see it and **1.9%** where the
+camera puts it behind the character — roughly a seventh survives — and the bridge is
+the one place in the world walked with no shadow at all. Both halves are known now,
+which is more than the option had before it was built: the material can do the job,
+the texture cannot, and the bridge view is the one view that will not show it. The
+honest repair there is still the one rejected on cost — a box that follows the player
+off the island — or nothing. `diff_map.py` stays: the next attempt's first reading is
+a location, not a total.
 
 
 #### The audit that would have caught it
