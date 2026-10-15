@@ -2215,19 +2215,15 @@ deck.
 So the priority is not "low, document and move on" after all. It is the largest
 remaining visual defect in the world by the only measure that matters — how long a
 player spends looking at it. The blob shadow is the one candidate that is both free
-and free of artefacts, and it has never been built. It deserves its own measurement
-rather than a paragraph inside this one.
+and free of artefacts, so it deserves its own measurement rather than a paragraph
+inside this one. It was built twice.
 
-#### The blob shadow was built, measured, and it does not show
+#### The blob shadow was built twice, measured, and the camera is why it cannot work
 
 A `ContactShadow` was written against the sun rather than the Weaver: same island,
 same shoulder, same `distance > radius + SHADOW_SHOULDER` test the shadow box uses,
-so it could never double-draw a real shadow. It was a soft 128×128 radial black quad,
-placed at `bearing × length` from the player, with `length = CHARACTER_HEIGHT /
-tan(SUN_ELEVATION)` derived from the shared sun direction instead of a guessed number.
-
-Two placements were measured on the hub → Cartographers' deck, each against the
-blob-off frame:
+so it could never double-draw a real shadow. Two placements were measured on the
+hub → Cartographers' deck:
 
 | | frame mean abs. diff | share |
 | --- | --- | --- |
@@ -2235,47 +2231,57 @@ blob-off frame:
 | **offset 0.9 × length, 2.4 wide, opacity 0.45** | **0.2351** | **0.60%** |
 
 Moving it further from the hat made the number *smaller*, which is what a substitute
-shadow should never do. That is the clue, and it was worth building the tool to read
-it properly: `tools/diff_map.py` amplifies `|A − B|` into a heat map instead of only
-summing it, because a sum is dominated by whatever else moved. The map says plainly
-that the strong red in those two captures is the **orbiting marker on the bridge**,
-and that the character appears only as a one-pixel outline — sub-pixel drift between
-captures. The blob is not in either picture.
+shadow should never do. `tools/diff_map.py` — which amplifies `|A − B|` into a heat
+map instead of only summing it, because a sum is dominated by whatever else moved —
+says plainly that the strong red in those captures is the **orbiting marker on the
+bridge**, and that the character appears only as a one-pixel outline. The blob is in
+neither picture.
 
-Held still and isolated — same session, same frame, only the material toggled — the
-blob's own contribution at its own centre is:
+Isolated in the same frame, with only the material toggled, its own contribution at
+its own centre was **+0.02 luma**. Nothing.
 
-| window | blob on | blob off | delta |
-| --- | --- | --- | --- |
-| r = 30 px | 59.89 | 59.88 | **+0.02** |
-| r = 60 px | 59.55 | 59.53 | +0.03 |
-| r = 100 px | 58.94 | 58.90 | +0.04 |
+**The mesh was fine, and part of that result was measured on a broken baseline.** The
+deck's top face used to sit at y = 0.85 while the character walked at y = 0, so a
+patch placed at `focus.y + 0.02` was **0.83 units inside the slab**. The deck is now
+drawn with `DECK_TOP_Y = 0`, level with the island ground, and the patch was rebuilt
+against it at the size the shadow implies rather than around the feet: the authored
+key sits at **48.16°**, where `tan = 1.1168`, so the 1.78-unit Weaver throws a
+shadow **1.59 units** long and the patch was cut from 2.4 × 2.95 down to
+**1.05 × 1.34** — under the caster rather than around it. It then rendered, and the
+ceiling turned out to be the finding:
 
-**Nothing.** Not a faint blob — nothing.
-
-**The mesh itself is not the problem**, which is the part worth keeping. Probed in
-place, with everything else held still:
-
-| probe | r = 30 px | what it proves |
+| patch | centre delta | × the same-setting control |
 | --- | --- | --- |
-| as shipped | +0.02 | occluded, or not drawn |
-| `depthTest = false`, same opacity | **−22.10** | it *does* draw, at the right place, with the right texture |
-| 221 meshes hidden, `depthTest = true` | **−56.05** | geometry, texture, size and placement are all sound |
-| lifted 0.35 above the deck | −0.00 | not a depth-precision or z-fighting problem |
+| radial texture, opacity 0.45 | −2.15 | 3.8× |
+| radial texture, opacity 1.0 | −2.60 | 4.6× |
+| **opaque black, no texture at all** | **−2.00** | — |
 
-A 45%-opacity black quad over ground at luma 57 must take about −26 luma. With the
-scene intact it takes +0.02, so **something opaque stands in front of it** from the
-gameplay camera. And the shape is wrong in a way no tuning fixes: at a 48° sun a
-1.5-unit character throws a shadow `1.5 / tan(48°) ≈ 1.35` units long, so the
-substitute was **2.4 × 2.95 units — larger than the character casting it** — sitting
-1.2 units from the player. From the play camera its footprint lands on the character.
+Doubling the opacity bought **0.45 luma**, and a quad with no texture and no alpha —
+which cannot be accused of a blending subtlety — bought no more than the textured
+one. A plane of that size lying on open ground would read about **55**. It reads 2.
+So roughly **96% of the patch is not on visible ground**, and no opacity setting can
+reach what is hidden.
 
-That is a redesign, not a parameter. A substitute shadow has to be either a small
-contact patch under the feet or a long streak away from them; at the true cast-shadow
-length there is nothing left to draw. The code was reverted rather than shipped, and
-the blob stays an unbuilt candidate — but it is now unbuilt with a measurement behind
-it, and with `diff_map.py` to make the next attempt's first reading a location rather
-than a total.
+**Why it is hidden is structural, not a placement mistake.** `SUN_DIRECTION` is
+`(0.579, 0.745, 0.331)`: its horizontal part points toward **+x, +z**. The play
+camera trails the player at +z, so the camera sits on the **sun's side**. Every
+shadow in this world therefore falls *away* from the viewer and *behind* the thing
+casting it. A substitute drawn along the true bearing lands squarely in the
+character's silhouette. Offsetting it sideways until it clears would stop it being a
+shadow and make it a smudge beside the player — the exact failure the code comment
+predicted when it said the patch should read as the shadow it stands in for rather
+than as a mark under the player's feet.
+
+Set against the real thing, the best case is **2.60 luma against a cast shadow's
+135.97 — 1.9%, a fifty-second**. The AO figure of 3.7% was rejected because it
+supplied a twenty-seventh; this supplies a fifty-second, and unlike AO it cannot be
+pointed somewhere more useful, because the shadow direction is fixed by the sun.
+
+So the option is closed rather than deferred. A fake shadow cannot stand in for this
+camera, and the honest repair is the one already rejected on cost — a box that
+follows the player off the island — or nothing. `diff_map.py` stays: the next
+attempt's first reading is a location, not a total.
+
 
 #### The audit that would have caught it
 
@@ -3089,6 +3095,15 @@ Reported honestly rather than presented as finished:
    pages, so the journal's factual descriptions retain those sites' own wording
    about hardware and pricing. Gameplay itself uses only fictional units and
    claims no real prices, benchmarks or training.
+8. **Two thirds of every bridge is walked with no shadow.** The shadow box is
+   fitted to the island, a bridge is 163 units rim to rim, and the shadowless
+   share was measured at **67%** — 29.5 seconds a crossing at the shipped walk
+   speed, 3.4 minutes over a full circuit of seven. Widening the box costs 40%
+   of the island's shadow resolution; occlusion supplies 3.7% of what a cast
+   shadow supplies; and a fake contact patch reaches **1.9%** of it, because the
+   play camera sits on the sun's side and every shadow falls behind the character
+   that casts it. Measured and closed rather than assumed — see the section on
+   the player's shadow.
 
 ---
 
