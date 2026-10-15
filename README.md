@@ -3170,34 +3170,33 @@ Reported honestly rather than presented as finished:
    environmental transformation happen in 3D, but the puzzles themselves are
    resolved in an overlay panel rather than by manipulating 3D objects directly.
    This is a deliberate readability and precision trade-off.
-4. **Regions are visible but lightly dressed, and the cause is still not known.**
-   All seven landmarks exist and every region is reachable, but the interior
-   detail is procedural and reads lighter than the hub's. Measured rather than
-   assumed, and the obvious explanations were all wrong:
+4. **Regions are visible but lightly dressed — a claim this round disproved.**
+   Every landmark exists and every region is reachable, but the limitation as
+   previously written said the regions' interior detail "reads lighter than the
+   hub's". Measured, that does not hold up, and three rounds of work were spent
+   on the wrong target before it did:
 
-   | what was tried | measured | verdict |
-   | --- | --- | --- |
-   | the island's inner third is empty | quarter histogram **0 / 57 / 81 / 38** on the hub, **0 / 61 / 116 / 83** on the Cartographers' Terrace | the gap is real |
-   | …so drop `scatter`'s `minRadius` from `radius * 0.35` to 7/10/14 | innermost quarter 0 → 4–18 props, frame "stuff" coverage **38.41% → 38.40%** | no effect |
-   | …so widen the terrain's vertex-colour range, ±6% → ±13% lightness | local ground contrast 4.595 → 4.731 (**1.03×**) | no effect |
-   | …is the range even reaching the screen? push it to ×1.6 / ×0.35 | **1.5% of pixels** moved past 12/255; edge energy 0.816 → 0.818 | **the vertex colours are not reaching the visible surface** |
-   | …is something else on top? drop the cliff's top ring from y = 0.35 to y = 0 | no visible change in the frame | no |
+   | what was believed | what was measured |
+   | --- | --- |
+   | the islands' inner third is empty ground | the inner third is the **landmark plinth**, and it is at every island: hub 52 wide (`#7d4b28`), Terrace 30.4 + a 19.1 table, Foundry 30 (`#7cceda`), Council 20.4, Mirrors 26.4, Gardens two 19.9 decks at y 3.6–4, Valley 14 |
+   | so `scatter`'s `minRadius = radius * 0.35` leaves a bare middle | it leaves the **landmark's own footprint** bare, which is the one thing it must |
+   | so drop it to 7/10/14 | the innermost quarter fills with 4–18 props and frame coverage moves **38.41% → 38.40%**; nothing changes |
+   | the terrain's vertex colours do not reach the screen | they do not reach the screen **because the camera at a region centre is looking at the plinth, not the ground**. Pushed to a 2.6× range only 1.5% of pixels moved — the wrong surface was being tinted |
+   | the cliff's top ring at y = 0.35 is above the walkable surface | it is, and dropping it to y = 0 changes nothing visible for the same reason |
 
-   Both island-scale meshes at the terrace were then isolated by hiding them:
-   8 meshes in all, and **hiding every one of them removes the ground entirely** —
-   what is left is the hexagonal pads, the rocks, the grass and the Weaver. But
-   hiding only the flat normal-mapped discs leaves the dome, and hiding only the
-   865-vertex cliff body leaves it too. So the two each contribute the same pale
-   surface and neither is the sole cover.
+   How the mistake was caught: hiding **every** mesh at the terrace removes the
+   ground entirely, so the pale dome is not one mystery surface but the landmark.
+   Reading one pixel directly out of the framebuffer, once per mesh — 221 renders,
+   eight sample points, each mesh hidden in turn — names the two that carry it:
+   240 vertices and 480, both `MeshStandardMaterial`, **neither with a normal
+   map**. The TerrainDisc (1729 vertices, normal-mapped) is in neither list.
 
-   That last row is the finding. The Cartographers' Terrace and the Collective
-   Gardens are the two regions whose landmarks cannot fill the frame, and both
-   read as smooth pale sand from the arrival camera. Their ground does **not**
-   respond to its own vertex colours — not at a 13% range, not at a 2.6× one —
-   so whatever is being looked at is not the mesh those colours are written to.
-   Adding more props does not help, because the props are not what is missing;
-   the surface is. The next round should identify that surface first, and should
-   not spend another one on scatter.
+   So the standing claim is wrong and is withdrawn rather than reworded: the
+   regions carry **260–347 dressing props each against the hub's 176**, so prop
+   count was never the difference either. What a real comparison of "how dressed
+   does this island read" would need is a camera placed at a fixed distance and
+   bearing *outside* every landmark footprint, which nothing here has done yet.
+
 5. **Voice is text-only.** Spark uses short authored lines with deterministic
    behaviour; there is no speech synthesis or voice acting.
 6. **Audio is a synthesised ambient pad, not a score.** Every voice is tuned to
