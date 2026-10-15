@@ -1132,6 +1132,42 @@ caught the weakness in how it was first taken — one of the two original boxes 
 in a region that did not change at all (×1.00), because the boxes were picked
 before the diff showed where the new objects ended up.
 
+### …and once the landmark was out of the frame, the islands read the same
+
+The section above takes its numbers from the ground under the player. The
+objection to every version of it is that a camera placed at a region's anchor is
+looking at that region's **landmark**: measured, the plinth is 52 units across on
+the hub, 30.4 on the Cartographers' Terrace, 30 on the Flow Foundry, 26.4 on the
+Observer's Mirrors, and it is what fills the lower frame in each of those shots.
+So the ground was being judged through the one object that covers it.
+
+Measured with a fixed rig instead — every island viewed from **72% of its own
+radius, on the same bearing, with the landmark behind the camera**, and the
+numbers taken from the lower 45% of the frame, which is near ground in all eight:
+
+| island | edge energy | vs hub | local contrast | vs hub |
+| --- | --- | --- | --- | --- |
+| hub | 1.283 | 1.00× | 6.880 | 1.00× |
+| cartographers-terrace | 1.317 | **1.03×** | 7.185 | **1.04×** |
+| flow-foundry | 1.218 | 0.95× | 6.403 | 0.93× |
+| memory-council-city | 1.256 | 0.98× | 6.599 | 0.96× |
+| adaptation-cloud-harbor | 1.284 | 1.00× | 6.932 | 1.01× |
+| collective-gardens | 1.227 | 0.96× | 6.364 | 0.93× |
+| observers-mirrors | 1.326 | **1.03×** | 7.223 | **1.05×** |
+| valley-living-machines | 1.165 | **0.91×** | 6.105 | **0.89×** |
+
+The whole spread is **0.91× to 1.03×**, the hub sits in the middle of the pack,
+and the two regions that looked emptiest from the anchor — the Terrace and the
+Collective Gardens — come out **above** and level with it. The worst island is
+ten per cent below the hub, which is not a gap a player can see.
+
+So the long-standing limitation "regions are visible but lightly dressed" is
+**withdrawn rather than reworded**. What it actually measured was a landmark. The
+remaining honest difference between the islands is hue, not density: the hub,
+the Harbor and the Terrace read as warm sand and the Mirrors as pale grey-green,
+and the Mirrors being the *brightest* and *most* detailed of the eight is the
+clearest sign that "lighter" was never the right word.
+
 ### Twenty-eight puzzle consoles shared one plinth, at the wrong place
 
 Every puzzle console in the world is supposed to stand on an authored plinth:
@@ -3170,40 +3206,13 @@ Reported honestly rather than presented as finished:
    environmental transformation happen in 3D, but the puzzles themselves are
    resolved in an overlay panel rather than by manipulating 3D objects directly.
    This is a deliberate readability and precision trade-off.
-4. **Regions are visible but lightly dressed — a claim this round disproved.**
-   Every landmark exists and every region is reachable, but the limitation as
-   previously written said the regions' interior detail "reads lighter than the
-   hub's". Measured, that does not hold up, and three rounds of work were spent
-   on the wrong target before it did:
-
-   | what was believed | what was measured |
-   | --- | --- |
-   | the islands' inner third is empty ground | the inner third is the **landmark plinth**, and it is at every island: hub 52 wide (`#7d4b28`), Terrace 30.4 + a 19.1 table, Foundry 30 (`#7cceda`), Council 20.4, Mirrors 26.4, Gardens two 19.9 decks at y 3.6–4, Valley 14 |
-   | so `scatter`'s `minRadius = radius * 0.35` leaves a bare middle | it leaves the **landmark's own footprint** bare, which is the one thing it must |
-   | so drop it to 7/10/14 | the innermost quarter fills with 4–18 props and frame coverage moves **38.41% → 38.40%**; nothing changes |
-   | the terrain's vertex colours do not reach the screen | they do not reach the screen **because the camera at a region centre is looking at the plinth, not the ground**. Pushed to a 2.6× range only 1.5% of pixels moved — the wrong surface was being tinted |
-   | the cliff's top ring at y = 0.35 is above the walkable surface | it is, and dropping it to y = 0 changes nothing visible for the same reason |
-
-   How the mistake was caught: hiding **every** mesh at the terrace removes the
-   ground entirely, so the pale dome is not one mystery surface but the landmark.
-   Reading one pixel directly out of the framebuffer, once per mesh — 221 renders,
-   eight sample points, each mesh hidden in turn — names the two that carry it:
-   240 vertices and 480, both `MeshStandardMaterial`, **neither with a normal
-   map**. The TerrainDisc (1729 vertices, normal-mapped) is in neither list.
-
-   So the standing claim is wrong and is withdrawn rather than reworded: the
-   regions carry **260–347 dressing props each against the hub's 176**, so prop
-   count was never the difference either. What a real comparison of "how dressed
-   does this island read" would need is a camera placed at a fixed distance and
-   bearing *outside* every landmark footprint, which nothing here has done yet.
-
-5. **Voice is text-only.** Spark uses short authored lines with deterministic
+4. **Voice is text-only.** Spark uses short authored lines with deterministic
    behaviour; there is no speech synthesis or voice acting.
-6. **Audio is a synthesised ambient pad, not a score.** Every voice is tuned to
+5. **Audio is a synthesised ambient pad, not a score.** Every voice is tuned to
    one chord (root, fifth, octave, twelfth) and passes through a lowpass and a
    generated reverb; each restored region adds one more voice. There is no
    melodic writing, no recorded sound and no adaptive scoring.
-7. **Source-application descriptions are quoted verbatim** from the published
+6. **Source-application descriptions are quoted verbatim** from the published
    pages, so the journal's factual descriptions retain those sites' own wording
    about hardware and pricing. Gameplay itself uses only fictional units and
    claims no real prices, benchmarks or training.
