@@ -2315,10 +2315,59 @@ worth **12.6%** of a cast shadow where the camera can see it and **1.9%** where 
 camera puts it behind the character — roughly a seventh survives — and the bridge is
 the one place in the world walked with no shadow at all. Both halves are known now,
 which is more than the option had before it was built: the material can do the job,
-the texture cannot, and the bridge view is the one view that will not show it. The
-honest repair there is still the one rejected on cost — a box that follows the player
-off the island — or nothing. `diff_map.py` stays: the next attempt's first reading is
-a location, not a total.
+the texture cannot, and the bridge view is the one view that will not show it.
+
+#### …and the repair that was left unmeasured turned out to be free
+
+The paragraph above used to end with the honest repair being the one option nobody
+had costed: *"a box that follows the player off the island — or nothing."* It was
+left as a note because widening `SHADOW_SHOULDER` is expensive, and following the
+player everywhere is expensive. **Neither of those is what the fix does.** The box
+stays on the island while the player is on it, and goes with the player only once
+they are not:
+
+| where the player is | box centre | half-width | texels per unit |
+| --- | --- | --- | --- |
+| on the island | the island | radius + 10 = 44 | 23.27 |
+| off it, on a bridge | **the player** | 24 | **42.67** |
+
+Measured on the hub before the change, a player standing on the bridge was **98
+units from the box centre with a box of ±44** — not a soft shadow, none. The
+hand-over is the part that makes it free: an island the player has left is one they
+cannot see the shadow detail of, so taking the box away costs nothing they were
+looking at. And a player on a bridge is closer to the ground than an island ever is,
+so the travelling box is the *tighter* one and buys **nearly double the resolution**
+(42.67 against 23.27) — the opposite of the shoulder trade that was rejected.
+
+Measured on the hub → Flow Foundry deck at (0, −80), against the same frame with
+the sun's `castShadow` switched off and a same-setting control pair for the floor:
+
+| window around the player | shadows on | shadows off | delta | × the control |
+| --- | --- | --- | --- | --- |
+| r = 60 px | 52.86 | 76.05 | **−23.19** | **66×** |
+| r = 120 px | 69.82 | 86.27 | −16.45 | 6.0× |
+| r = 200 px | 86.04 | 91.62 | −5.58 | 5.2× |
+
+The Weaver casts a shaped, soft-edged shadow onto the deck and is attached to it.
+Before, they stood on the bridge attached to nothing.
+
+**Free, and it stays free.** Three samples on the deck measured **94.9 / 96.5 /
+96.5 FPS, median 96.5** — the map is still 2048² and a directional shadow costs the
+same whether the box is tight or wide, so nothing was added. The island is
+untouched: standing on the hub the box reads centre (0, 0), half-width 44, 23.27
+texels per unit, exactly as before.
+
+The hand-over is a hard switch, so it was looked at rather than assumed: captured
+one step inside the boundary (z = −41) and four steps outside (z = −48), the
+island's own shading reads the same in both, because at the crossing point the
+player is already ten units past the shoreline and the island is behind them. The
+rule is a value — `shadowBoxFor(focus, island)` — with eight tests pinning the
+boundary, the inclusive edge, the null-island case and the property that matters
+most: **the player is never left standing outside the box drawn for them.**
+
+So the defect is closed by measurement rather than deferred: 29.5 seconds a
+crossing, 3.4 minutes a circuit, now shaded. `diff_map.py` stays: the next
+attempt's first reading is a location, not a total.
 
 
 #### The audit that would have caught it
@@ -2790,7 +2839,7 @@ Details that carry weight:
 
 ## Tests performed
 
-`npm run test` — **301 tests across 25 files, all passing.**
+`npm run test` — **309 tests across 26 files, all passing.**
 
 | Suite | Tests | What it proves |
 | --- | --- | --- |
@@ -2817,6 +2866,7 @@ Details that carry weight:
 | `character` | 10 | The Weaver stands on y = 0 once the rig is composed, and a rigged scene is never cloned out from under its own mixer |
 | `bridge-corridor` | 5 | The walkable corridor is derived from the drawn deck, measured across the span |
 | `bridge-ground` | 8 | **The deck and the surface walked on it are one thing**: level with every island top, its drawn top face at that same height, a span read at its own half-width, and no walkable ground where there is no stone under it |
+| `shadow-box` | 8 | **The shadow box is on the island while the player is on it and on the player once they are not** — the hand-over is at the shoulder, and the player is never left standing outside the box that is drawn for them |
 | `tapestry` | 6 | Panels light proportionally to regions restored, never all-or-nothing |
 | `disc` | 6 | Terrain discs are flat, face up, tiled rather than holed, and keep their measured vertex budget |
 
@@ -2845,7 +2895,7 @@ interface calls — through the whole journey and asserts it can be finished:
 - all 33 applications are discovered across the run
 - the finished journey reloads correctly from the save
 
-The full suite is 301 tests across 25 files.
+The full suite is 309 tests across 26 files.
 
 Measured in the browser through the real interface, not simulated:
 
@@ -3133,15 +3183,7 @@ Reported honestly rather than presented as finished:
    pages, so the journal's factual descriptions retain those sites' own wording
    about hardware and pricing. Gameplay itself uses only fictional units and
    claims no real prices, benchmarks or training.
-8. **Two thirds of every bridge is walked with no shadow.** The shadow box is
-   fitted to the island, a bridge is 163 units rim to rim, and the shadowless
-   share was measured at **67%** — 29.5 seconds a crossing at the shipped walk
-   speed, 3.4 minutes over a full circuit of seven. Widening the box costs 40%
-   of the island's shadow resolution; occlusion supplies 3.7% of what a cast
-   shadow supplies; and a fake contact patch reaches **1.9%** of it, because the
-   play camera sits on the sun's side and every shadow falls behind the character
-   that casts it. Measured and closed rather than assumed — see the section on
-   the player's shadow.
+
 
 ---
 

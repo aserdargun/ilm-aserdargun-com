@@ -58,6 +58,52 @@ const SHADOW_DEPTH = 220;
  */
 const SHADOW_SHOULDER = 10;
 
+/**
+ * The box the player walks with once they have left the island.
+ *
+ * Two thirds of every bridge is outside the island box — measured at 109 of 163
+ * units, 29.5 seconds a crossing — and the box stays on the island because an
+ * island is a closed shape the player cannot walk out of. That reasoning is sound
+ * on an island and simply stops at the shoreline: measured on the hub, a player
+ * standing on the bridge is **98 units from the box centre with a box of ±44**,
+ * so there is no shadow at all rather than a soft one.
+ *
+ * The repair is not a wider box. Widening `SHADOW_SHOULDER` trades the island's
+ * resolution for the ribbon of deck where the player spends a fraction of their
+ * time, which is the wrong way round. Handing the box to the player *only once
+ * they are off the island* costs nothing on the island, because an island the
+ * player has left is one they cannot see the shadow detail of.
+ *
+ * The extent is small on purpose. At ±24 the box covers the twelve-unit deck,
+ * its rails and the water either side, and buys **42.7 texels per unit** —
+ * nearly double what the island's own ±44 gives. A player on a bridge is closer
+ * to the ground than an island ever is, so a tighter box is the cheaper one.
+ */
+const SHADOW_TRAVEL_EXTENT = 24;
+
+/**
+ * Which box the sun draws, and where it is centred.
+ *
+ * Split out of the frame loop so the rule is a value that can be asserted rather
+ * than a closure nobody can reach: an island the player cannot walk out of keeps
+ * the box, and the moment they leave it the box goes with them.
+ *
+ * The boundary is inclusive on the island side — `radius + SHADOW_SHOULDER` is
+ * the last point the island box reaches, so that point still belongs to it.
+ */
+export function shadowBoxFor(
+  focus: { x: number; z: number },
+  island: ShadowRegion | null,
+): { cx: number; cz: number; extent: number } {
+  const onIsland =
+    island !== null &&
+    Math.hypot(focus.x - island.x, focus.z - island.z) <= island.radius + SHADOW_SHOULDER;
+  if (!onIsland || island === null) {
+    return { cx: focus.x, cz: focus.z, extent: SHADOW_TRAVEL_EXTENT };
+  }
+  return { cx: island.x, cz: island.z, extent: island.radius + SHADOW_SHOULDER };
+}
+
 /** Centre and radius of the island the player is standing on. */
 export interface ShadowRegion {
   x: number;
@@ -153,15 +199,11 @@ function Sun({ quality, target, region }: LightingProps) {
     // Read inside the frame, not during render: the ref is updated by the
     // scene's own frame loop and never triggers a React render, so a value
     // captured at render time would be one island stale.
-    const island = region?.current ?? null;
-
-    // The box is fitted to the island, not to the player. An island is a closed
-    // shape the player cannot walk out of, so following them only ever slid the
-    // boundary around inside ground they could already see — and pulled the
-    // bridge casters at the shoreline further out of it the closer they got.
-    const cx = island ? island.x : focus.x;
-    const cz = island ? island.z : focus.z;
-    const extent = island ? island.radius + SHADOW_SHOULDER : SHADOW_FALLBACK_EXTENT;
+    //
+    // On an island a closed shape cannot be walked out of, so the box stays on
+    // it; off it, the alternative is a box whose centre is 98 units away and a
+    // character with no shadow at all. `shadowBoxFor` holds the rule.
+    const { cx, cz, extent } = shadowBoxFor(focus, region?.current ?? null);
 
     lamp.position.set(
       cx + SUN_DIRECTION.x * SHADOW_DEPTH,
