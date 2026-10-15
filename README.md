@@ -1402,6 +1402,30 @@ The anisotropy of 8 that was already set was doing nothing at the old tile size,
 because anisotropy only helps when a surface is *minified*, and at five times over
 it never was.
 
+**And the relief was re-tested, because its rejection was measured against the
+broken tile.** `GROUND_NORMAL_SCALE` sat at 1.5 with a comment recording that 3.0
+was worse — "the tooth reads as blotches rather than grain". That was measured
+when the map was magnified five times, so it was worth re-running on the fixed
+baseline rather than inherited:
+
+| relief | fine (21 px) | coarse (45 px) | ratio | mean luma |
+| --- | --- | --- | --- | --- |
+| 1.5 | 7.46 | 9.32 | 1.25 | 114.45 |
+| **2.2** | **9.79** | **11.94** | **1.22** | 112.55 |
+| 3.0 | 12.47 | 14.85 | 1.19 | 110.26 |
+
+**The old complaint does not reproduce.** The coarse-to-fine ratio is what blotching
+would show, and it *improves* as the relief rises — 1.25 → 1.22 → 1.19 — so the map
+is gaining tooth at both scales rather than gaining patches at one. 2.2 is +31% of
+the fine detail over 1.5 and the ground still reads as sand.
+
+3.0 is still wrong, for a reason that was not visible before: **+67%** of fine
+detail with the map now resolving stops reading as sand and starts reading as
+gravel. The comment that recorded the old rejection has been rewritten to say what
+the numbers now say, because a stale measurement is worse than no measurement —
+the next person would otherwise re-run the same experiment and reach for the same
+wrong number.
+
 ### Twenty-eight puzzle consoles shared one plinth, at the wrong place
 
 Every puzzle console in the world is supposed to stand on an authored plinth:

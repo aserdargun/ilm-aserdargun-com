@@ -74,14 +74,24 @@ const GROUND_TILE_SIZE = 2;
  * of the frame moved), which located the fault in the amplitude rather than in
  * the shader.
  *
- * 1.5 moves 5.3% of the frame by more than 4/255, mean absolute difference 1.08,
- * at 104.9 FPS against 104.7 before it. 3.0 moves 17.1% and mean 2.66, and is
- * worse to look at: the tooth reads as blotches rather than grain, because the
- * cool rim light reaches the tilted faces and tints them. Half the measured gain
- * is the better image, and the whole of it is free — same shader, same texture,
- * same bandwidth.
+ * **Re-measured after the tile size changed**, because the number below was
+ * chosen against a map that was being magnified five times over. That rejection
+ * does not survive: at a tile of 2 the relief scales both scales of the texture
+ * together and the coarse-to-fine ratio *improves* as it rises.
+ *
+ * | relief | fine (21 px) | coarse (45 px) | ratio | mean luma |
+ * | --- | --- | --- | --- | --- |
+ * | 1.5 | 7.46 | 9.32 | 1.25 | 114.45 |
+ * | **2.2** | **9.79** | **11.94** | **1.22** | 112.55 |
+ * | 3.0 | 12.47 | 14.85 | 1.19 | 110.26 |
+ *
+ * 2.2 is +31% of the fine detail and keeps the ground reading as sand. 3.0 is
+ * +67% and the ratio is no worse, so the old complaint — blotches rather than
+ * grain — does not reproduce and should not be repeated. 3.0 is still wrong, for
+ * a different reason that was not visible before: with the map resolving, the
+ * tooth stops reading as sand and starts reading as gravel.
  */
-const GROUND_NORMAL_SCALE = 1.5;
+const GROUND_NORMAL_SCALE = 2.2;
 
 /**
  * The same value as a Vector2, built once.
