@@ -1214,6 +1214,31 @@ be while still reading as earth; the other three carry the cool end — the
 Council as blue stone, the Mirrors as cold pale, which is what an island of
 mirrors should be.
 
+Checked before shipping, because a new ground colour can swallow what was sitting
+on it. On the same rig, separating the ground (within 18 luma of the local median)
+from the props (more than 25 away):
+
+| island | ground | props | prop − ground | prop hue |
+| --- | --- | --- | --- | --- |
+| hub | 90.6% | 6.57% | 80.0 | 128.5° |
+| cartographers-terrace | 88.0% | 8.92% | 80.4 | 108.0° |
+| flow-foundry | 91.7% | 6.27% | 63.4 | 127.5° |
+| memory-council-city | 91.7% | 6.14% | 68.8 | 177.8° |
+| adaptation-cloud-harbor | 91.3% | 6.56% | 75.6 | 129.2° |
+| collective-gardens | 91.5% | 6.02% | 74.8 | 145.6° |
+| observers-mirrors | 90.6% | 6.73% | 83.5 | 166.7° |
+| valley-living-machines | 92.8% | 5.68% | 56.0 | 171.8° |
+
+**No island lost its props**: prop coverage holds between 5.68% and 8.92% across
+all eight, and the prop-to-ground separation stays between 56 and 84 luma. The
+figure that looked at risk was the Mirrors — a near-white ground under the warm
+`#9a8a72` pebbles — and it came out the highest contrast of the eight at 83.5.
+
+The widest seam a bridge can cross is the hub to the Council, warm 40.6° against
+blue 193.5°, and it was walked rather than reasoned about: both islands read in
+one frame with the turquoise canal and the Council's pillars between them, and
+the transition reads as two places rather than as a seam.
+
 Cost is nothing: the value lives in one hex per region and is read in
 `Atmosphere.tsx` to build the vertex colours at load, so no draw call, no
 material and no frame time changed. The props still read on the cool grounds,
