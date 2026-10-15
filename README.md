@@ -3181,6 +3181,14 @@ Reported honestly rather than presented as finished:
    | …so drop `scatter`'s `minRadius` from `radius * 0.35` to 7/10/14 | innermost quarter 0 → 4–18 props, frame "stuff" coverage **38.41% → 38.40%** | no effect |
    | …so widen the terrain's vertex-colour range, ±6% → ±13% lightness | local ground contrast 4.595 → 4.731 (**1.03×**) | no effect |
    | …is the range even reaching the screen? push it to ×1.6 / ×0.35 | **1.5% of pixels** moved past 12/255; edge energy 0.816 → 0.818 | **the vertex colours are not reaching the visible surface** |
+   | …is something else on top? drop the cliff's top ring from y = 0.35 to y = 0 | no visible change in the frame | no |
+
+   Both island-scale meshes at the terrace were then isolated by hiding them:
+   8 meshes in all, and **hiding every one of them removes the ground entirely** —
+   what is left is the hexagonal pads, the rocks, the grass and the Weaver. But
+   hiding only the flat normal-mapped discs leaves the dome, and hiding only the
+   865-vertex cliff body leaves it too. So the two each contribute the same pale
+   surface and neither is the sole cover.
 
    That last row is the finding. The Cartographers' Terrace and the Collective
    Gardens are the two regions whose landmarks cannot fill the frame, and both
