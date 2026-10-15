@@ -15,9 +15,11 @@ import { REGION_ORDER, REGIONS } from '../catalog/regions';
 import {
   createPlayerState,
   registerBridges,
+  useGroundSampler,
   usePlayerController,
   type PlayerState,
 } from './Player';
+import { DECK_CENTER_Y, DECK_TOP_Y, buildBridgeSpans } from './bridge';
 import { addColliders, clearColliders, countByOwner, getColliders } from './collision';
 import { distanceToWalkable, initNavigation } from './navigation';
 import { ALL_STAGE_IDS, STAGES } from '../game/stages';
@@ -156,6 +158,22 @@ function SceneContents() {
   const player = useRef<PlayerState>(createPlayerState(new THREE.Vector3(...SPAWN)));
   const stagePositions = useMemo(() => buildStagePositions(), []);
   const regionMeta = useMemo(() => allRegionMeta(), []);
+  // The world query that says how high the ground is underfoot. This is what the
+  // controller asks every frame; it used to hold an unassigned ref of its own
+  // and answer 0 everywhere, which is why a deck drawn above the player read as
+  // a floor they were standing under.
+  const groundRegions = useMemo(
+    () =>
+      REGIONS.map((r) => ({
+        id: r.id,
+        x: r.anchor[0],
+        z: r.anchor[2],
+        radius: r.radius,
+        y: r.anchor[1],
+      })),
+    [],
+  );
+  const ground = useGroundSampler(groundRegions);
   // The shadow box is fitted to the island rather than to the player, so the
   // island underfoot has to be known every frame, not only on the HUD tick.
   // Seeded from the spawn island; the frame loop corrects it from the first
@@ -463,6 +481,7 @@ function SceneContents() {
 
       <PlayerRig
         state={player}
+        ground={ground}
         cameraYaw={cameraYaw}
         cameraPitch={cameraPitch}
         enabled={game.screen === 'playing'}
@@ -572,39 +591,10 @@ function WorldGeometry({
 
   // Bridges from the hub to each region, laid down as regions are restored.
   //
-  // A span only has to cross the *gap* between two islands, and the geometry is
-  // derived from the same two distances `navigation.ts` puts its landing pads
-  // at. Drawing each span from the hub origin all the way to the region centre
-  // meant all seven of them lay inside the hub disc at once — the restored hub
-  // became a fan of overlapping stone — and left a twelve-unit slab lying
-  // across every destination island, on ground the player can already walk.
-  const bridges = useMemo(() => {
-    const hub = REGIONS.find((r) => r.id === 'hub')!;
-    return REGIONS.filter((r) => r.id !== 'hub').map((region) => {
-      const dx = region.anchor[0];
-      const dz = region.anchor[2];
-      const length = Math.hypot(dx, dz);
-      const ux = dx / length;
-      const uz = dz / length;
-      // Five units past each shoreline, matching the landing pads, so the deck
-      // visibly grows out of the island rather than starting in open air.
-      const start = hub.radius - 5;
-      const end = length - (region.radius - 5);
-      const span = Math.max(end - start, 1);
-      const middle = (start + end) / 2;
-      return {
-        from: [0, 0] as [number, number],
-        to: [dx, dz] as [number, number],
-        width: 12,
-        y: 0,
-        angle: Math.atan2(dx, dz),
-        span,
-        mid: [ux * middle, uz * middle] as [number, number],
-        start: [ux * start, uz * start] as [number, number],
-        end: [ux * end, uz * end] as [number, number],
-      };
-    });
-  }, []);
+  // The spans themselves — where the deck starts, how wide it is and how high
+  // the player stands on it — are built in `bridge.ts`, so the drawn causeway
+  // and the walked one cannot disagree.
+  const bridges = useMemo(() => buildBridgeSpans(), []);
 
   /**
    * Build the collision set from the geometry that actually exists, rather
@@ -692,15 +682,16 @@ function WorldGeometry({
         // walkable corridor suspended over the void. An invisible bridge is
         // precisely what the navigation code says it refuses to be.
         const open = openRegions.has(region.id);
-        const mid: [number, number, number] = [bridge.mid[0], 0.6, bridge.mid[1]];
+        const mid: [number, number, number] = [bridge.mid[0], DECK_CENTER_Y, bridge.mid[1]];
         if (!open) {
           // A bridge that has not grown yet: two stubs where the span will
           // meet each island, so the missing crossing reads as unfinished work
-          // rather than as a road that simply stops.
+          // rather than as a road that simply stops. Each block sits on the
+          // ground it will grow out of, at the shoreline.
           return (
             <group key={`stub-${region.id}`}>
               {[bridge.start, bridge.end].map((point, side) => (
-                <mesh key={side} position={[point[0], 0.6, point[1]]}>
+                <mesh key={side} position={[point[0], DECK_TOP_Y + 0.3, point[1]]}>
                   <boxGeometry args={[5, 0.6, 5]} />
                   <meshStandardMaterial color={PALETTE.stoneDark} flatShading />
                 </mesh>
@@ -868,6 +859,7 @@ function StageConsole({
 
 function PlayerRig({
   state,
+  ground,
   cameraYaw,
   cameraPitch,
   enabled,
@@ -875,6 +867,7 @@ function PlayerRig({
   ...rest
 }: {
   state: React.MutableRefObject<PlayerState>;
+  ground: (x: number, z: number) => number;
   cameraYaw: React.MutableRefObject<number>;
   cameraPitch: React.MutableRefObject<number>;
   enabled: boolean;
@@ -886,6 +879,7 @@ function PlayerRig({
   onHome: () => void;
 }) {
   const mesh = usePlayerController(state, {
+    ground,
     cameraYaw,
     cameraPitch,
     reducedMotion,

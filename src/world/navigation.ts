@@ -1,4 +1,5 @@
 import { REGIONS } from '../catalog/regions';
+import { DECK_WIDTH, LANDING_PAD_RADIUS } from './bridge';
 
 /**
  * Walking is confined to the islands and the spans between them.
@@ -30,7 +31,7 @@ let areas: WalkableArea[] = [];
 let openRegions = '';
 
 /** Deck width assumed when a caller does not say how wide it built the span. */
-const DEFAULT_BRIDGE_WIDTH = 12;
+const DEFAULT_BRIDGE_WIDTH = DECK_WIDTH;
 
 /** What a caller passes so the corridor can follow the deck it drew. */
 export interface BridgeSpan {
@@ -83,6 +84,13 @@ function buildAreas(openRegionIds: Set<string>, spans: BridgeSpan[]): WalkableAr
     // Landing pads where each span meets an island. Without them the union of
     // a disc and a corridor has a concave corner, and a player walking
     // diagonally into it gets wedged against an invisible edge.
+    //
+    // The centre is placed by the pad's own radius, so the pad stops exactly at
+    // the shoreline. It used to be centred five units inside the shore under a
+    // fixed nine-unit radius, which put a four-unit apron of walkable ground
+    // past the island's edge — harmless while the deck overhung that far and
+    // covered it, and a place to walk on thin air once the deck was trimmed to
+    // the gap it actually crosses.
     const dx = region.anchor[0] - 0;
     const dz = region.anchor[2] - 0;
     const length = Math.hypot(dx, dz) || 1;
@@ -92,16 +100,16 @@ function buildAreas(openRegionIds: Set<string>, spans: BridgeSpan[]): WalkableAr
 
     list.push({
       kind: 'disc' as const,
-      x: ux * (hub.radius - 5),
-      z: uz * (hub.radius - 5),
-      radius: 9,
+      x: ux * (hub.radius - LANDING_PAD_RADIUS),
+      z: uz * (hub.radius - LANDING_PAD_RADIUS),
+      radius: LANDING_PAD_RADIUS,
       margin: 0.4,
     });
     list.push({
       kind: 'disc' as const,
-      x: region.anchor[0] - ux * (region.radius - 5),
-      z: region.anchor[2] - uz * (region.radius - 5),
-      radius: 9,
+      x: region.anchor[0] - ux * (region.radius - LANDING_PAD_RADIUS),
+      z: region.anchor[2] - uz * (region.radius - LANDING_PAD_RADIUS),
+      radius: LANDING_PAD_RADIUS,
       margin: 0.4,
     });
   }

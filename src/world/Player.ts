@@ -23,6 +23,17 @@ export interface PlayerControllerOptions {
   /** Sprinting speed; taken from the sprint modifier while Shift is held. */
   runSpeed?: number;
   jumpVelocity?: number;
+  /**
+   * The height of the walkable surface at a world position.
+   *
+   * Required, and not optional with a `() => 0` fallback, because the controller
+   * used to hold its own sampler ref that nothing ever assigned: the world's
+   * ground query was exported, never called, and the player's height was pinned
+   * to y=0 for the whole game while the causeways were drawn 0.85 above it.
+   * Making it a required prop means a missing ground query is a type error
+   * rather than a character standing inside the scenery.
+   */
+  ground: (x: number, z: number) => number;
   /** Camera yaw, owned by the camera rig. */
   cameraYaw: React.MutableRefObject<number>;
   /** How far the camera is tilted from its resting framing, in radians. */
@@ -74,10 +85,9 @@ export function usePlayerController(
   const jumpVelocity = options.jumpVelocity ?? 9.4;
 
   const velocity = useRef(new THREE.Vector3());
-  const groupRef = useRef<THREE.Group>(null);
 
   // Ground height comes from the world query so the player walks on terrain.
-  const sampleGround = useRef<(x: number, z: number) => number>(() => 0);
+  const ground = options.ground;
 
   useEffect(() => {
     const element = gl.domElement;
@@ -176,7 +186,7 @@ export function usePlayerController(
       nextZ = contained.z;
     }
 
-    const groundY = sampleGround.current(nextX, nextZ);
+    const groundY = ground(nextX, nextZ);
     if (options.enabled && input.consume('jump') && current.grounded) {
       current.velocityY = jumpVelocity;
       current.grounded = false;
@@ -195,14 +205,6 @@ export function usePlayerController(
     current.speed = Math.hypot(velocity.current.x, velocity.current.z);
     if (current.speed > 0.4) {
       current.facing = Math.atan2(velocity.current.x, velocity.current.z);
-    }
-
-    if (groupRef.current) {
-      groupRef.current.position.copy(current.position);
-      groupRef.current.rotation.y = current.facing;
-      // A gentle bob sells the weight of the character without a full rig.
-      const bob = options.reducedMotion ? 0 : Math.sin(performance.now() * 0.011) * Math.min(current.speed, 6) * 0.012;
-      groupRef.current.position.y += bob;
     }
 
     // Camera orbits behind the player, pulled in whenever something solid is
@@ -286,24 +288,45 @@ export function regionAt(
   return best;
 }
 
-export function useGroundSampler(
-  regions: { id: RegionId; x: number; z: number; radius: number; y: number }[],
-): (x: number, z: number) => number {
-  return useMemo(() => {
-    const sample = (x: number, z: number): number => {
-      for (const region of regions) {
-        if (Math.hypot(x - region.x, z - region.z) <= region.radius) return region.y;
-      }
-      // Between regions the ground drops away into the haze; the bridges are
-      // the only safe crossing, and they are placed on the path segments.
-      for (const path of BRIDGES) {
-        const t = nearestOnSegment(x, z, path);
-        if (t !== null && t.dist <= path.width) return path.y;
-      }
-      return 0;
-    };
-    return sample;
-  }, [regions]);
+export interface GroundRegion {
+  id: RegionId;
+  x: number;
+  z: number;
+  radius: number;
+  y: number;
+}
+
+/**
+ * The height of the walkable surface at `(x, z)`.
+ *
+ * Islands first, then spans. A position can satisfy both — the corridor runs
+ * from the hub's centre out to each anchor, so it lies across the islands as
+ * well as the gap — and the island wins there, which is right: the ground under
+ * a span's overlap belongs to the island, and the deck is no longer drawn over
+ * land the player can already walk on.
+ *
+ * The width test is the deck's *half*-width. It used to compare the distance
+ * from the centre line against the full deck width, which described a deck
+ * twice as wide as the one drawn; the player is kept inside a narrower lane by
+ * navigation and never reached those positions, so the wrong number changed
+ * nothing visible — but it is the same shape of drift as the height, one more
+ * copy of a dimension the ground query guessed at instead of reading.
+ */
+export function groundAt(x: number, z: number, regions: GroundRegion[]): number {
+  for (const region of regions) {
+    if (Math.hypot(x - region.x, z - region.z) <= region.radius) return region.y;
+  }
+  // Between regions the ground drops away into the haze; the bridges are
+  // the only safe crossing, and they are placed on the path segments.
+  for (const path of BRIDGES) {
+    const t = nearestOnSegment(x, z, path);
+    if (t !== null && t.dist <= path.width / 2) return path.y;
+  }
+  return 0;
+}
+
+export function useGroundSampler(regions: GroundRegion[]): (x: number, z: number) => number {
+  return useMemo(() => (x: number, z: number) => groundAt(x, z, regions), [regions]);
 }
 
 export interface Bridge {

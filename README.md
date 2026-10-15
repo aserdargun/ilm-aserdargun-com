@@ -3011,6 +3011,55 @@ while walking, `grounded` stays true, and the locomotion clip switches `Idle` �
 `Walking_A` on movement, which is itself the proof the animation is reaching the
 mesh that renders.
 
+### The Weaver walked the causeways from underneath
+
+The Weaver crossed every span buried to the waist. Three causes stacked, and each
+one alone would have been a smaller bug than what shipped.
+
+**The deck was drawn in the air.** A span is a `boxGeometry` of thickness 0.5 on a
+group at y = 0.6, so its top face sat at **0.85**. Every island's ground is a disc
+built flat at y = 0. The player stood on the island's level and the deck was a
+waist-high slab over them — 0.85 of a 1.78-unit character, 48% of the body, inside
+the stone. The same number is also a ledge: the causeway began and ended in a step
+with nothing drawn to climb it.
+
+**The deck overhung the islands by five units.** Each span started at
+`hub.radius - 5`, so the first and last five units of it were drawn *over* ground
+the player can already walk — a slab floating 0.85 above sand. Worse, the ground
+query tests islands before spans and the island owns that land, so along those five
+units the world correctly reported the island's height and the player walked
+underneath the bridge that was drawn over them. This is the shape of the report as
+it was first made, and it is why trimming the deck mattered as much as lowering it.
+
+**The ground query was never called.** `useGroundSampler` was exported, and nothing
+imported it. The controller held its own `useRef` that nothing assigned, and the
+ref's default answered `0` — so the player's height was 0 for the entire game, on
+every surface, and no correct geometry could have been corrected at runtime. The
+same query also compared the distance from a span's centre line against the deck's
+full width, describing a deck twice as wide as the one drawn; navigation's narrower
+lane meant the player never reached those positions, so it changed nothing visible
+— the same private copy of a dimension, one level down.
+
+The deck and the walked surface are now one contract in `src/world/bridge.ts`:
+`DECK_TOP_Y` is zero, level with the island tops, `DECK_CENTER_Y` is derived from
+it so the runner and rails ride down with the slab, and the spans start and end
+exactly at the two shorelines. `Player.ts` exposes the ground query as a pure
+`groundAt()` and takes the sampler as a **required** controller prop, so a missing
+ground query is now a type error rather than a character standing inside the
+scenery. The landing pads are placed by their own radius, which stops each one at
+the shoreline: they used to be centred five units inland under a fixed nine-unit
+radius, reaching four units past the island edge — covered by deck while the deck
+overhung, and open sky once the deck was trimmed to the gap it crosses.
+
+Measured in the browser, not inferred. Walking the flow-foundry span from
+z = -20.7 to z = -43.1, across the hub shoreline at z = -34 and out over the void,
+the player's height sampled **0.000 at every step**, `min.y` of the rendered world
+box is 0, `grounded` stays true, and the distance to walkable ground stays 0. The
+deck's own numbers are pinned by `tests/bridge-ground.test.ts`, including the
+arithmetic that has to hold (`DECK_CENTER_Y + DECK_THICKNESS / 2 === DECK_TOP_Y`),
+the shoreline-to-shoreline extent, and a sweep asserting that no walkable point in
+the world lacks stone under it.
+
 ## Known limitations
 
 Reported honestly rather than presented as finished:
