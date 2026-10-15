@@ -2194,8 +2194,29 @@ recentres only once the player leaves the island's box is the obvious thing nobo
 measured. The other is a fake contact blob, which is free and would need suppressing
 wherever the real shadow already lands.
 
-None of those is a decision to take on the strength of one bridge, which is why this
-is written down and not acted on.
+None of those is a decision to take on the strength of one bridge — until the time it
+costs was measured, which turned out to be the thing that changes the answer.
+
+`Player.ts` walks at **3.7 units per second** and runs at 7.6, and `Scene.tsx` passes
+no override, so those are the shipped numbers. A bridge averages 163 units and two
+thirds of it is shadowless — 109 units:
+
+| | per crossing | seven bridges, one full circuit |
+| --- | --- | --- |
+| walking (3.7/s) | **29.5 s** | **3.4 min** |
+| running (7.6/s) | 14.4 s | 1.7 min |
+
+Which is **9–23% of a session**, depending on how long it runs and how many circuits
+the player makes. "A few seconds on a bridge" was the wrong estimate, and it was mine:
+it came from counting how often the bridge is *seen* rather than how long it is
+*walked*. The character spends real minutes out there with nothing tying it to the
+deck.
+
+So the priority is not "low, document and move on" after all. It is the largest
+remaining visual defect in the world by the only measure that matters — how long a
+player spends looking at it. The blob shadow is the one candidate that is both free
+and free of artefacts, and it has never been built. It deserves its own measurement
+rather than a paragraph inside this one.
 
 #### The audit that would have caught it
 
