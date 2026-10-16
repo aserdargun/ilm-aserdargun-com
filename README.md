@@ -3059,31 +3059,46 @@ measurement of a fragment — the previous version hard-coded a warm sand window
 and claimed four of the eight islands had between 3% and 19% sand, which was
 simply wrong on the cool ones.
 
-### The sky has clouds in it, and turning them up does nothing
+### The sky's clouds were a brightness slider wearing the costume of weather
 
 The upper sky measured as the flattest thing left in the game after the ground:
 in the emptiest 420×150 rectangle above the ridge, the whole area varied by 2.4
 luma levels, and horizontal neighbours differed by 0.065. The shader already had
-a cloud term, so the obvious move was to raise it.
+a cloud term, so the obvious move was to raise it. That does not work, at any
+amplitude, and why is worth more than the change would have been.
 
-Raising it does not work, and the reason is worth more than the change would
-have been. At 4.4× amplitude the sky brightens by 5 luma levels — every pixel,
-flatly, since the p02 of the difference is +0.0 and the p98 is +34 — and the
-horizontal structure barely moves: **2.121 to 2.139 across four regions, under
-one percent.** A single region said 0.065 to 0.130, which looked like a doubling;
-that region happened to be the flattest rectangle in the frame, and believing it
-would have meant shipping a global brightening on the strength of the one
-sample most likely to exaggerate. Four regions say the opposite, so the change
-was reverted.
+At 4.4× amplitude the sky brightens by 5 luma levels — every pixel in step, since
+the difference's 2nd percentile is +0.0 and its 98th is +34 — and the horizontal
+structure barely moves: **2.121 to 2.139 across four regions, under one percent.**
+A single region reported 0.065 to 0.130, which looked like a doubling; that
+region happened to be the flattest rectangle in the frame, and believing it would
+have meant shipping a global brightening on the strength of the one sample most
+likely to exaggerate.
 
-The actual obstacle is frequency, not amplitude. The cloud term is four sines
-over the view direction with coefficients from 3.1 to 11.3, which puts its
-features tens of degrees wide — wider than the sky the camera can see. The whole
-visible sky is less than one cloud cell, so raising the contrast of that one cell
-brightens the frame and decorrelates nothing. Visible clouds need real noise at
-a much higher frequency, projected in a way that does not smear at the zenith.
-That is a rewrite of the term, not a constant, and it is not something to land
-on the back of one probe.
+The cause is frequency, not amplitude. The term was four sines over the view
+direction with coefficients from 3.1 to 11.3, which puts each feature tens of
+degrees wide — wider than the sky a 58° camera can see. The whole visible sky is
+less than one cloud cell, so raising the contrast of that cell brightens the
+frame and decorrelates nothing.
+
+**Three octaves of value noise, at a frequency the camera can resolve, fixes the
+cause.** Measured over four regions of the frame, against the same base:
+
+| | std | horizontal difference | autocorrelation at 64px |
+| --- | --- | --- | --- |
+| four sines | 13.43 | 2.121 | 0.629 |
+| three octaves of noise | 13.93 | 2.180 | 0.478 |
+
+The autocorrelation falling from 0.63 to 0.48 is the part that matters: 0.63 is a
+ramp, 0.48 is a pattern. And the change is all structure and no brightness at
+all — the sky moves between −9.7 and +7.9 luma with a **median of exactly +0.0**,
+against the sines' +5 luma of uniform lift. At 3840×2160 the three octaves cost
+0.1ms on a 24.8ms frame.
+
+The projection divides by `(0.35 + d.y * 2.0)` rather than by `d.y`: a plane
+projection that reaches the horizon without a floor compresses the cloud to
+nothing in the last few degrees, which is exactly where the ridge sits and where
+aliasing would show.
 
 ### What this round ruled out
 
