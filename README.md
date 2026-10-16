@@ -3174,21 +3174,73 @@ first, because the sky is furthest from the middle of the distribution — it
 reports where the eye goes by pointing at the sky. Standing out is relative to
 one's neighbours, not to the average of everything.
 
-Scored against a five-block ring instead, the opening frame separates cleanly:
+Scored against a five-block ring instead, the opening frame separates cleanly —
+**but only at the right cell size, and the size has to be stated** or the
+conclusion is an artefact:
 
-- **By luminance**, the most distinctive cells are the player character's shadow
-  and the character itself (distinctiveness −92 against the surrounding sand).
-  That is the right answer for a third-person game: you always know where you
-  are.
-- **By hue**, the cyan channel belongs to the beacon and nothing else competes
-  — the top four cyan cells are all the beam and the crystal, at B−R +77 to +89
-  against their surroundings, while the sky's blues sit 20–40 lower.
-- **And it is centred**: every one of those beacon cells is at x 1260–1350 on a
-  2596-pixel frame, so the objective sits on the vertical axis rather than in a
-  corner.
+| cell | most cyan-distinctive | B−R vs surroundings |
+| --- | --- | --- |
+| 60px | the beacon | **+114** |
+| 90px | the beacon | **+89** |
+| 130px | sky, then sand | +61 |
+| 200px | sky | +79 |
+
+At 60 and 90 pixels the beacon wins outright, and every one of its cells sits at
+x 1260–1350 on a 2596-pixel frame — dead on the vertical axis rather than in a
+corner. At 130 pixels it has left the list entirely. That is mechanical rather
+than meaningful: the beam is about 60–90 pixels wide, so a coarser cell averages
+it together with the dark tree behind it and the B−R collapses. Averaging an
+object across a cell coarser than the object erases it. It is a limit of the
+measurement, not a property of the frame, and it is recorded here so the claim is
+not quoted without its condition.
+
+By luminance — which is scale-stable, because the character's shadow is large —
+the most distinctive cells are the player character and its own shadow, at −92
+against the surrounding sand. That is the right answer for a third-person game:
+you always know where you are.
 
 Two different things win on two different channels — the avatar on value, the
 objective on hue — and that is what a readable composition looks like.
+
+### Six measurement tools, and every one of them was wrong first
+
+This round added six tools under `tools/` and ran them over the frame. Between
+them they got it wrong six times: a sand mask with a hard-coded warm hue window
+that reported four of eight islands as 3–19% sand when they are cool; a shimmer
+detector that averaged the centre pixel into its own neighbourhood and reported
+zero on a frame carrying 1044 deliberately injected flicker pixels; a cell
+standard deviation that was reading perspective depth rather than surface
+structure; a HUD coverage figure of 679% from summing nested element rectangles;
+a saliency score that ranked the sky because it ranked distance-from-the-mean;
+and a cost measurement that timed the macro's amplitude instead of its texture
+fetch.
+
+None of those were caught by looking harder at the numbers. Each was caught by
+asking what the instrument would report if the thing I hoped for were true, and
+by finding that it would report the opposite. `tools/measure_frame.py` now runs
+the whole battery in one command, and `tools/shimmer_selfcheck.py` and the mask
+warning in `tools/ground_structure.py` are the pattern the rest should follow:
+**an instrument that has never been shown a known positive has not been shown to
+work.**
+
+### The tree is not what its bounding box suggests
+
+The trunk occupies 39.55% of the frame by screen bounding box and its top is
+clipped by the frame edge, which is the most likely thing in the picture to look
+like a placeholder. At 464 triangles for something 52 units wide and 20.8 tall, it
+was the obvious candidate for "plain procedural geometry", and the obvious
+candidate for a Blender rebuild.
+
+It is not that. Zoomed in, the bark carries a triplanar normal map with real
+relief, the silhouette on the lit side is irregular rather than cylindrical, and
+there are girdle bands at two heights. `applySurfaceDetail` already gives the
+tree what the ground gets from its maps.
+
+The measurement that sent me there was itself the misleading one: a projected
+bounding box counts the sky between the branches, and the frame-wide summary of
+low-triangle meshes — 38 of them under 120 triangles, together 14.11% of the frame
+by box area — says nothing either way when the largest single contributor is
+2.28%. Bounding boxes are for finding candidates, not for judging them.
 
 ### Four things this round measured and did not change
 

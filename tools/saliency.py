@@ -6,10 +6,13 @@ Ama "en parlak olan" ile "ilk bakilan" ayni sey degil: goz, arka plandan
 ayrilan yerlere gider. Buradaki vekil olcum, kaba olcekte yerel kontrasttir -
 bir bolgenin kendi cevresinden ne kadar koptugu.
 
-Iki olcu birlikte:
-  - yerel kontrast: bolge vs cevresi
-  - renk doygunlugu ayrikligi: bolgenin cevresinden renkte ne kadar farkli
-    oldugu (fener cyan; kum sicak)
+**Hucre boyutu sonucu degistirir ve bunu yazili yazilmazsa yaniltir.** Ayni
+karede, fener 60 ve 90 pikselde en ayirt edici cyan bolge (B-R +114 ve +89),
+130 pikselde listeden kayboluyor ve gokyuzu kazaniyor. Sebep mekanik: huzme
+yaklasik 60-90 piksel genislikte, daha kaba hucrede arkadaki koyu agacla ve
+gokyuzuyle ortalanip ayriligi cokuyor. Bu bir arac kusuru degil, olcumekinin
+sonucu: bir nesnenin kendi olceginden daha kaba hurecde ortalamak onu yok eder.
+Kucuk hucre = ozneyi kendi olceginde okumak.
 
 Kullanim:
   /usr/bin/python3 tools/saliency.py kare.png [hucre_px]
