@@ -3202,6 +3202,26 @@ you always know where you are.
 Two different things win on two different channels — the avatar on value, the
 objective on hue — and that is what a readable composition looks like.
 
+### The progression's visual payoff, measured
+
+The brief for the whole game is "every connection gives the world new life", which
+is only true if progression is visible. Nothing had checked.
+
+At the opening the scene contains **one real causeway and twelve stub boxes**.
+There are seven spans in the world; one is built because `openRegionIds` always
+counts the frontier region as open, and the six that are not built each leave two
+shoreline stubs. So the picture the player starts with is a world with one
+crossing and twelve little blocks marking six missing ones, and the opening stage
+is one of those markers.
+
+The payoff per stage is large enough to be worth stating as a number: a stub is
+5 × 0.6 × 5 units, two of them is 50 square units, and the deck that replaces
+them is 12 × 89.2 — **21× the area**. Nothing else in the game changes that
+much when a puzzle is solved. It is also legible without being told: the stubs
+are placed precisely so that "not built yet" reads differently from "the road
+simply stops", which is why the first thing this investigation found was a large
+flat box on the ground and mistook it for a bug.
+
 ### The bridges, and a slab that looks like a defect and is not
 
 The causeways are the surface the player crosses between every region, and they
