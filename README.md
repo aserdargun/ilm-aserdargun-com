@@ -3124,6 +3124,43 @@ settled that, by diffing the frame against the same view with the HUD hidden
 rather than by summing element rectangles, which double-counts nested containers
 into a meaningless 679%.
 
+### Two new surfaces, and the shimmer risk that came with them
+
+Sampling a world-space map at a 180-unit period, and three octaves of noise on a
+dome, both compress toward the horizon. The first version of each carried a note
+saying the far field might alias — an untested worry, written down precisely
+because it had not been checked. A single frame cannot check it: shimmer is a
+property of *consecutive* frames, and a static capture looks clean whether or not
+the surface is stable.
+
+So the player is driven across the hub with real key events and three frames are
+captured mid-pan, the camera travelling about 28 units between them. What is
+being asked is not "do the frames differ" — of course they do, the camera moved —
+but whether any pixel jumps on its own.
+
+**The obvious discriminator does not work.** The ratio of a difference image's
+standard deviation to its mean is 6.0 in the sky, which looks like heavy
+flicker. It is not: panning a smooth gradient changes almost nothing, and the
+ratio is then set by the handful of hard edges in the row — a tower silhouette, a
+panel border. A metric that high on a still image is a metric reading edges, not
+noise.
+
+**What works is the direct definition**: a pixel that moves far more than its
+eight neighbours. Measured that way, across all four bands and both frame pairs,
+the scene shows **0.0000% to 0.0002%** isolated pixels.
+
+**And the detector itself was broken the first time.** It averaged a 3×3
+neighbourhood including the centre pixel, so a genuinely isolated spike of
++90/255 divided by nine came out at 10 and never cleared the threshold of six —
+it reported 0.0000% on a frame with 1044 deliberately added isolated pixels. The
+zero would have been reported as "no shimmer" on the strength of an instrument
+that could not detect shimmer. `tools/shimmer_selfcheck.py` now injects known
+pixels and confirms the detector reports them: at 0.009%–0.023% for 1044 pixels,
+which is the 0.028% the injection rate predicts. The real scene sits about a
+hundredfold below that.
+
+Neither surface shimmers. The worry was written down, checked, and closed.
+
 ### Four things this round measured and did not change
 
 - **The horizon ridge.** It reads: 8.5 luma under the sky above it on the left
