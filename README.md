@@ -1379,9 +1379,34 @@ the player is looking down at it and got more convincing further away.
 
 The map itself was fine. Its channels average **127.5 / 127.5 / 253.2** with a
 spread of 15.4 / 15.2 / 1.9, which is a ground that tilts by about seven degrees
-— real relief, laid down correctly. The roughness map alongside it, though, has a
-5th-to-95th percentile range of **9 of 255**, which is to say it does nothing at
-all; it is 64 kB of a constant.
+— real relief, laid down correctly. The roughness map alongside it has a 5th-to-95th percentile range of **9 of 255**,
+which looks like a dead asset, and it is worth recording that it is not.
+
+Regenerated through Blender to find out — and the four maps come back **byte for
+byte identical**, so the shipped PNGs are exactly what the script writes and the
+pipeline is reproducible. The fields behind that map measure as:
+
+| field | p5 | median | p95 | full range |
+| --- | --- | --- | --- | --- |
+| height | 0.163 | 0.449 | 0.770 | 1.000 |
+| grain | 0.288 | 0.490 | 0.715 | 0.839 |
+| roughness | **0.934** | 0.953 | **0.971** | 0.073 |
+
+`roughness_map` asks for `0.94 + 0.06 * grain - 0.04 * height`, and those are
+small numbers: 0.06 plus 0.04 is a full range of 0.10, which is 26 of 255 and an
+observed 18.6. **The amplitude was never being lost to the distribution** — a
+normalising stretch was tried and moved the p5-to-p95 band from 9 to 10 of 255,
+which is not a change worth shipping, so it was reverted.
+
+What the docstring calls "the band 0.88–1.0" is the **clip bounds**, not the
+result: the floor exists because the turquoise rim light is a grazing light and
+anything under about 0.80 puts a wet-sand sheen across the horizon. So the map is
+narrow on purpose, the ground is uniformly matte by design, and "dry stone should
+stay dry" is a decision rather than a failure to reach a number.
+
+The real finding from this round is the one above it: the map was not dead, but
+the **tile size** it was being displayed at was wrong, and that was worth 13% of
+the ground's surface detail on its own.
 
 At a tile of 2 the same map lands at 0.60 texels per screen pixel close in and is
 minified rather than blown up further out, where the anisotropy of 8 takes over.
