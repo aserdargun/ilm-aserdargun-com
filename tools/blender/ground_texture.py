@@ -25,6 +25,23 @@ OUT_DIR = os.path.abspath(os.path.join(HERE, "..", "..", "public", "textures"))
 
 SIZE = 512
 
+# The macro map is sampled across the whole world rather than tiled every couple
+# of units, so it gets its own size and its own octave count. See
+# `macro_variation()` for why its period has to outrun every island.
+MACRO_SIZE = 512
+MACRO_BASE_CELLS = 2
+MACRO_OCTAVES = 4
+# Gain above 1/sqrt(2) puts more energy in the long wavelengths than in the short
+# ones, which is the whole point: a field with equal energy per octave measures
+# flat — its cell standard deviation barely falls as the cell grows — and reads
+# as noise rather than as form. At the usual 0.5 the energy leaned the other way
+# and the ground stayed as flat as it started.
+MACRO_GAIN = 0.8
+# Smoothing length of the subtracted baseline, in pixels of `MACRO_SIZE`. The
+# largest island spans 92 world units, which at a 180-unit period is 262px, so a
+# 300px baseline is longer than any island and removes its overall level.
+MACRO_BASELINE_PX = 300
+
 # Peak tangent-space slope each map is normalised to reach. Reported back out by
 # `main()` next to the tilt it actually measured, so the two can be compared.
 SOIL_PEAK_SLOPE = 0.6
@@ -232,6 +249,60 @@ def roughness_map(height, size=SIZE):
     return np.clip(roughness, 0.0, 1.0)
 
 
+def periodic_blur(field, length_px):
+    """
+    Gaussian blur on a wrapping lattice, via a Fourier mask.
+
+    Wrapping matters as much here as the periodicity of the noise itself. A blur
+    built from edge-clamped convolution would smear the seam shut, and the first
+    thing that would break is the field's own average near the edge — which is
+    exactly the number this function exists to remove.
+    """
+    h, w = field.shape
+    ky = np.fft.fftfreq(h)[:, None]
+    kx = np.fft.rfftfreq(w)[None, :]
+    mask = np.exp(-0.5 * (np.hypot(ky, kx) * length_px) ** 2)
+    return np.fft.irfft2(np.fft.rfft2(field) * mask, s=(h, w))
+
+
+def macro_variation(size=MACRO_SIZE):
+    """
+    The ground's large-scale value structure, centred on 0.5 inside [0,1].
+
+    The other two soil maps tile every two world units, which puts all their
+    detail below the scale at which a surface reads as having form. Measured on
+    the opening frame — the ground is 59% of that picture — the tiled maps left
+    the whole foreground inside 41 luma levels of 255, and per-vertex colour,
+    the only other lever, tops out at about plus or minus 4 because the HSL
+    lightness it offsets cannot go much further without clamping.
+
+    So this exists to carry that structure in world space. It is sampled with a
+    period far larger than any island (`GROUND_MACRO_PERIOD` in `Atmosphere.tsx`),
+    which is what keeps it honest: the largest island is 92 units across, so at a
+    180-unit period no single island can contain enough of the field to repeat
+    it, and the eight islands — which sit 100 to 340 units apart — each read a
+    different part of the same field.
+
+    The baseline subtraction is not a nicety. Normalising the field to a mean of
+    0.5 says nothing about what any *one island* reads, and an island only ever
+    samples about 38% of the width. The first version of this map was mean-centred
+    globally and the hub landed on a low patch: every sand pixel came out 5.5 luma
+    levels darker with a 98th percentile of 0.0, and the cell standard deviation
+    *fell* from 4.74% to 4.15%. It was a global dimming wearing the costume of
+    structure. Removing a baseline longer than any island makes the local level
+    mathematically impossible rather than merely unlikely.
+    """
+    field = fbm(size, MACRO_BASE_CELLS, MACRO_OCTAVES, seed=20261016, gain=MACRO_GAIN)
+    field = field - periodic_blur(field, MACRO_BASELINE_PX)
+
+    # Centre on 0.5 and fit to [0,1] without clipping, so the shader can read
+    # `(map - 0.5)` and get a symmetric modulation.
+    field = field - field.mean()
+    scale = 0.5 / max(np.abs(field).max(), 1e-6)
+    field = 0.5 + field * scale
+    return field
+
+
 def save_image(name, rgb):
     """Write an RGB float array to a PNG through Blender's image API."""
     height, width, _ = rgb.shape
@@ -270,9 +341,15 @@ def main():
     # here in the way it is everywhere else.
     water = normal_map(water_height_field(), peak_slope=WATER_PEAK_SLOPE)
 
+    # Scalar, like the roughness map, and for the same reason: it modulates a
+    # number rather than carrying a colour of its own.
+    macro = macro_variation()
+    macro_rgb = np.repeat(macro[:, :, None], 3, axis=2)
+
     for name, rgb, peak_slope in (
         ("ground_normal", normal, SOIL_PEAK_SLOPE),
         ("ground_rough", rough_rgb, None),
+        ("ground_macro", macro_rgb, None),
         ("stone_normal", stone, STONE_PEAK_SLOPE),
         ("water_normal", water, WATER_PEAK_SLOPE),
     ):

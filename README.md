@@ -2979,15 +2979,57 @@ two HSL offsets. That gap was **0.12**, which put the mottling at 4.82% in verte
 space — matching the 5.4% measured in the frame, from both ends. It was not a
 rendering bug; it was a setting that had never been measured.
 
-**Doubling it to 0.24 took the 400px figure from 5.4% to 6.3%**, the 128px figure
-from 4.1% to 5.2%, and it left the fine grain alone (7.6% → 8.1%). The change is
-confined to the ground: the mean difference across non-sand pixels is 1.08/255
-against 3.99/255 across sand. Realised vertex mottling is 8.47%, short of the
-nominal 2× because the offsets round-trip through sRGB — which is why
-`tests/ground-tone.test.ts` asserts the *realised* gap and not the nominal one.
+**Doubling it to 0.24 doubled the mottling's vertex-space amplitude, from 4.82%
+to 8.47%.** What it did to the picture is a smaller claim than the one this
+section originally made. The frame metric moved from 5.4% to 6.3% between
+400px cells, but that measurement does not survive scrutiny: cells near the
+bottom of the frame cover about two world units and cells near the horizon cover
+forty, so a chunk of what it called "structure" was cells averaging different
+numbers of tiles. Removing the per-row mean — rows are constant depth — leaves
+the three states at 6.75%, 6.48% and 6.57% at 128px: no separation. The honest
+figure is the vertex-space one, and an same-session difference map puts the
+applied effect at about plus or minus 3 luma levels.
 
-This is a real improvement and it costs nothing at runtime, but it is a quiet
-one. A third of the way to staining measured only 6.7%, so this stops at double.
+### The ground needed a second map, and the first version of it lied
+
+If vertex colour tops out near plus or minus 4 luma levels, and 59% of the frame
+is ground, then a painted texture has to carry that structure. The tiled normal
+and roughness maps cannot: they repeat every two world units, which is below the
+scale at which anything reads as form. So the ground now has a third map,
+`ground_macro.png`, sampled in world space rather than tiled.
+
+Two things about it are constraints rather than choices. Its period is 180 world
+units against a 92-unit largest island, so no island can contain enough of the
+field to repeat it and the eight islands each read a different part of it. And it
+is sampled from a world-space varying, not the geometry's UVs, because every
+disc is built at the origin and moved by its group — local UVs would hand all
+eight islands the same patch.
+
+**The first version of the map was mean-centred globally, and it did not work.**
+The hub came out uniformly 5.5 luma levels darker with a 98th percentile of 0.0,
+and the cell standard deviation *fell* from 4.74% to 4.15%: a global dimming
+wearing the costume of structure. The cause is not subtle once stated — an island
+only samples about 38% of the map's width, and nothing makes that patch average
+0.5. The fix is structural rather than tuned: a periodic high-pass subtracts a
+baseline longer than any island, which makes a local level mathematically
+impossible instead of merely unlikely. The hub's patch now averages 0.5044.
+
+**A second failure was hiding in the noise generator.** `fbm`'s usual gain of 0.5
+is below 1/sqrt(2), so a field built with it carries *more* energy at short
+wavelengths than at long ones — the cell standard deviation barely falls as the
+cell grows, which is the signature of noise rather than of form. Raising the gain
+to 0.8 puts the energy where a surface reads as a surface.
+
+With both fixed, and the amplitude at 0.45, the same frame three times over:
+
+| amplitude | 200px cell std | depth-normalised |
+| --- | --- | --- |
+| 0 | 3.72% | 5.16% |
+| 0.28 | 4.40% | 5.67% |
+| 0.45 | 4.82% | 5.86% |
+
+The applied modulation reaches plus or minus 15 luma levels and is broad rather
+than fine, which is the point. It costs one texture fetch.
 
 ### What this round ruled out
 
@@ -3005,6 +3047,11 @@ one. A third of the way to staining measured only 6.7%, so this stops at double.
   luma 12 finds 3.1% of the picture, and the largest such region is the sky
   (RGB 29/39/51), not a shadow. The near-black wedge beside the tower is a thin
   slice of the dark component it belongs to, about 4% of the frame.
+- **Pixel cost of the macro layer.** Four `sin()` calls per fragment measured
+  nothing at all — the page runs at a vsync-capped 119 either way, so the frame
+  time cannot resolve a change this small. The implementation samples a texture
+  instead, which is cheaper than the probe it replaced and settles the question
+  by construction.
 
 ### Assets degrade, they do not break
 
@@ -3283,7 +3330,7 @@ Details that carry weight:
 
 ## Tests performed
 
-`npm run test` — **313 tests across 27 files, all passing.**
+`npm run test` — **315 tests across 27 files, all passing.**
 
 | Suite | Tests | What it proves |
 | --- | --- | --- |
@@ -3339,7 +3386,7 @@ interface calls — through the whole journey and asserts it can be finished:
 - all 33 applications are discovered across the run
 - the finished journey reloads correctly from the save
 
-The full suite is 313 tests across 27 files.
+The full suite is 315 tests across 27 files.
 
 Measured in the browser through the real interface, not simulated:
 

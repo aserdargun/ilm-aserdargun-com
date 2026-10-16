@@ -1,9 +1,10 @@
-import { useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import { PALETTE } from './World';
 import { SUN_COLOR, SUN_DIRECTION } from './environment';
 import { buildDisc } from './disc';
+import { patchGroundMacro } from './ground-macro';
 import { groundToneEnds } from './ground-tone';
 import type { RegionDef } from '../catalog/regions';
 
@@ -28,6 +29,7 @@ export const HORIZON_COLOR = new THREE.Color('#253352');
  */
 const NORMAL_MAP_URL = '/textures/ground_normal.png';
 const ROUGH_MAP_URL = '/textures/ground_rough.png';
+const MACRO_MAP_URL = '/textures/ground_macro.png';
 
 /**
  * World units covered by one texture tile.
@@ -380,20 +382,25 @@ function buildCliff(id: string, radius: number, stone: string): THREE.BufferGeom
  */
 
 export function TerrainDisc({ region }: { region: RegionDef }) {
-  const [normalMap, roughnessMap] = useTexture([NORMAL_MAP_URL, ROUGH_MAP_URL]);
+  const [normalMap, roughnessMap, macroMap] = useTexture([
+    NORMAL_MAP_URL,
+    ROUGH_MAP_URL,
+    MACRO_MAP_URL,
+  ]);
 
-  // Both maps are data, not colour, so they must not be sRGB-decoded — that
+  // All three are data, not colour, so they must not be sRGB-decoded — that
   // would skew the normals and visibly flatten the relief.
   useEffect(() => {
     normalMap.colorSpace = THREE.NoColorSpace;
     roughnessMap.colorSpace = THREE.NoColorSpace;
-    for (const map of [normalMap, roughnessMap]) {
+    macroMap.colorSpace = THREE.NoColorSpace;
+    for (const map of [normalMap, roughnessMap, macroMap]) {
       map.wrapS = THREE.RepeatWrapping;
       map.wrapT = THREE.RepeatWrapping;
       map.anisotropy = 8;
       map.needsUpdate = true;
     }
-  }, [normalMap, roughnessMap]);
+  }, [normalMap, roughnessMap, macroMap]);
 
   const geometry = useMemo(() => {
     // Density is tied to the radius so every island's mottling reads at the
@@ -463,6 +470,19 @@ export function TerrainDisc({ region }: { region: RegionDef }) {
     [cliffSeedId, cliffRadius, cliffStone],
   );
 
+  // The macro patch has to reach the material after React has created it, so it
+  // goes through a ref callback rather than a prop: three.js has no hook for
+  // `onBeforeCompile`, and setting it on every render would recompile the
+  // program each time. The ref sits on the `<meshStandardMaterial>`, so what
+  // arrives is the material itself, not the mesh.
+  const patchMacro = useCallback(
+    (material: THREE.MeshStandardMaterial | null) => {
+      if (!material) return;
+      patchGroundMacro(material, macroMap);
+    },
+    [macroMap],
+  );
+
   return (
     <>
       <mesh geometry={cliff} receiveShadow castShadow>
@@ -492,6 +512,7 @@ export function TerrainDisc({ region }: { region: RegionDef }) {
           // why this is a constant and why it used to be unreadable.
           normalScale={GROUND_NORMAL_SCALE_VECTOR}
           roughnessMap={roughnessMap}
+          ref={patchMacro}
         />
       </mesh>
     </>

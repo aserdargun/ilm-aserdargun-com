@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { REGIONS } from '../src/catalog/regions';
 import { GROUND_TONE_GAP, groundToneEnds } from '../src/world/ground-tone';
+import {
+  GROUND_MACRO_AMPLITUDE,
+  GROUND_MACRO_PERIOD,
+} from '../src/world/ground-macro';
 
 /**
  * The ground's large-scale value structure is one number wide, and the two ways
@@ -50,5 +54,24 @@ describe('ground mottling endpoints', () => {
       const { warmL, coolL } = groundToneEnds(region.palette.stone);
       expect(warmL - coolL, `${region.id}: realised gap collapsed`).toBeGreaterThan(0.1);
     }
+  });
+});
+
+describe('macro variation period', () => {
+  it('outruns every island, so the map cannot repeat inside one', () => {
+    // The macro field is sampled once per period. If an island were wide enough
+    // to contain a whole period, the same patch of map would appear twice on the
+    // same island and read as tiling — the exact failure the two-unit maps were
+    // accepted not to have.
+    const widest = Math.max(...REGIONS.map((r) => r.radius));
+    expect(GROUND_MACRO_PERIOD).toBeGreaterThan(widest * 2);
+  });
+
+  it('stays inside the brightness range it multiplies', () => {
+    // The shader applies `1 + amp * (map - 0.5) * 2` to diffuse colour. A map
+    // that reaches either end of [0,1] sends that factor to 1 +/- amp, and past
+    // 1.0 it clips the diffuse before the tone curve ever sees it.
+    expect(GROUND_MACRO_AMPLITUDE).toBeGreaterThan(0);
+    expect(GROUND_MACRO_AMPLITUDE).toBeLessThanOrEqual(1);
   });
 });
