@@ -3287,6 +3287,33 @@ low-triangle meshes — 38 of them under 120 triangles, together 14.11% of the f
 by box area — says nothing either way when the largest single contributor is
 2.28%. Bounding boxes are for finding candidates, not for judging them.
 
+### No two islands share a silhouette — measured, not assumed
+
+Eight islands are eight flat discs with the same radius profile, which reads from
+a distance like one asset drawn eight times. The repo had already solved the
+*colour* half of that problem; the silhouette half looked like the same problem
+left open.
+
+The first measurement said they were identical: every cliff has 865 vertices and
+a rim at exactly y=0.35 with a standard deviation of zero. That was true and it
+was the wrong number. The rim *height* is constant by design — the walkable disc
+has to meet it — and what varies is the rim *radius*, by a per-region wobble
+seeded from the region id. The honest figure is a radius standard deviation of
+1.55% of the mean on every island, absolute amplitude scaling with the island
+(0.52 units on the 34-unit hub, 0.70 on the 46-unit region).
+
+Amplitude on its own does not say whether the shapes read as different, so the
+rim profiles were cross-correlated: 28 island pairs, **mean +0.056**, spanning
+−0.144 to +0.246. Profiles that share a silhouette correlate near 1. These are
+effectively independent — each island is a different piece of land, sharing a
+technique rather than a shape. The wobble amplitude is identical everywhere and
+only the phase moves, which is the right way round: same amount of erosion,
+different history.
+
+Which is the fourth time this round that a plausible reading of a screenshot was
+wrong in a way a measurement caught. It is the reason the other three findings in
+this section were allowed to stand.
+
 ### Four things this round measured and did not change
 
 - **The horizon ridge.** It reads: 8.5 luma under the sky above it on the left
