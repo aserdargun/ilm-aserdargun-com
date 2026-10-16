@@ -3100,7 +3100,47 @@ projection that reaches the horizon without a floor compresses the cloud to
 nothing in the last few degrees, which is exactly where the ridge sits and where
 aliasing would show.
 
-### What this round ruled out
+### The default device had never been looked at
+
+Every measurement in this section was taken on a 2596×1610 desktop frame. That is
+not the default: a handheld is detected as `low` (`store.ts`), which is the tier
+a phone opens on, and the low tier is the one this project has deliberately left
+alone because it cannot be measured here. Two new per-fragment costs had just
+been added to it, so it was at least worth rendering once.
+
+At 393×851 CSS with the low tier, the ground is 48.5% of the frame and its 128px
+cell standard deviation is **6.10%** — the high tier at desktop shows 6.32%. The
+macro map does its job on the tier that most players actually get.
+
+**The HUD covers a third of that frame, and most of it is the top third: 49%,
+71% and 61% down the first 423 pixels.** That lands almost exactly where the sky
+is. The obvious reading — that 45.6% of the sky, about 8.8% of the whole frame,
+is being thrown away — does not survive checking. The panels are `var(--glass)`
+with a 14px backdrop blur, not opaque fills, and under them the sky measures
+*brighter* than outside (44.3 against 37.2) with a wider apparent range, because
+the blur smears the panel's own text and border into the backdrop. The sky is
+behind the HUD and still legible through it. `tools/hud_occlusion.py` is what
+settled that, by diffing the frame against the same view with the HUD hidden
+rather than by summing element rectangles, which double-counts nested containers
+into a meaningless 679%.
+
+### Four things this round measured and did not change
+
+- **The horizon ridge.** It reads: 8.5 luma under the sky above it on the left
+  of the hub, 13.4 on the right, against a local sky range of 17–33. That is
+  50–80% of the available separation, which is enough to read as distant land.
+- **The teal patches in the sand.** They looked like a stain and a size problem
+  at once. They are neither: 25% of the frame passes a naive "bluer than red"
+  test, but that is the sky. The water itself is a few per cent.
+- **Clipping.** Nothing is crushed to black or burned to white — 0.4% of the
+  frame sits at exactly 255 and a comparable amount at 0. The histogram is
+  bimodal by design, a dark sky against lit ground, with the 64–95 band thin
+  and everything above 160 at 0.6%. That gap is the contrast the whole art
+  direction is built on.
+- **The brightest thing in frame.** There is one, and it is in the right place:
+  the beacon reaches luma 204 against a sand ceiling of 156. For a game whose
+  objective is to reconnect a dark canal to light, the light is the brightest
+  pixel in the picture.
 
 - **Undulating the ground.** A 0.25-unit wave, 12 units long, applied to the disc
   at runtime with recomputed normals. 256px cells improved (5.4% → 6.0%) and
@@ -3116,6 +3156,9 @@ aliasing would show.
   luma 12 finds 3.1% of the picture, and the largest such region is the sky
   (RGB 29/39/51), not a shadow. The near-black wedge beside the tower is a thin
   slice of the dark component it belongs to, about 4% of the frame.
+
+### And what was ruled out on the ground and sky
+
 - **Brightening the gradient to give the sky depth.** The dome mixes zenith to
   horizon by `pow(1 - h, 5)`. Lowering the exponent to 3 measured *worse* — the
   upper sky's standard deviation fell from 2.41 to 1.88 and the horizontal
