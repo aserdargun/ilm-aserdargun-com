@@ -1214,8 +1214,35 @@ be while still reading as earth; the other three carry the cool end — the
 Council as blue stone, the Mirrors as cold pale, which is what an island of
 mirrors should be.
 
-Checked before shipping, because a new ground colour can swallow what was sitting
-on it. On the same rig, separating the ground (within 18 luma of the local median)
+**The tile-size audit finished here, and the ground was the only thing wrong with
+it.** The other two maps were checked by the same arithmetic: `stone_normal.png`
+tiles every **1.8** world units through `DETAIL_TILE`, and the canal's
+`makeWaterNormal(2, 4)` over a `planeGeometry(3.2, 8)` is one repeat per **1.6 by
+2.0** units. Both are already at the scale the ground should have been at. The
+reason the ground stands out is that it was the only surface whose repeat was set
+in the tens rather than the ones.
+
+**Checked before shipping, because a new ground colour can swallow what was sitting
+on it.** The Weaver is the third thing that lives on the ground, and it is the one
+the player looks at most. Segmenting the robe by hue (250–320°, under 0.55 value)
+and taking the luma against the local ground, on all eight islands:
+
+| island | ground | Weaver | contrast |
+| --- | --- | --- | --- |
+| hub | 134.29 | 48.17 | 86.12 |
+| cartographers-terrace | 138.47 | 48.20 | 90.28 |
+| flow-foundry | 106.94 | 46.70 | 60.23 |
+| memory-council-city | 115.56 | 58.03 | **57.53** |
+| adaptation-cloud-harbor | 125.72 | 48.27 | 77.45 |
+| collective-gardens | 125.93 | 47.32 | 78.61 |
+| observers-mirrors | 141.37 | 48.42 | 92.95 |
+| valley-living-machines | 93.60 | 40.38 | **53.21** |
+
+The weakest is the Valley, and only because both its ground and its robe are dark;
+the character is still 53 luma clear of it. **Nothing is lost on any island**, and
+the new colours did not swallow the subject.
+
+ On the same rig, separating the ground (within 18 luma of the local median)
 from the props (more than 25 away):
 
 | island | ground | props | prop − ground | prop hue |
