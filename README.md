@@ -3314,6 +3314,33 @@ Which is the fourth time this round that a plausible reading of a screenshot was
 wrong in a way a measurement caught. It is the reason the other three findings in
 this section were allowed to stand.
 
+### How much of the frame is empty ground is the player's setting, not ours
+
+The resting camera sits 7.8 units back and 3.4 up, which is a pitch of 23.6°
+down. From that, "most of the opening frame is bare sand" sounds like a framing
+problem worth fixing.
+
+It is not, because the framing is not fixed. `cameraPitch` is a mutable ref fed
+by mouse drag and the right stick, clamped to −0.66…+0.34 radians and added to
+the resting angle. That is a **57° swing** available to the player:
+
+| player input | effective pitch | horizon |
+| --- | --- | --- |
+| PITCH_MIN | −14.2° (looking slightly up) | ~25% down the frame |
+| resting | 23.6° down | ~9% |
+| PITCH_MAX | 43.1° down | below the frame — a plan view |
+
+The bare ground share ranges from mostly sky to entirely ground by player
+choice. The lower clamp exists so the view cannot be dragged into the ground
+plane and the upper one so it does not become a top-down map — both are
+deliberate, and the resting value sits between them.
+
+Which retires the third of the three candidate improvements. Of the things this
+round proposed as "worth measuring next", one was already handled and is
+measured (the island silhouettes), one is a documented player setting, and the
+third — the tower being clipped by the top of the opening frame — is a framing
+question where the tower's height is what sells the hub's scale.
+
 ### Four things this round measured and did not change
 
 - **The horizon ridge.** It reads: 8.5 luma under the sky above it on the left
