@@ -3059,6 +3059,32 @@ measurement of a fragment — the previous version hard-coded a warm sand window
 and claimed four of the eight islands had between 3% and 19% sand, which was
 simply wrong on the cool ones.
 
+### The sky has clouds in it, and turning them up does nothing
+
+The upper sky measured as the flattest thing left in the game after the ground:
+in the emptiest 420×150 rectangle above the ridge, the whole area varied by 2.4
+luma levels, and horizontal neighbours differed by 0.065. The shader already had
+a cloud term, so the obvious move was to raise it.
+
+Raising it does not work, and the reason is worth more than the change would
+have been. At 4.4× amplitude the sky brightens by 5 luma levels — every pixel,
+flatly, since the p02 of the difference is +0.0 and the p98 is +34 — and the
+horizontal structure barely moves: **2.121 to 2.139 across four regions, under
+one percent.** A single region said 0.065 to 0.130, which looked like a doubling;
+that region happened to be the flattest rectangle in the frame, and believing it
+would have meant shipping a global brightening on the strength of the one
+sample most likely to exaggerate. Four regions say the opposite, so the change
+was reverted.
+
+The actual obstacle is frequency, not amplitude. The cloud term is four sines
+over the view direction with coefficients from 3.1 to 11.3, which puts its
+features tens of degrees wide — wider than the sky the camera can see. The whole
+visible sky is less than one cloud cell, so raising the contrast of that one cell
+brightens the frame and decorrelates nothing. Visible clouds need real noise at
+a much higher frequency, projected in a way that does not smear at the zenith.
+That is a rewrite of the term, not a constant, and it is not something to land
+on the back of one probe.
+
 ### What this round ruled out
 
 - **Undulating the ground.** A 0.25-unit wave, 12 units long, applied to the disc
@@ -3075,6 +3101,12 @@ simply wrong on the cool ones.
   luma 12 finds 3.1% of the picture, and the largest such region is the sky
   (RGB 29/39/51), not a shadow. The near-black wedge beside the tower is a thin
   slice of the dark component it belongs to, about 4% of the frame.
+- **Brightening the gradient to give the sky depth.** The dome mixes zenith to
+  horizon by `pow(1 - h, 5)`. Lowering the exponent to 3 measured *worse* — the
+  upper sky's standard deviation fell from 2.41 to 1.88 and the horizontal
+  neighbour difference went 0.065 to 0.067. A vertical gradient has no horizontal
+  structure at any exponent; changing it only slides brightness, and it slides
+  the whole sky at once.
 - **Pixel cost of the macro layer.** The first probe used four `sin()` calls per
   fragment and measured nothing — the page runs at a vsync-capped 119 either
   way, so the frame time cannot resolve a change this small, and a null result
