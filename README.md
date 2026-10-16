@@ -3161,6 +3161,35 @@ hundredfold below that.
 
 Neither surface shimmers. The worry was written down, checked, and closed.
 
+### Where the eye goes in the opening frame
+
+The first task is "reconnect the dark canal to light", and the light is a beacon
+at the top of the hub. "Is it the most eye-catching thing" is measurable, if
+carefully: not as "the brightest region", but as the region that stands apart
+from its surroundings.
+
+The first version of that measurement was wrong in an instructive way. Scoring
+cells by their distance from the frame's global mean ranks the **darkest** blocks
+first, because the sky is furthest from the middle of the distribution — it
+reports where the eye goes by pointing at the sky. Standing out is relative to
+one's neighbours, not to the average of everything.
+
+Scored against a five-block ring instead, the opening frame separates cleanly:
+
+- **By luminance**, the most distinctive cells are the player character's shadow
+  and the character itself (distinctiveness −92 against the surrounding sand).
+  That is the right answer for a third-person game: you always know where you
+  are.
+- **By hue**, the cyan channel belongs to the beacon and nothing else competes
+  — the top four cyan cells are all the beam and the crystal, at B−R +77 to +89
+  against their surroundings, while the sky's blues sit 20–40 lower.
+- **And it is centred**: every one of those beacon cells is at x 1260–1350 on a
+  2596-pixel frame, so the objective sits on the vertical axis rather than in a
+  corner.
+
+Two different things win on two different channels — the avatar on value, the
+objective on hue — and that is what a readable composition looks like.
+
 ### Four things this round measured and did not change
 
 - **The horizon ridge.** It reads: 8.5 luma under the sky above it on the left
