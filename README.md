@@ -3341,6 +3341,26 @@ measured (the island silhouettes), one is a documented player setting, and the
 third — the tower being clipped by the top of the opening frame — is a framing
 question where the tower's height is what sells the hub's scale.
 
+### The panel where the player actually spends their time
+
+Twenty-eight stages, and every one of them is resolved in an overlay rather than
+in the world. That is the trade the Known Limitations section names, and it means
+the panel is the surface with more player-minutes per square pixel than anything
+else in the game. It had never been looked at.
+
+It holds up. The hierarchy is legible without being loud — an eyebrow, a title,
+a one-line restatement — and the teaching block underneath is the part that earns
+its space: **FİKİR**, **TUZAK** and **NEREDEN BAŞLA** as three colour-coded rows
+separated by hairlines, so the trap and the opening move read differently from
+the explanation. The two endpoints are buttons rather than a diagram, the apply
+button is correctly disabled until both are chosen, and the world behind is
+blurred hard enough that nothing competes.
+
+The one thing it gives up is the one it is documented as giving up: connecting
+two ends of a broken canal is a two-click gesture, not a spatial act in the
+world. That is a deliberate readability choice, and it is the correct one at
+this word count — but it is the honest cost of the panel being this clear.
+
 ### Four things this round measured and did not change
 
 - **The horizon ridge.** It reads: 8.5 luma under the sky above it on the left
