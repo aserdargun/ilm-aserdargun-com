@@ -22,13 +22,24 @@ from PIL import Image
 
 def sand_mask(rgb):
     """
-    Scak, doygun, aydinlik pikseller. Kum tek ton oldugu icin esikler genis
-    tutuldu; daraltmak maskeyi veriye gore degil, kafaya gore ayarlamak olurdu.
+    The ground, found from the frame rather than assumed.
+
+    The first version hard-coded a warm sand window — hue 25..70, saturation over
+    0.20 — and reported that four of the eight islands had between 3% and 19% sand.
+    They did not. Those islands are cool: the palette set runs from `#a89677` to
+    `#98abac`, and the blue-greys fall straight out of a warm window. A measurement
+    tool that quietly measures a fifth of the world is worse than no tool, because
+    it still prints a number.
+
+    So the ground is located the way a person would: find the hue the lower part
+    of the frame is mostly made of, then take everything near it. That works for
+    the olive islands and the ice-blue ones without being told which is which.
     """
     r = rgb[:, :, 0].astype(np.float32)
     g = rgb[:, :, 1].astype(np.float32)
     b = rgb[:, :, 2].astype(np.float32)
     luma = (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255.0
+
     mx = rgb.max(2).astype(np.float32)
     mn = rgb.min(2).astype(np.float32)
     sat = np.where(mx > 0, (mx - mn) / np.maximum(mx, 1e-6), 0)
@@ -42,7 +53,27 @@ def sand_mask(rgb):
     i = (b == mx) & m
     hue[i] = ((r[i] - g[i]) / np.maximum(d[i], 1e-6)) + 4
     hue *= 60
-    return (luma > 0.42) & (r > b) & (sat > 0.20) & (hue >= 25) & (hue <= 70)
+
+    h, w = luma.shape
+    # The ground is the bottom of the frame, and in a third-person view the very
+    # bottom is the ground under the player — always. Weighting by depth means a
+    # wide sky or a canal near the horizon cannot outvote the ground that fills
+    # the rows below, which is what left three islands reporting 4-15% sand.
+    yy = (np.arange(h, dtype=np.float32) / h)[:, None]
+    weight = np.clip((yy - 0.45) / 0.35, 0.0, 1.0) ** 2
+
+    cand = (luma > 0.30) & (sat > 0.12)
+    if cand.sum() < 500:
+        return cand
+    bins = np.clip((hue / 10).astype(int), 0, 35)
+    counts = np.bincount(bins[cand], weights=(weight * sat)[cand], minlength=36)
+    # Smooth circularly: a mode split across a bin edge is one hue, not two.
+    counts = counts + np.roll(counts, 1) + np.roll(counts, -1)
+    peak = int(counts.argmax())
+    centre = peak * 10.0
+
+    delta = np.abs(((hue - centre + 180.0) % 360.0) - 180.0)
+    return (delta < 35) & (luma > 0.35) & (sat > 0.12)
 
 
 def luma_of(rgb):
@@ -102,8 +133,19 @@ def main():
         rgb = np.asarray(Image.open(path).convert("RGB"), dtype=np.float32)
         mask = sand_mask(rgb)
         luma = luma_of(rgb)
+        share = mask.mean() * 100
         print(f"\n{path}")
-        print("  kum payi %.2f%%   luma ort %.1f/255" % (mask.mean() * 100, luma[mask].mean()))
+        if share < 25.0:
+            # Not an error, but it means the numbers below describe a fragment.
+            # Three of the eight islands land here: their frames are dominated by
+            # a landmark plinth or a canal, so the dominant hue is not the
+            # ground's. Read the figures below as unknown rather than as small,
+            # and go and look at the frame.
+            print(
+                "  UYARI: zemin maskesi yalnizca %.1f%% kareyi kapsiyor; "
+                "asagidaki rakamlar parcayi olcer." % share
+            )
+        print("  kum payi %.2f%%   luma ort %.1f/255" % (share, luma[mask].mean() if mask.any() else 0))
         for size in (128, cell, 400):
             raw, n = cells(mask, luma, size)
             dep, _ = cells_depth_normalised(mask, luma, size)

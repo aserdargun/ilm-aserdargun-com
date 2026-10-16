@@ -3031,6 +3031,34 @@ With both fixed, and the amplitude at 0.45, the same frame three times over:
 The applied modulation reaches plus or minus 15 luma levels and is broad rather
 than fine, which is the point. It costs one texture fetch.
 
+### All eight islands, not just the one the screenshot came from
+
+The map applies to every disc, and it was tuned against the hub alone — which is
+the same mistake as measuring one surface and generalising. Visiting all eight
+answers two different questions, and they want different tools.
+
+**Does it look wrong anywhere?** No. The palettes run from `#a89677` to
+`#98abac`, so the islands are olive, brown, blue-grey, ice-blue and dark red as
+well as sand, and the modulation is multiplicative and therefore the same ratio
+on each. Nothing reads as a stain.
+
+**Does it do the same amount of work on each?** That is answerable from the map
+itself rather than from a screenshot, which is the better instrument: the macro
+field's standard deviation over each island's footprint runs 0.151–0.199, a
+spread of **1.31×**, putting every island between plus or minus 13.6% and 17.9%.
+The high-pass equalised the amplitude as well as the level, which is a property
+worth stating because it was not designed in — it is what removing a baseline
+longer than every island happens to do to any one of them.
+
+The screenshot-based tool could only confirm this on five of the eight. Its mask
+finds the ground by taking the dominant hue of the lower frame, and on three
+islands the frame is dominated by a landmark plinth or a canal, so the dominant
+hue is not the ground's. `tools/ground_structure.py` now prints a warning when
+the mask covers under a quarter of the frame rather than quietly reporting the
+measurement of a fragment — the previous version hard-coded a warm sand window
+and claimed four of the eight islands had between 3% and 19% sand, which was
+simply wrong on the cool ones.
+
 ### What this round ruled out
 
 - **Undulating the ground.** A 0.25-unit wave, 12 units long, applied to the disc
