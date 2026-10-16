@@ -3031,6 +3031,33 @@ With both fixed, and the amplitude at 0.45, the same frame three times over:
 The applied modulation reaches plus or minus 15 luma levels and is broad rather
 than fine, which is the point. It costs one texture fetch.
 
+**That table is history: the amplitude shipped at 0.45 and that was too timid.**
+The 0.45 came from the sine probe that preceded the noise map, not from the map
+itself. Re-swept against the real texture, measured from source on a fresh load:
+
+| amplitude | 200px cell std | median sand luma | crushed pixels |
+| --- | --- | --- | --- |
+| 0.45 | 6.19% | 129.3 | 0.00% |
+| 0.62 | 7.15% | 126.8 | 0.00% |
+| **0.85** | **7.80%** | 124.2 | 0.00% |
+
+The two columns that matter are the first and the last. Structure rises by a
+quarter while the median barely moves — this is spatial variation, not a tonal
+shift — and nothing crushes. At 0.85 the multiplier can still fall to 0.15 on the
+darkest corner of the map and not one sand pixel lands below luma 12.
+
+Higher amplitude is a better risk than it looks, because the high-pass that
+removes each island's local level removed its DC — but it did nothing about the
+tails. Past 0.85 the map's own extremes start doing the work instead of its
+structure, which is where staining would begin rather than relief.
+
+Both things that could have broken at the higher amplitude were re-measured
+rather than assumed to carry over. Shimmer, across a 31-unit camera pan: **0.0000%
+to 0.0003%** isolated pixels, unchanged. And the low tier, which most players
+actually get, improves rather than suffers — the phone frame's 128px cell standard
+deviation goes 6.10% to **8.58%**, with its p02–p98 range widening from 62 to 71
+luma levels.
+
 ### All eight islands, not just the one the screenshot came from
 
 The map applies to every disc, and it was tuned against the hub alone — which is

@@ -26,18 +26,29 @@ export const GROUND_MACRO_PERIOD = 180;
 /**
  * How hard the macro field is allowed to push the ground's brightness.
  *
- * Measured by applying it to the material at runtime and screenshotting the same
- * frame three times: the 200px cell standard deviation of the sand went 3.72% at
- * zero, 4.40% at 0.28 and 4.82% at 0.45, and the applied modulation reached
- * plus or minus 15 luma levels. Zero to 0.45 is roughly 30%, which is about
- * three times what the vertex mottling can reach at any amplitude.
+ * Swept against the real noise map rather than against the four-sine probe the
+ * term replaced, on the hub's warm sand and on a blue-grey island, at 200px
+ * cells:
+ *
+ * | amplitude | cell std | median luma | crushed pixels |
+ * | --- | --- | --- | --- |
+ * | 0.45 | 6.19% | 129.3 | 0.00% |
+ * | 0.62 | 7.15% | 126.8 | 0.00% |
+ * | 0.85 | 7.81% | 124.2 | 0.00% |
+ *
+ * The point is in the last two columns together. Structure rises by a quarter
+ * while the median barely moves, so this is spatial variation and not a tonal
+ * shift; and nothing crushes — at 0.85 the multiplier can still fall to 0.15 on
+ * the darkest corner of the map, and not one sand pixel lands below luma 12.
+ * Past 0.85 the map's own tails start doing the work instead of its structure,
+ * which is where visible staining would start.
  *
  * It is worth saying what this does *not* do. Applied symmetrically in linear
  * space it comes out about 4 luma levels darker on screen, because the tone
  * curve compresses highlights harder than it lifts shadows; that asymmetry is
  * expected and is left alone rather than compensated.
  */
-export const GROUND_MACRO_AMPLITUDE = 0.45;
+export const GROUND_MACRO_AMPLITUDE = 0.85;
 
 /**
  * Multiplies the ground's diffuse by the macro field.
