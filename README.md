@@ -1478,6 +1478,28 @@ the numbers now say, because a stale measurement is worse than no measurement �
 the next person would otherwise re-run the same experiment and reach for the same
 wrong number.
 
+#### …and the low tier, which this whole round never looked at
+
+Every measurement above is the default tier. The low tier renders at a **dpr of
+1.25** (canvas 1622×1006 against 2271×1408) and, by design, creates **no
+shadow-casting light at all** — `shadowsOn` is `quality !== 'low'`. Walking it
+after the ground work: the Weaver has no contact shadow, the Great Loom casts
+none, and nothing on the hub is attached to the ground by a shadow. That is the
+tier's stated trade and it has not been touched here.
+
+What the round *did* change is not tier-gated. `GROUND_TILE_SIZE`,
+`GROUND_NORMAL_SCALE`, the sky ridge and `palette.stone` are read the same on
+every tier, so the ground gains its grain on low as well — which is the part of
+this round that most helps a phone.
+
+One honest caveat on the numbers: the near-ground local contrast measured on low
+reads **10.27 against 9.79** on high, and that is **not** low having more detail.
+The window is a fixed 21 pixels, and low spends each pixel over more world, so
+the same window simply covers more texture cycles. Comparing tiers needs a
+world-space window, which was not taken. The within-tier comparison — 6.61 before
+the tile and relief change against 9.79 after, on the same tier and the same
+window — is the one that means anything.
+
 ### Twenty-eight puzzle consoles shared one plinth, at the wrong place
 
 Every puzzle console in the world is supposed to stand on an authored plinth:
