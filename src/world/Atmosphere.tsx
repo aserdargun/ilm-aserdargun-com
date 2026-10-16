@@ -4,6 +4,7 @@ import * as THREE from 'three';
 import { PALETTE } from './World';
 import { SUN_COLOR, SUN_DIRECTION } from './environment';
 import { buildDisc } from './disc';
+import { groundToneEnds } from './ground-tone';
 import type { RegionDef } from '../catalog/regions';
 
 /**
@@ -414,9 +415,7 @@ export function TerrainDisc({ region }: { region: RegionDef }) {
     // stable across reloads without being identical between neighbours.
     const seed = [...region.id].reduce((acc, ch) => acc + ch.charCodeAt(0), 0) * 0.017;
 
-    const base = new THREE.Color(region.palette.stone);
-    const warm = base.clone().offsetHSL(0.012, 0.04, 0.05);
-    const cool = base.clone().offsetHSL(-0.02, -0.02, -0.07);
+    const { warm, cool } = groundToneEnds(region.palette.stone);
     const c = new THREE.Color();
 
     for (let i = 0; i < positions.count; i += 1) {

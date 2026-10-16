@@ -2951,6 +2951,61 @@ this round is the negative one: the number that looked like a vignette problem i
 tone curve, the geometry underneath it is a void rather than a dark material, and the
 only light that reaches it costs more than it returns.
 
+### The opening frame had never been measured
+
+Everything above was found by looking at a surface that had already been chosen
+to look at. The first thing a desktop player actually sees had no numbers behind
+it at all, so this round started there instead of starting with an idea.
+
+**The picture is 59% ground.** Segmenting the opening frame by hue and lightness
+puts sand at 59.3% of the pixels, sky and distance at 25.6%, water at 24.7% (the
+masks overlap, so those last two are not a partition). Whatever the ground looks
+like is what the game looks like, and it is not a detail.
+
+**The ground has no structure at the scale structure is read at.** Measuring
+local luminance variation of the sand over boxes of growing size gives a clean
+log-linear rise — 4.3% at 8px, 8.2% at 64px, 9.4% at 128px — which is the
+signature of a clean 1/f texture with no repeat to give it away. That part is
+right. But it keeps rising at the same rate all the way out, and grouping the
+frame into 400px cells shows their means vary by only **5.4%**. The visible
+range of the entire foreground is p01–p99 = 0.43–0.59: forty-one levels of
+luma across more than half the picture. The variation that exists at the largest
+scale is the same amplitude as the grain of the tile underneath it.
+
+**The cause is one number.** With the tiled maps capped at two units, a flat disc
+that casts no shadow on itself, and no terrain to shade, the only thing left that
+can produce large-scale ground structure is the per-vertex colour lerp between
+two HSL offsets. That gap was **0.12**, which put the mottling at 4.82% in vertex
+space — matching the 5.4% measured in the frame, from both ends. It was not a
+rendering bug; it was a setting that had never been measured.
+
+**Doubling it to 0.24 took the 400px figure from 5.4% to 6.3%**, the 128px figure
+from 4.1% to 5.2%, and it left the fine grain alone (7.6% → 8.1%). The change is
+confined to the ground: the mean difference across non-sand pixels is 1.08/255
+against 3.99/255 across sand. Realised vertex mottling is 8.47%, short of the
+nominal 2× because the offsets round-trip through sRGB — which is why
+`tests/ground-tone.test.ts` asserts the *realised* gap and not the nominal one.
+
+This is a real improvement and it costs nothing at runtime, but it is a quiet
+one. A third of the way to staining measured only 6.7%, so this stops at double.
+
+### What this round ruled out
+
+- **Undulating the ground.** A 0.25-unit wave, 12 units long, applied to the disc
+  at runtime with recomputed normals. 256px cells improved (5.4% → 6.0%) and
+  400px got worse (6.7% → 6.4%). No win, and it would fight
+  `tests/disc.test.ts`, which already pins the disc flat on purpose — navigation
+  solves movement in 2D against y=0.
+- **A green cast in the sand.** The magnified crops show olive-grey streaks that
+  read as contamination. They are not: across the sand G−R is −0.0755, hue holds
+  39–44°, and saturation is flat at 0.39–0.41 from the darkest decile to the
+  brightest. Darker sand simply loses saturation. This is the hue-on-dark-pixels
+  trap again, in a new costume.
+- **Black holes in the frame.** Connected-component analysis of everything below
+  luma 12 finds 3.1% of the picture, and the largest such region is the sky
+  (RGB 29/39/51), not a shadow. The near-black wedge beside the tower is a thin
+  slice of the dark component it belongs to, about 4% of the frame.
+
 ### Assets degrade, they do not break
 
 `src/world/Models.tsx` loads every model through an error boundary and a
@@ -3228,7 +3283,7 @@ Details that carry weight:
 
 ## Tests performed
 
-`npm run test` — **309 tests across 26 files, all passing.**
+`npm run test` — **313 tests across 27 files, all passing.**
 
 | Suite | Tests | What it proves |
 | --- | --- | --- |
@@ -3284,7 +3339,7 @@ interface calls — through the whole journey and asserts it can be finished:
 - all 33 applications are discovered across the run
 - the finished journey reloads correctly from the save
 
-The full suite is 309 tests across 26 files.
+The full suite is 313 tests across 27 files.
 
 Measured in the browser through the real interface, not simulated:
 
