@@ -3202,6 +3202,31 @@ you always know where you are.
 Two different things win on two different channels — the avatar on value, the
 objective on hue — and that is what a readable composition looks like.
 
+### The bridges, and a slab that looks like a defect and is not
+
+The causeways are the surface the player crosses between every region, and they
+had never been looked at. Walking out to the hub shoreline produced a large flat
+brown box sitting on the ground with no crossing attached — the most
+placeholder-looking thing in the game.
+
+It is a **stub**: the two blocks `Scene.tsx` places at each shoreline when a span
+has not been built yet, so the missing crossing reads as unfinished work rather
+than as a road that simply stops. It is doing its job.
+
+The real deck next to it is textured and layered: the stone carries the triplanar
+detail map, a copper runner runs down the middle, and the rails are turquoise
+with a copper cap on top. The turquoise reads as a "swimming pool stripe" until
+you know it is the rail — which is exactly what it is, and what the comment above
+it says it is. The rails cast shadows on purpose, measured at 65.8 luma on the
+band they shadow, because without that shadow a rail reads as paint on the deck
+rather than a raised thing standing on it.
+
+One correction to how I read it first: I checked `material.normalMap` to see
+whether the deck had been given the detail map, and it had not — because
+`applySurfaceDetail` injects into the shader rather than filling the map slot.
+The deck carries the `ilmekSurfaceDetail` flag and is patched. Looking at the
+wrong property is the same error as looking at the wrong mesh.
+
 ### Six measurement tools, and every one of them was wrong first
 
 This round added six tools under `tools/` and ran them over the frame. Between
