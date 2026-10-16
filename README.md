@@ -1492,6 +1492,27 @@ What the round *did* change is not tier-gated. `GROUND_TILE_SIZE`,
 every tier, so the ground gains its grain on low as well — which is the part of
 this round that most helps a phone.
 
+**What a shadow map would cost there was measured, and it does not license the
+change.** The sun's `castShadow` was switched on at runtime with a **1280** map and
+the box set to the island's ±44, on the low tier itself:
+
+| low tier | samples | median |
+| --- | --- | --- |
+| as shipped, no shadows | 101.9 / 100.4 | **101.2** |
+| **+ a 1280² shadow map** | 103.0 / 103.5 | **103.3** |
+
+The shadows do render — **1.38% of the frame** moves, and the Weaver picks up a
+contact shadow it does not have today. And the cost is not measurable: the shadowed
+build reads *faster*, which is the same reading the sky ridge gave, and means both
+numbers are this machine's noise rather than a result.
+
+**That is exactly why it does not justify changing the tier.** This is a desktop
+GPU. The low tier exists for hardware that is not this machine, and a frame rate
+measured here says nothing about a phone's budget. What the measurement does say is
+narrower and still useful: **cost is probably not what removed shadows from the low
+tier.** Whoever revisits this should decide it on a phone, and should not assume the
+shadow map is the expensive part.
+
 One honest caveat on the numbers: the near-ground local contrast measured on low
 reads **10.27 against 9.79** on high, and that is **not** low having more detail.
 The window is a fixed 21 pixels, and low spends each pixel over more world, so
