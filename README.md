@@ -3122,15 +3122,24 @@ aliasing would show.
   neighbour difference went 0.065 to 0.067. A vertical gradient has no horizontal
   structure at any exponent; changing it only slides brightness, and it slides
   the whole sky at once.
-- **Pixel cost of the macro layer.** The first probe used four `sin()` calls per
-  fragment and measured nothing — the page runs at a vsync-capped 119 either
-  way, so the frame time cannot resolve a change this small, and a null result
-  there is not evidence. Re-run at 3840×2160 (8.3 megapixels, 2.6× the normal
-  load, 24.8ms a frame), alternating the amplitude six times to cancel drift:
-  **24.7, 24.8, 24.9 ms at zero and 24.9, 24.7, 24.8 ms at 0.45** — the same
-  median to a tenth of a millisecond. The shipped version is a single texture
-  fetch rather than four transcendentals, and at a load with real headroom it
-  does not register.
+- **Pixel cost of the two new surfaces.** Both were measured at 3840×2160 —
+  8.3 megapixels, 2.6× the desktop load, a 24.8ms frame with real headroom — and
+  both came back inside the noise floor. The macro map, timed by swapping the
+  patched shader for an unpatched one so the texture fetch is actually removed
+  rather than merely scaled to zero: **24.9, 25.0, 24.9ms against 25.0, 24.9,
+  24.9ms**. The three cloud octaves, timed against the four sines they replaced:
+  24.8ms against 24.9ms.
+
+  The first pass at this measured the macro's *amplitude* rather than the fetch
+  and found no difference — which was true and beside the point, since the fetch
+  happens whatever the amplitude is. Measuring the thing that actually costs
+  something needed the sampler taken out of the shader.
+
+  This matters because the low tier was deliberately left alone on the grounds
+  that this machine cannot measure a phone, and two new per-fragment costs had
+  just been added to it. A phone at the low tier's 1.25 dpr renders fewer pixels
+  than the 8.3 megapixels used here, so neither addition has a price worth
+  gating on quality — and low gets the same improved ground and sky as high.
 
 ### Assets degrade, they do not break
 
