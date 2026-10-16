@@ -3075,11 +3075,15 @@ simply wrong on the cool ones.
   luma 12 finds 3.1% of the picture, and the largest such region is the sky
   (RGB 29/39/51), not a shadow. The near-black wedge beside the tower is a thin
   slice of the dark component it belongs to, about 4% of the frame.
-- **Pixel cost of the macro layer.** Four `sin()` calls per fragment measured
-  nothing at all — the page runs at a vsync-capped 119 either way, so the frame
-  time cannot resolve a change this small. The implementation samples a texture
-  instead, which is cheaper than the probe it replaced and settles the question
-  by construction.
+- **Pixel cost of the macro layer.** The first probe used four `sin()` calls per
+  fragment and measured nothing — the page runs at a vsync-capped 119 either
+  way, so the frame time cannot resolve a change this small, and a null result
+  there is not evidence. Re-run at 3840×2160 (8.3 megapixels, 2.6× the normal
+  load, 24.8ms a frame), alternating the amplitude six times to cancel drift:
+  **24.7, 24.8, 24.9 ms at zero and 24.9, 24.7, 24.8 ms at 0.45** — the same
+  median to a tenth of a millisecond. The shipped version is a single texture
+  fetch rather than four transcendentals, and at a load with real headroom it
+  does not register.
 
 ### Assets degrade, they do not break
 
