@@ -3541,97 +3541,38 @@ says. The fifth octave's content lands near *half* its period — which is why
 adding it filled the 11.25-unit band rather than the 5.6-unit one it appears to
 be for.
 
-### Eight islands measured together for the first time
+### Eight islands at once, and the ranking table that is not here
 
 Every earlier round measured the hub, because the hub is where a session starts.
 The other seven islands had been visited one at a time, if at all. This round
-teleported to all eight and ran the same battery on each.
+teleported to all eight. That is where both of the round's real defects came
+from, and neither of them came from a number — the cell standard deviations were
+never what found them. **Looking at the frames did.**
 
-**The first sweep was invalid, and the ranking built on it was wrong.**
-`__ilm.teleport` places the player directly and then collision resolution pushes
-them out of whatever geometry they landed in. Seven of the nine positions were
-displaced by 7.05 to 10.05 units; only the hub and one causeway stayed put. One
-of them put the camera *inside* a sand wall with the character nowhere in frame.
-So the whole table was rebuilt: every island now has a standing spot **verified
-after settling**, at a consistent twelve units from its centre, and every figure
-carries the cell count it was read from.
+There is deliberately no cross-island ranking table in this section. Three were
+built and all three had to be withdrawn:
 
-| | sand share | cell std 200px, depth-normalised | n | sand p02..p98 |
-| --- | --- | --- | --- | --- |
-| valley-living-machines | 48.80% | 18.69 | 40 | 79.4 |
-| cartographers-terrace | 37.01% | 14.95 | 12 | 48.2 |
-| flow-foundry | 61.86% | 12.17 | 47 | 93.3 |
-| memory-council-city | 22.87% | 11.04 | **7** | 66.1 |
-| hub | 63.88% | 9.71 | 55 | 66.1 |
-| collective-gardens | 64.02% | 9.38 | 49 | 71.5 |
-| adaptation-cloud-harbor | 64.41% | 6.65 | 54 | 58.6 |
-| observers-mirrors | 29.31% | 5.62 | 15 | 67.8 |
-| loom-causeway | 26.99% | 4.83 | 10 | 56.4 |
+1. The first sweep was invalid. `__ilm.teleport` places the player directly and
+   then collision resolution pushes them out of whatever geometry they landed
+   in — seven of the nine positions were displaced by 7.05 to 10.05 units, and
+   one put the camera *inside* a sand wall with the character nowhere in frame.
+2. The rebuilt table had the region names scrambled, because they were assigned
+   from capture-file order rather than from the anchors in `catalog/regions.ts`.
+   `cartographers-terrace` is at (-132, -96) and the file called `a2`; the
+   published table listed a different island against each row.
+3. The re-measured table was taken with the collider defect still present, so on
+   five islands the player was standing *under* the platform being measured.
 
-Two rows should not be ranked at all: memory-council-city rests on seven cells,
-which is not a measurement, and the causeway frame is 27% sand with the rest of
-the picture built structure.
+What survives is the seven rows that can be defended, and they are not worth
+printing: seven islands with 200px depth-normalised cell std between 6.65 and
+20.74, and two more that will not form a single 200px cell at any standing spot
+tried because they hold that little contiguous ground. A ranking built from that
+spread would have pointed at the best-looking island, not at the broken one.
 
-For comparison, the invalid sweep had put adaptation-cloud-harbor last at 4.31
-and cartographers-terrace fourth at 7.98. Corrected, they are seventh at 6.65
-and second at 14.95. A ranking built on uncontrolled camera positions is not a
-ranking.
+The sweep's actual contribution is the sentence it made possible: the islands
+had never been looked at *together*, and the one that read worst had never been
+looked at at all.
 
-That said, the ground was never where the defect was. Looking at the frames sent
-the sweep to the Mirrors instead, and the measurement that mattered was on the
-island's landmark.
-
-**The Observer's Mirrors were holes cut in the frame.** Five standing panels
-rendered at luma 15.26 against a sky at 11.17 behind them, so the separation was
-**4 luma levels** and the right-hand panel came out *darker than its own sky*.
-The telling number was the standard deviation across the panel's interior:
-**5.41 over 18000 pixels**. For comparison, on the same frame the sand measured
-28.29, the water 15.46, and a brown relief box 12.95. A surface with almost no
-variation across it is not dark, it is absent.
-
-Two wrong explanations, both measured before the right one:
-
-- **It is not a black material.** There is no black material in this world. The
-  darkest colour anywhere in the scene is `#7d4b28`. These panels were authored
-  `#696f7e` on the metal frame and `#c4e7ec` on a roughness-0.08 glass — a dark
-  albedo on a surface smooth enough to mirror a night sky, doing exactly what
-  the physics says.
-- **It is not a lighting problem.** Raising the hemisphere light 0.40 → 0.95 and
-  the turquoise rim 0.34 → 0.85 lifted the sand by 13 luma and these panels by
-  **1.2**. A dark albedo stays dark however much light is aimed at it.
-
-The fix is the albedo. `MIRROR_METAL_COLOR` / `MIRROR_GLASS_COLOR` in
-`World.tsx`, painted onto the model rather than the material name — `metal` and
-`glass` are also the names of materials inside the loom's beams, the council
-workshop and the valley pump, and the painter runs on every region landmark.
-
-| | luma | std | separation from sky |
-| --- | --- | --- | --- |
-| authored | 15.26 | 5.41 | +4.09 |
-| raised | 40.25 | **11.58** | **+29.08** |
-
-The standard deviation is the whole argument: it doubles with no lighting change
-at all, which is what turns a hole back into an object. The second panel, turned
-away from the sun, rose 13.95 luma and went from 5.39 to 8.17. Everything else in
-the frame is where it was — sand +0.14, sea +0.00, brown box +0.00, sky +0.00,
-whole frame +0.66 — and crushed pixels fell from 13.42% to 12.50%.
-
-Two things this round got wrong on the way, both caught by measuring rather than
-by looking harder:
-
-- **A runtime probe was read as the outcome.** A probe turning the panels red
-  showed the sunlit face receiving plenty of light and the shadowed face almost
-  none, which is true and did not imply what it seemed to: the note written from
-  it claimed the shadowed panels would not move. They did, under the albedo
-  change. The probe had shown that the *fill light* does not reach them.
-- **The sweep frames were not comparable, and it took a second pass to notice.**
-  Teleporting to the island centre landed the player somewhere else entirely on
-  the Mirrors — collision pushed 7.55 units out of the plinth geometry — and the
-  first capture there showed the character buried to the shoulders. Re-teleported
-  to open ground, the same character stands fully visible. A teleport is not a
-  camera control, and a frame captured through one is not evidence of a bug.
-  Checking all nine positions at once showed seven were displaced, which is what
-  invalidated the table above.
 
 ### An instrument built for this and thrown away
 
@@ -3719,6 +3660,14 @@ The terrace frame now carries the character: the same box that held bare sand
 reads RGB (92.1, 78.0, 54.7) at saturation 0.478, and the closest console is
 **0.52** units away against an `INTERACT_RANGE` of 5.2 — reachable from where
 the collider now leaves the player.
+
+**A second island, found the same way.** The survey frames had been sitting in
+`.shots/` with the defect in them all along. The Observer's Mirrors frame showed
+the player at twelve units from its centre — buried to the shoulders under a
+plinth whose top is at y=0.80 and whose footprint is 13.2 — the identical failure
+on a different landmark, in a frame already captured. After the fix the same
+teleport lands at **13.75** and the character stands. Two landmarks confirmed by
+pixels; five corrected from the same measurement; all of it one line of data.
 
 `tests/landmark-colliders.test.ts` pins all of it, and the radii moved to
 `src/world/landmark-colliders.ts` so a node test can import them at all:
