@@ -3853,6 +3853,38 @@ wrong, the space it was read in was.** A shader multiplies linear albedo, so an
 albedo comparison belongs in linear.
 
 
+### The low tier has never been looked at, and it is a phone default
+
+Every frame in the measurements above is the high tier. That is a convenient
+default and a bad habit: `quality` is persisted, and `store.ts` sets it from
+`handheld ? 'low' : 'high'` — so the tier nobody looks at is the one a phone
+opens on.
+
+Confirmed low tier two independent ways, not by trusting the setting: the sun
+reports `castShadow: false`, and the canvas is **1622×1006** for a CSS box of
+1298×805, which is exactly the 1.25 dpr the tier documents.
+
+What it costs is the thing `Lighting.tsx` names as the whole point of having a
+shadow map at all — *"the whole difference between standing on the ground and
+hovering above it"*. With no shadow map there is no contact anywhere: the
+character has no cast shadow, and roughly thirty scattered rocks, tufts and
+pebbles sit on the sand touching nothing. Measured on the same spot at the same
+0.45R position, the character's shadow is worth **−6.08 luma** on the sand
+against the lit ground beside it.
+
+Nothing else is wrong with the tier. Exposure matches the high tier to within
+noise — frame mean **94.13 against 94.10**, p99 **167.2 against 166.8** — and the
+ground grain, the macro field and the surface detail all survive the lower
+resolution. It reads as the same world with the shadows lifted off it.
+
+**No change made, and the reason is specific.** Turning a shadow map back on for
+the low tier is precisely the trade this machine cannot price: the reason the
+tier drops shadows is that a 2048 map on a phone is not affordable, and nothing
+here can measure a phone's frame time. The README's existing low-tier notes are
+about per-fragment texture cost and say nothing about this, which is why it went
+unnoticed. The number to argue with, if someone wants the argument, is 6.08 luma
+and a crowd of floating rocks.
+
 ### Assets degrade, they do not break
 
 `src/world/Models.tsx` loads every model through an error boundary and a
