@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { REGIONS } from '../src/catalog/regions';
 import { STAGES } from '../src/game/stages';
+import { LANDING_PAD_RADIUS } from '../src/world/bridge';
 import { LANDMARK_RADII } from '../src/world/landmark-colliders';
 
 /**
@@ -97,5 +98,19 @@ describe('landmark colliders', () => {
     const distances = consoleDistanceFromAnchor('cartographers-terrace');
     expect(distances.length).toBeGreaterThan(0);
     expect(Math.min(...distances)).toBeGreaterThan(BUILT_PLATFORM['cartographers-terrace']!);
+  });
+
+  it('leaves every island reachable, because the bridges land at the shore', () => {
+    // The failure this guards is the one the console test cannot see: a collider
+    // wide enough to swallow the landing pad turns an island into somewhere the
+    // player cannot get to at all. The deck ends at the shoreline by design
+    // (`LANDING_PAD_RADIUS` in `bridge.ts`), so the test is simply whether the
+    // shore is still outside the ring.
+    const stranded = REGIONS.filter((region) => {
+      const radius = LANDMARK_RADII[region.id] ?? 6;
+      const landing = region.radius - LANDING_PAD_RADIUS;
+      return landing <= radius;
+    }).map((region) => region.id);
+    expect(stranded).toEqual([]);
   });
 });

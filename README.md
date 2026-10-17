@@ -3728,6 +3728,47 @@ measured raised platform"*; pushing it to 16 fails *"leaves every stage console
 outside its island ring"* and names both stranded consoles. Both were run.
 
 
+### The tests were never typechecked, and a test that asserts nothing looks exactly like one that passes
+
+Written while adding the landmark-collider test, and it is the more useful of the
+two findings from that round.
+
+`tsconfig.app.json` includes `["src"]`. `tsconfig.node.json` includes
+`["vite.config.ts"]`. **Nothing included `tests/`**, and `npm run typecheck` is
+`tsc -b --noEmit`, which walks those two references and stops. So every
+"TypeScript is clean" claim in this file, made over many rounds, covered `src/`
+and never once covered a test.
+
+Vitest transpiles without typechecking, so a test with a broken import runs
+happily. This one had been shipping exactly that: the reachability guard imported
+`LANDMARK_PAD_RADIUS` from `bridge.ts`, where the export is
+`LANDING_PAD_RADIUS`. The name was wrong, so the constant was `undefined`, so
+`region.radius - undefined` was `NaN`, and `NaN <= radius` is `false` for every
+island — the filter matched nothing and the test passed **having asserted
+nothing at all**. It would have passed with the island radii doubled.
+
+Caught by mutation, not by reading: the guard was proved with a radius of 32,
+which leaves every console outside its ring and so should *not* have fired. It
+did not fire. That is what a vacuous test looks like from the outside — green,
+fast, and empty.
+
+Fixed with `tsconfig.test.json` — bundler resolution, matching
+`tsconfig.app.json`, because dropping `tests` into `tsconfig.node.json` produces
+161 errors that are all `TS2835: relative imports need explicit extensions`. That
+is a module-resolution complaint wearing a typecheck's clothes; none of the 161
+were about a type. Two real ones were hiding behind them, both pre-existing and
+both now removed: an unused `SHOULDER` in `shadow-box.test.ts` and an unused
+`StageDefinition` in `stages.test.ts`.
+
+`typecheck` is now `tsc -b --noEmit && tsc -p tsconfig.test.json --noEmit`, and
+the guard was re-proved: importing `NOT_A_REAL_EXPORT` from `bridge.ts` exits 2
+with `TS2305`, and exits 0 once the name is right.
+
+The general form is the one already written above this section and repeated here
+because it cost a whole round: **an instrument that has never been shown a known
+positive has not been shown to work**, and a passing test that was never shown to
+fail is not a test.
+
 ### Assets degrade, they do not break
 
 `src/world/Models.tsx` loads every model through an error boundary and a
@@ -4005,7 +4046,7 @@ Details that carry weight:
 
 ## Tests performed
 
-`npm run test` — **315 tests across 27 files, all passing.**
+`npm run test` — **320 tests across 28 files, all passing.**
 
 | Suite | Tests | What it proves |
 | --- | --- | --- |
@@ -4061,7 +4102,7 @@ interface calls — through the whole journey and asserts it can be finished:
 - all 33 applications are discovered across the run
 - the finished journey reloads correctly from the save
 
-The full suite is 315 tests across 27 files.
+The full suite is 320 tests across 28 files.
 
 Measured in the browser through the real interface, not simulated:
 

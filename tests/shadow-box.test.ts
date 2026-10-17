@@ -14,7 +14,6 @@ import { shadowBoxFor, type ShadowRegion } from '../src/world/Lighting';
  */
 
 const HUB: ShadowRegion = { x: 0, z: 0, radius: 34 };
-const SHOULDER = 10;
 /** 2048 is the shipped map size on both tiers that render shadows. */
 const MAP = 2048;
 
