@@ -3795,69 +3795,63 @@ auto-eliminate every dark flat region. The Observer's Mirrors panels read luma
 15–18, right inside the sky's range, and a rule that quietly dropped them would
 hide exactly the defect class it exists to find.
 
-### One island renders much darker than its palette says, and the cause is not isolated
+### The dark island was a measurement artefact, and sRGB was the reason
 
-Found by opening the last two survey frames that had never been looked at. The
-Valley of Living Machines' ground is a deep rust brown and reads as a different
-kind of place from the other seven, which run warm sand.
+The Valley of Living Machines' ground is a deep rust brown and reads as a
+different kind of place from the other seven, which run warm sand. This section
+spent three commits chasing it and arrived at: **there is no defect.** The
+island is authored dark, and the metric used to measure it understated by nearly
+a factor of two.
 
-The first version of this note compared islands from frames taken at different
-distances from their centres and quoted a spread of 0.79–0.87 against the
-valley's 0.57. That comparison was confounded and has been redone. Every island
-was re-measured with the player standing at **0.45 of its own radius**, so the
-sampling band lands on the same kind of ground on each:
+Everything was measured at 0.45 of each island's own radius, so the sampling
+band lands on the same kind of ground on each. Three candidates were ruled out
+along the way, each by measurement:
 
-| island | rendered luma | authored `stone` | authored luma | rendered/authored | mottling predicts | rendered/predicted | macro at 0.45R |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| hub (R=34) | 134.7 | `#a89677` | 151.6 | 0.889 | 157.1 | **0.857** | 0.400 |
-| collective-gardens (R=42) | 96.8 | `#999e79` | 154.3 | 0.628 | 148.3 | **0.653** | 0.434 |
-| valley-living-machines (R=42) | 59.1 | `#8b7372` | 120.0 | 0.492 | 115.3 | **0.513** | 0.423 |
-
-The valley still lands far below the others, and it is not alone in it — the
-Collective Gardens are well down too. Three candidate causes, each measured and
-each ruled out:
-
-- **Not the authored palette.** `#8b7372` is the darkest of the eight and sits
-  at hue 2.4°, so the red is intended. But authored explains at most a 31-point
-  gap, and the observed gap is 76.
-- **Not the vertex mottling.** Replicating `ground-tone`'s formula exactly — the
-  per-region seed, the three sine bands, the `cool → warm` lerp — moves each
-  island's lightness by **±6** (valley −4.7, hub +5.5). The formula is not
-  biased against any island.
 - **Not the macro map.** Sampled at each island's own 0.45R position, the field
   reads 0.400, 0.434 and 0.423 — near-identical across all three.
+- **Not the vertex mottling.** Replicating `ground-tone`'s formula exactly — the
+  per-region seed, the three sine bands, the `cool → warm` lerp — moves each
+  island's lightness by **±6**. Reading the discs' real vertex-colour buffers
+  confirmed it and corrected the replication: the band is constant per island
+  (min = median = max), at **144.8**, **147.2** and **113.4** in sRGB.
+- **Not the shadow box.** Turning `receiveShadow` off on all 21 ground discs
+  changed nothing: **−0.2% / +0.1% / +0.0%**. The ground is fully lit on all
+  three islands.
 
-One correction to the previous note: the disc's rim darkening was **not** the
-confound it was blamed as. That term starts at 0.7 of the radius and none of
-these measurements reach it. The frames were re-taken because the sampling bands
-were landing on different content, which is a different and more ordinary
-mistake.
+What was left was arithmetic. Painting every disc with the *same* neutral grey
+puts the two islands on equal footing, and then:
 
-**It is not shadowing, and that kills the hypothesis this section was leaving
-open.** The two R=42 islands both rendering darker than the R=34 one looked like
-texel density — `shadowBoxFor` fits the box to the island, so the comment above
-puts the hub at 23.3 texels per world unit and the council at 18.3, and shadow
-acne behaves exactly that way. Turning `receiveShadow` off on all 21 ground
-discs, measured at the same 0.45R positions:
-
-| island | with shadows | shadows off | change |
+| island | neutral grey | its own palette | drop |
 | --- | --- | --- | --- |
-| hub | 134.7 | 134.5 | **−0.2%** |
-| collective-gardens | 96.8 | 96.9 | **+0.1%** |
-| valley-living-machines | 59.1 | 59.1 | **+0.0%** |
+| hub | 158.6 | 134.7 | ×0.849 |
+| valley-living-machines | 134.8 | 59.1 | **×0.438** |
 
-Nothing moves. The ground there is fully lit on all three islands, and the
-valley still renders at 0.513 of what its own vertex colours predict. So the
-darkness is not in the lighting at all — it is in the material's own colour,
-somewhere in the path from `palette.stone` to the buffer.
+The material accounts for the whole gap. And here is why it looked bigger than
+it is — the stones compared in the wrong space:
 
-**Recorded, not fixed.** What is left is narrower than it was: with shadows,
-the macro field, the mottling and the authored palette all ruled out by
-measurement, the next step is to read the actual vertex-colour buffer off the
-valley's disc and compare it against the replication, which this round used and
-which samples a ring rather than the mesh's real triangulation. That comparison
-is one probe away; it was not run because this round had already spent itself on
-the confound.
+| island | `stone` | sRGB luma | **mean linear albedo** | vs hub |
+| --- | --- | --- | --- | --- |
+| hub | `#a89677` | 151.6 | 0.3147 | 1.000 |
+| collective-gardens | `#999e79` | 154.3 | 0.3261 | **1.036** |
+| valley-living-machines | `#8b7372` | 120.0 | 0.1897 | **0.603** |
+
+In sRGB luma the valley looks 20.8% below the hub. In **linear** albedo it is
+**39.7%** below, and linear is the one the lighting multiplies. The Collective
+Gardens run a hair brighter than the hub in linear terms while showing almost
+the same sRGB luma — the two numbers disagree in opposite directions, which is
+what made the valley look like an outlier when it is the most ordinary thing in
+the palette.
+
+So: no change, and the island is not broken. It is painted in the darkest colour
+of the eight and it reads that way. Two corrections went into this file along
+the way and both were wrong — the disc's rim darkening was blamed for a
+comparison it could not have affected, since it starts at 0.7 of the radius and
+nothing here reaches it, and shadow acne was proposed and then measured away.
+
+The general form is the one this file keeps arriving at: **the number was never
+wrong, the space it was read in was.** A shader multiplies linear albedo, so an
+albedo comparison belongs in linear.
+
 
 ### Assets degrade, they do not break
 
