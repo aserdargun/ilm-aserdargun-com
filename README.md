@@ -3795,6 +3795,48 @@ auto-eliminate every dark flat region. The Observer's Mirrors panels read luma
 15–18, right inside the sky's range, and a rule that quietly dropped them would
 hide exactly the defect class it exists to find.
 
+### One island renders much darker than its palette says, and the cause is not isolated
+
+Found by opening the last two survey frames that had never been looked at. The
+Valley of Living Machines' ground is a deep rust brown and reads as a different
+kind of place from the other seven, which run warm sand.
+
+| island | rendered luma | rendered hue | authored `stone` | authored luma |
+| --- | --- | --- | --- | --- |
+| **valley-living-machines** | **68.2** | **17.6°** | `#8b7372` | 120.0 |
+| hub | 122.5 | 38.7° | `#a89677` | 151.6 |
+| adaptation-cloud-harbor | 115.7 | 34.4° | `#a28f7a` | 145.5 |
+| memory-council-city | 118.5 | 202.1° | `#8496ab` | 147.7 |
+| collective-gardens | 126.9 | 33.3° | `#999e79` | 154.3 |
+| flow-foundry | 116.4 | 30.0° | `#948277` | 133.0 |
+
+Part of the gap is authored: `#8b7372` is the darkest of the eight and sits at
+hue 2.4°, so the red is intended. The size of the gap is the question. Rendered
+against authored, every other island lands at **0.79–0.87**; the valley lands at
+**0.57**.
+
+What was ruled out, each by measurement:
+
+- **Not the macro map.** The field is sampled in world space, and at the valley's
+  anchor it reads **0.471** — brighter than the hub's 0.289 and level with the
+  two brightest anchors. Whatever is darkening this island, the macro map is
+  predicting the opposite.
+- **Not the shadow box.** Fitted to the island underfoot, it sits at ±54 around
+  the valley's own anchor with the sun target on it, and the sun is at its
+  usual 2.4.
+- **Not transient.** A second capture from a clean page load is identical to the
+  first: mean absolute difference **0.297** luma over the whole frame.
+
+**This is recorded rather than fixed.** A first guess — that the island is simply
+painted darker — does not survive the 0.57 against 0.79–0.87 ratio, and no
+measurement here isolates why. Two controls that would normally settle it were
+tried and both turned out to be invalid: the authored-to-rendered ratio assumes
+a lighting pipeline identical on every island, and a near-ground-to-mid-ground
+ratio inside each frame lands on different content in different frames — one of
+them returns 2.59 because both bands fall on the canal and the water rather than
+on sand. Guessing here would be exactly the kind of change that reads as an
+improvement in a screenshot and is wrong.
+
 ### Assets degrade, they do not break
 
 `src/world/Models.tsx` loads every model through an error boundary and a
