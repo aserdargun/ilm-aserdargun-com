@@ -42,6 +42,15 @@ const DETAIL_STRENGTH = 0.42;
 
 const PATCH_FLAG = 'ilmekSurfaceDetail';
 
+/**
+ * How much self-illumination a material needs before its grain stops reading.
+ *
+ * Emission is added after the lighting, so a surface that genuinely lights
+ * itself gains nothing from a normal-map tilt. This is a threshold on
+ * `emissive × emissiveIntensity`, not on the colour alone.
+ */
+const EMISSIVE_SKIP = 0.1;
+
 /** Set on materials that must stay smooth: the player character and its spark. */
 export const NO_DETAIL_FLAG = 'ilmekNoDetail';
 
@@ -166,7 +175,26 @@ export function applySurfaceDetail(root: THREE.Object3D, map: THREE.Texture): nu
     if (material.flatShading || material.normalMap) return;
     if (material.transparent || material.opacity < 1) return;
     const emissive = material.emissive;
-    if (emissive && emissive.r + emissive.g + emissive.b > 0.001) return;
+    // Weighted by `emissiveIntensity`, and only past a threshold worth the name.
+    //
+    // The rule used to read the raw emissive colour, which is what the shader
+    // does *not* do — it multiplies by the intensity first. The Great Loom's
+    // canal is authored with an emissive of `#5997a0` at intensity **0.1**, so it
+    // contributes about a tenth of itself to the surface and is not lighting
+    // anything, but it was excluded all the same. It carried the flattest large
+    // surface in the frame: the side of the canal measured a local luma standard
+    // deviation of **0.12** across 72,000 pixels, against 0.0011 for 8-bit
+    // quantisation alone. Its three sibling beams — metal, copper, copper_dark,
+    // all with no UVs either — all carry the patch.
+    //
+    // Every other emissive material in the world sits well above the threshold
+    // and is still skipped, which is the point: `turquoise_soft` 0.742 × 1,
+    // `coral` 0.252 × 1, and three procedural meshes at 0.45 to 1.4. The two that
+    // cross are the canal at 0.076 and a leaf tint at 0.084, both of which are
+    // tints rather than lights.
+    const emissiveIntensity = material.emissiveIntensity ?? 1;
+    const emitted = emissive ? (emissive.r + emissive.g + emissive.b) * emissiveIntensity : 0;
+    if (emitted > EMISSIVE_SKIP) return;
     if (material.userData[PATCH_FLAG] || material.userData[NO_DETAIL_FLAG]) return;
     patchMaterial(material, map);
     patched += 1;

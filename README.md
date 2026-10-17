@@ -3718,6 +3718,62 @@ because it cost a whole round: **an instrument that has never been shown a known
 positive has not been shown to work**, and a passing test that was never shown to
 fail is not a test.
 
+### The one surface in the game that was never given the grain
+
+Found by looking at a frame the sweep had captured and nobody had opened. The
+Flow Foundry's canal runs across a third of the picture as a slab of flat cyan,
+and it looked like it.
+
+Measuring flatness the way the rest of this file measures things — 40×40 blocks,
+local luma standard deviation, connected components — put it outside everything
+else in the frame:
+
+| region | share of frame | mean local std |
+| --- | --- | --- |
+| **canal, front face** | **5.5%** | **0.12** |
+| canal, top face | 8.1% | 3.77 |
+| sky | 8.8% | 4.63 |
+
+The sky being smooth is the point of a sky. The canal's front face measured
+**0.035** over 72,000 pixels, against 0.0011 for 8-bit quantisation alone. It was
+the flattest large surface in the picture.
+
+The cause is one line in `applySurfaceDetail`:
+
+```js
+if (emissive && emissive.r + emissive.g + emissive.b > 0.001) return;
+```
+
+That is the rule that keeps grain off self-lit parts, and it is right in
+principle — emission is added after the lighting, so a surface that lights itself
+gains nothing from a normal-map tilt. But it reads the raw emissive colour, which
+is the one thing the shader does *not* do: it multiplies by `emissiveIntensity`
+first. The canal is authored with an emissive of `#5997a0` at intensity **0.1**,
+so it contributes about a tenth of itself to the surface and is not lighting
+anything, and it was excluded all the same.
+
+Its three sibling beams made the omission obvious once looked for: `beam_low`,
+`beam_low_1` and `beam_low_2` — metal, copper, copper_dark — all carry no UVs
+either and all carry the patch. `beam_low_3`, the water, did not.
+
+Weighted by intensity and thresholded at 0.1, only two materials in the world
+change hands. The channel below stays skipped: `turquoise_soft` 0.742 × 1,
+`coral` 0.252 × 1, and three procedural meshes at 0.45 to 1.4. Glass stays
+skipped for being transparent, and eleven flat-shaded materials stay skipped
+because their faceting is the look.
+
+| | before | after |
+| --- | --- | --- |
+| canal front face, local std | 0.035 | **8.11** |
+| frame area in blocks under std 2 | 33.3% | **22.3%** |
+| frame mean luma | 82.25 | 82.02 |
+| crushed pixels | 14.61% | 14.60% |
+
+The largest flat region is unchanged at 8.8%, and it is the sky, where that is
+correct. The other two figures are the real argument: a third of the frame was
+dead flat and now a fifth is, and the cost is a fifth of a luma level on the
+whole image.
+
 ### Assets degrade, they do not break
 
 `src/world/Models.tsx` loads every model through an error boundary and a
