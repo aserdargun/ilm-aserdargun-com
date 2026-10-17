@@ -189,9 +189,18 @@ export function applySurfaceDetail(root: THREE.Object3D, map: THREE.Texture): nu
     //
     // Every other emissive material in the world sits well above the threshold
     // and is still skipped, which is the point: `turquoise_soft` 0.742 × 1,
-    // `coral` 0.252 × 1, and three procedural meshes at 0.45 to 1.4. The two that
-    // cross are the canal at 0.076 and a leaf tint at 0.084, both of which are
-    // tints rather than lights.
+    // `coral` 0.252 × 1, and three procedural meshes at 0.45 to 1.4.
+    //
+    // Two materials cross the line — the canal at 0.076 and a leaf tint at 0.084
+    // — and only one of them is visible. Measured on the Collective Gardens with
+    // the two settings captured from clean page loads, and with the character
+    // and the HUD excluded, the frames are indistinguishable: **0 of 400 blocks**
+    // differ by more than 3%, and 1.33% of pixels differ by more than 2 out of
+    // 255. Everything the first pair of frames seemed to show was the mage's idle
+    // animation sitting at a different phase between two page loads, which is
+    // worth recording because it is exactly how an A/B pair gets attributed to
+    // the change it was meant to test. The canal is the whole of this rule's
+    // visible effect.
     const emissiveIntensity = material.emissiveIntensity ?? 1;
     const emitted = emissive ? (emissive.r + emissive.g + emissive.b) * emissiveIntensity : 0;
     if (emitted > EMISSIVE_SKIP) return;

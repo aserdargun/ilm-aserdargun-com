@@ -3756,11 +3756,24 @@ Its three sibling beams made the omission obvious once looked for: `beam_low`,
 `beam_low_1` and `beam_low_2` — metal, copper, copper_dark — all carry no UVs
 either and all carry the patch. `beam_low_3`, the water, did not.
 
-Weighted by intensity and thresholded at 0.1, only two materials in the world
-change hands. The channel below stays skipped: `turquoise_soft` 0.742 × 1,
-`coral` 0.252 × 1, and three procedural meshes at 0.45 to 1.4. Glass stays
+Weighted by intensity and thresholded at 0.1, two materials in the world become
+eligible. Everything else stays skipped, which is the point: `turquoise_soft`
+0.742 × 1, `coral` 0.252 × 1, three procedural meshes at 0.45 to 1.4. Glass stays
 skipped for being transparent, and eleven flat-shaded materials stay skipped
 because their faceting is the look.
+
+**Only one of the two is visible.** The canal is at 0.076 and a leaf tint at
+0.084, and the leaf turns out to be worth nothing. Measured by capturing the
+Collective Gardens from clean page loads at each setting and excluding the
+character and the HUD: **0 of 400 blocks** differ by more than 3%, and 1.33% of
+pixels differ by more than 2 out of 255 — indistinguishable.
+
+The first pair of captures appeared to show a change, because the mage's idle
+animation sits at a different phase between two page loads and accounts for a
+maximum per-pixel difference of **221**. That is worth writing down rather than
+leaving to be rediscovered: an A/B pair attributed to the change it was meant to
+test, because the one thing in the frame that moves on its own was not masked
+out. The canal is the whole of this rule's visible effect.
 
 | | before | after |
 | --- | --- | --- |
