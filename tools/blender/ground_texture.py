@@ -30,6 +30,39 @@ SIZE = 512
 # `macro_variation()` for why its period has to outrun every island.
 MACRO_SIZE = 512
 MACRO_BASE_CELLS = 2
+# Five octaves were tried and measured, and the number stayed at four.
+#
+# The gap is real. Radial power spectrum of this map, measured on the shipped
+# PNG: the 32px band (11.25 world units at a 180-unit period) sits at 8.9e-5
+# against 3.4e-3 for the 64px band — thirty-eight times weaker, which is an
+# empty band rather than a weak one. Going to five octaves lifts it to 1.2e-3,
+# so the gap really is filled.
+#
+# It is still not worth paying for, and the reason is worth writing down because
+# the obvious explanations are all wrong. It is not `fbm`'s normalisation: adding
+# the fifth octave as a separate weighted term on top of an untouched four-octave
+# base reproduces the same loss to the digit. The budget is the final fit,
+#
+#     field = 0.5 + field * (0.5 / max(abs(field)))
+#
+# which scales the whole field by its single most extreme pixel. Add high-frequency
+# content and that peak grows, so every band shrinks with it. Renormalisation
+# conserves total contrast and only moves it between scales — that is the whole
+# trade. Fitting by the 99.9th percentile instead of the max buys back 3% and
+# costs 0.10% clipped pixels; it does not buy the band back.
+#
+# Measured on the rendered frame, at the weight that matches the naive version:
+# sand median 122.6 -> 126.6 luma, ground contrast -4.7%, and a new band worth
+# 2.33 luma rms whose autocorrelation peaks at 0.72 over 100px — genuinely
+# coherent, correctly scaled, and not visible at 1:1 in either of two non-adjacent
+# regions. A cost paid on every ground pixel in every frame, for a gain that did
+# not survive being looked at.
+#
+# So the band stays empty on purpose. Anyone revisiting this should attack the
+# dynamic-range budget rather than the octave count: the map is pinned at both
+# ends (min 0.008, max 1.000), so a response curve in the shader — which expands
+# the mid-range without touching the tails that `GROUND_MACRO_AMPLITUDE` already
+# has to live inside — is the lever that was never tried.
 MACRO_OCTAVES = 4
 # Gain above 1/sqrt(2) puts more energy in the long wavelengths than in the short
 # ones, which is the whole point: a field with equal energy per octave measures

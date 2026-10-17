@@ -3296,7 +3296,7 @@ whether the deck had been given the detail map, and it had not — because
 The deck carries the `ilmekSurfaceDetail` flag and is patched. Looking at the
 wrong property is the same error as looking at the wrong mesh.
 
-### Six measurement tools, and every one of them was wrong first
+### Measurement tools, and every one of them was wrong first
 
 This round added six tools under `tools/` and ran them over the frame. Between
 them they got it wrong six times: a sand mask with a hard-coded warm hue window
@@ -3316,6 +3316,19 @@ the whole battery in one command, and `tools/shimmer_selfcheck.py` and the mask
 warning in `tools/ground_structure.py` are the pattern the rest should follow:
 **an instrument that has never been shown a known positive has not been shown to
 work.**
+
+A seventh arrived with the octave experiment, in the same shape. `tools/crop_ab.py`
+exists because the first look at a 5-octave-versus-4-octave pair was a stacked
+contact sheet that had squeezed each 2596px frame into 407px — and a 6.4×
+reduction deletes the frequency band under test before the eye reaches it. The
+tool refuses a box that runs past either frame, and refuses a pair whose sizes
+differ, because a crop comparison across two different cameras is not a comparison
+at all. `tools/ground_structure.py` gained `--box` for the same reason: measuring
+one region and generalising from it is how the sky scan once reported a doubled
+value. Its own argument parser was broken while adding it — `--box 300,820,820,600`
+put the coordinates in the *file* list, where the tool then tried to open them as
+an image, and `--depth` was documented in the module docstring but did nothing.
+Both were found by running the flags, not by reading the code.
 
 ### The tree is not what its bounding box suggests
 
@@ -3469,6 +3482,64 @@ this word count — but it is the honest cost of the panel being this clear.
   just been added to it. A phone at the low tier's 1.25 dpr renders fewer pixels
   than the 8.3 megapixels used here, so neither addition has a price worth
   gating on quality — and low gets the same improved ground and sky as high.
+
+### The empty band in the ground, and why filling it costs more than it returns
+
+The macro map's octaves sit at 90, 45 and 22.5 world units. Below the 2-unit tiled
+maps and above those, 11 units down to 2, there was nothing designed at all — and
+the radial power spectrum says the 11.25-unit band really is empty rather than
+weak: **8.9e-5 against 3.4e-3 for the band above it, thirty-eight times weaker**.
+A fifth octave fills it. Measured on the shipped PNGs, that band goes to 1.2e-3,
+a factor of 13.5. The gap is real and the fix is real.
+
+It still does not ship, and the reason is not the one you would guess.
+
+- **It is not `fbm`'s normalisation.** Adding the fifth octave as a separately
+  weighted term on top of an untouched four-octave base — so the base cannot
+  possibly be diluted — reproduces the same loss to the digit: 90 units ×0.61,
+  45 units ×0.74, 22.5 units ×0.88.
+- **The budget is the final fit.** `0.5 + field * (0.5 / max(abs(field)))` scales
+  the whole field by its single most extreme pixel. Add high-frequency content and
+  that peak grows, so every band shrinks with it. Renormalisation conserves total
+  contrast and only moves it between scales; that *is* the trade. The map is
+  pinned at both ends — min 0.008, max 1.000 — so its range is set by an outlier
+  rather than by its structure. Fitting the 99.9th percentile instead of the max
+  buys back 3% and costs 0.10% clipped pixels. It does not buy the band back.
+- **On screen, the gain did not survive being looked at.** At the weight matching
+  the naive version: sand median **122.6 → 126.6** luma, ground contrast
+  **−4.7%** (rms 16.09 → 15.34), and the new band worth 2.33 luma rms with a
+  horizontal autocorrelation of 0.72 at 100px, 0.43 at 200px and −0.02 at 400px.
+  That last row is the point: the addition is genuinely coherent and genuinely at
+  the right scale — and it was still not distinguishable at 1:1 in either of two
+  non-adjacent regions. A cost paid on every ground pixel in every frame, for a
+  gain that did not survive looking at it.
+
+So the band stays empty on purpose. Anyone revisiting this should attack the
+dynamic-range budget, not the octave count: a response curve in the shader
+expands the mid-range without touching the tails that `GROUND_MACRO_AMPLITUDE`
+already has to live inside, and that is the lever that was never tried.
+
+Two things this round got wrong, both caught by measuring:
+
+- **The comparison sheet was the wrong instrument.** Two 2596px frames squeezed
+  into 407px panels is a 6.4× reduction, and the 11-unit band does not survive
+  being downsampled 6.4×. The first read of the pair — "they look the same" — was
+  being made on an image where the thing under test had been filtered away.
+  `tools/crop_ab.py` now stacks paired 1:1 crops of the same box from both frames,
+  and the box must fit inside both or the tool refuses rather than cropping.
+- **A luma delta of exactly 0.00 on a ground that was measurably different.** The
+  delta had been computed by slicing an array built from frame A and comparing it
+  with itself. It was not a null result, it was a subtraction that never ran, and
+  it would have been reported as a rigorous zero: "sıfır buldum" means nothing
+  until the tool can be shown to see a non-zero. Corrected, the same two regions
+  read +4.3 and +10.2 luma.
+
+One thing worth keeping about the noise itself, because it is not obvious:
+value noise with smoothstep interpolation has a spectral **null at its own cell
+frequency**, so an octave does not deposit its energy where its nominal period
+says. The fifth octave's content lands near *half* its period — which is why
+adding it filled the 11.25-unit band rather than the 5.6-unit one it appears to
+be for.
 
 ### Assets degrade, they do not break
 

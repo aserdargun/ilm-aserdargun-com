@@ -12,7 +12,13 @@ Iki mod var:
             --cells tek basina perspektif yanilgisiyla buyuyor)
 
 Kullanim:
-  /usr/bin/python3 tools/ground_structure.py A.png [B.png] [--cells 200] [--depth]
+  /usr/bin/python3 tools/ground_structure.py A.png [B.png] [--cells 200] [--depth] [--box x,y,w,h]
+
+--box tek bir bolgeyi kirpar. Neden var: tek bir bolge olculdugunde oranlar
+sisiriyor. En duz bolgeyi secmek, payda (taban varyans) en kucuk oldugu icin
+kucuk bir degisimi en cok buyutur. Gok taramasinda en duz 420x150 dikdortgeni
+secmistim; bulut genligi 4,4 kat orada cikti, dort bolgeye yayinca gercek tablo
+"%1'in altinda" idi. Ayni sebepten tek bir bolgeden karar verme.
 """
 import sys
 
@@ -122,19 +128,70 @@ def cells_depth_normalised(mask, luma, size):
     return float(resid[keep][ok[keep]].std() / lm[keep][ok[keep]].mean() * 100), int(ok[keep].sum())
 
 
-def main():
-    args = [a for a in sys.argv[1:] if not a.startswith("--")]
-    flags = [a for a in sys.argv[1:] if a.startswith("--")]
+def parse_args(argv):
+    """
+    `--cells` and `--box` take the next argv element as their value.
+
+    Splitting on the leading `--` alone put the box coordinates in the file list,
+    where the tool then tried to open "300,820,820,600" as an image. Anything with
+    a value has to consume it explicitly.
+    """
+    paths = []
     cell = 200
-    if "--cells" in flags:
-        cell = int(flags[flags.index("--cells") + 1])
+    box = None
+    depth_only = False
+    i = 0
+    while i < len(argv):
+        token = argv[i]
+        if token == "--cells":
+            i += 1
+            if i >= len(argv):
+                raise SystemExit("--cells needs a value")
+            cell = int(argv[i])
+        elif token == "--box":
+            i += 1
+            if i >= len(argv):
+                raise SystemExit("--box needs a value: x,y,w,h")
+            parts = argv[i].split(",")
+            if len(parts) != 4:
+                raise SystemExit("--box must be x,y,w,h -- got %r" % argv[i])
+            try:
+                bx, by, bw, bh = (int(p) for p in parts)
+            except ValueError:
+                raise SystemExit("--box must be integers -- got %r" % argv[i])
+            if bw <= 0 or bh <= 0:
+                raise SystemExit("--box must have a positive size -- got %r" % argv[i])
+            box = (bx, by, bw, bh)
+        elif token == "--depth":
+            depth_only = True
+        elif token.startswith("--"):
+            raise SystemExit("unknown flag %r" % token)
+        else:
+            paths.append(token)
+        i += 1
+    if not paths:
+        raise SystemExit("usage: ground_structure.py A.png [B.png] [--cells 200] [--box x,y,w,h]")
+    return paths, cell, box, depth_only
+
+
+def main():
+    args, cell, box, depth_only = parse_args(sys.argv[1:])
+    sizes = (cell,) if depth_only else (128, cell, 400)
 
     for path in args:
         rgb = np.asarray(Image.open(path).convert("RGB"), dtype=np.float32)
+        if box is not None:
+            x, y, w, h = box
+            if x + w > rgb.shape[1] or y + h > rgb.shape[0]:
+                raise SystemExit(
+                    "--box %s runs past the frame edge (%dx%d)"
+                    % (box, rgb.shape[1], rgb.shape[0])
+                )
+            rgb = rgb[y : y + h, x : x + w]
         mask = sand_mask(rgb)
         luma = luma_of(rgb)
         share = mask.mean() * 100
-        print(f"\n{path}")
+        print(f"\n{path}" + (f"  [box {box[0]},{box[1]} {box[2]}x{box[3]}]" if box else ""))
         if share < 25.0:
             # Not an error, but it means the numbers below describe a fragment.
             # Three of the eight islands land here: their frames are dominated by
@@ -146,7 +203,7 @@ def main():
                 "asagidaki rakamlar parcayi olcer." % share
             )
         print("  kum payi %.2f%%   luma ort %.1f/255" % (share, luma[mask].mean() if mask.any() else 0))
-        for size in (128, cell, 400):
+        for size in sizes:
             raw, n = cells(mask, luma, size)
             dep, _ = cells_depth_normalised(mask, luma, size)
             print(
