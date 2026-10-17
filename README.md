@@ -3541,6 +3541,79 @@ says. The fifth octave's content lands near *half* its period — which is why
 adding it filled the 11.25-unit band rather than the 5.6-unit one it appears to
 be for.
 
+### Eight islands measured together for the first time
+
+Every earlier round measured the hub, because the hub is where a session starts.
+The other seven islands had been visited one at a time, if at all. This round
+teleported to all eight and ran the same battery on each, and the ranking it
+produced put the worst surface somewhere no one had been looking.
+
+| | sand share | cell std 200px, depth-normalised | sand p02..p98 |
+| --- | --- | --- | --- |
+| valley-living-machines | 56.21% | 17.88 | 80.4 |
+| memory-council-city | 27.25% | 10.79 | 116.2 |
+| observers-mirrors | 82.94% | 10.04 | 33.0 |
+| cartographers-terrace | 25.98% | 7.98 | 97.8 |
+| flow-foundry | 63.94% | 7.56 | 89.8 |
+| hub | 65.74% | 6.28 | 66.0 |
+| observers-mirrors *(centre)* | 51.18% | 6.02 | 38.4 |
+| collective-gardens | 27.03% | 4.82 | 56.8 |
+| adaptation-cloud-harbor | 57.25% | 4.31 | 58.6 |
+
+Cell standard deviation alone would have sent this at adaptation-cloud-harbor.
+Looking at the frames sent it to the Mirrors instead, and the measurement that
+mattered was not on the ground at all — it was on the island's landmark.
+
+**The Observer's Mirrors were holes cut in the frame.** Five standing panels
+rendered at luma 15.26 against a sky at 11.17 behind them, so the separation was
+**4 luma levels** and the right-hand panel came out *darker than its own sky*.
+The telling number was the standard deviation across the panel's interior:
+**5.41 over 18000 pixels**. For comparison, on the same frame the sand measured
+28.29, the water 15.46, and a brown relief box 12.95. A surface with almost no
+variation across it is not dark, it is absent.
+
+Two wrong explanations, both measured before the right one:
+
+- **It is not a black material.** There is no black material in this world. The
+  darkest colour anywhere in the scene is `#7d4b28`. These panels were authored
+  `#696f7e` on the metal frame and `#c4e7ec` on a roughness-0.08 glass — a dark
+  albedo on a surface smooth enough to mirror a night sky, doing exactly what
+  the physics says.
+- **It is not a lighting problem.** Raising the hemisphere light 0.40 → 0.95 and
+  the turquoise rim 0.34 → 0.85 lifted the sand by 13 luma and these panels by
+  **1.2**. A dark albedo stays dark however much light is aimed at it.
+
+The fix is the albedo. `MIRROR_METAL_COLOR` / `MIRROR_GLASS_COLOR` in
+`World.tsx`, painted onto the model rather than the material name — `metal` and
+`glass` are also the names of materials inside the loom's beams, the council
+workshop and the valley pump, and the painter runs on every region landmark.
+
+| | luma | std | separation from sky |
+| --- | --- | --- | --- |
+| authored | 15.26 | 5.41 | +4.09 |
+| raised | 40.25 | **11.58** | **+29.08** |
+
+The standard deviation is the whole argument: it doubles with no lighting change
+at all, which is what turns a hole back into an object. The second panel, turned
+away from the sun, rose 13.95 luma and went from 5.39 to 8.17. Everything else in
+the frame is where it was — sand +0.14, sea +0.00, brown box +0.00, sky +0.00,
+whole frame +0.66 — and crushed pixels fell from 13.42% to 12.50%.
+
+Two things this round got wrong on the way, both caught by measuring rather than
+by looking harder:
+
+- **A runtime probe was read as the outcome.** A probe turning the panels red
+  showed the sunlit face receiving plenty of light and the shadowed face almost
+  none, which is true and did not imply what it seemed to: the note written from
+  it claimed the shadowed panels would not move. They did, under the albedo
+  change. The probe had shown that the *fill light* does not reach them.
+- **The sweep frames are only comparable because the camera was pinned.**
+  Teleporting to the island centre landed the player somewhere else entirely on
+  the Mirrors — collision pushed 7.55 units out of the plinth geometry — and the
+  first capture there showed the character buried to the shoulders. Re-teleported
+  to open ground, the same character stands fully visible. A teleport is not a
+  camera control, and a frame captured through one is not evidence of a bug.
+
 ### Assets degrade, they do not break
 
 `src/world/Models.tsx` loads every model through an error boundary and a

@@ -301,6 +301,47 @@ function applyInstanceColours(mesh: THREE.InstancedMesh, colors: THREE.Color[]):
 // Landmarks — one per region, each built from simple primitives
 // ---------------------------------------------------------------------------
 
+/**
+ * Albedo for the two mirror materials on the Observer's Mirrors island.
+ *
+ * Found by sweeping all eight islands, which had never been looked at together
+ * before. The panels were not dark *material* — the scene contains no black
+ * material at all, and its darkest colour is `#7d4b28`. They were dark geometry:
+ * `#696f7e` on the metal frame and a roughness-0.08 glass, both doing exactly
+ * what a smooth surface does under a night sky, which is reflect it.
+ *
+ * Measured on the panel's sunlit face, 18000 pixels of interior, against the
+ * sky 4 luma levels behind it:
+ *
+ * | | luma | std | separation from sky |
+ * | --- | --- | --- | --- |
+ * | authored (`#696f7e`) | 15.26 | 5.41 | +4.09 |
+ * | raised (`#aeb6c6`) | 40.31 | 11.34 | **+29.13** |
+ *
+ * The standard deviation is the number that matters. A std of 5.4 across the
+ * whole panel means there is nothing there for light to describe — which is why
+ * it read as a hole cut in the frame rather than as an object. Doubling it, with
+ * no lighting change at all, is what turns it back into a standing stone.
+ *
+ * Raising the fill light instead was tried first and is the wrong lever: the
+ * hemisphere and rim lights together at 0.40 and 0.34 lifted the sand by 13
+ * luma and these panels by 1.2. A dark albedo stays dark however much light is
+ * aimed at it.
+ *
+ * Nothing else in the frame moves. Measured on the same frame: sand +0.14 luma,
+ * sea +0.00, the brown relief box +0.00, sky +0.00, whole frame +0.66. Crushed
+ * pixels fell from 13.42% to 12.50%.
+ *
+ * An earlier runtime probe suggested the faces turned away from the sun would
+ * not move at all, and the first draft of this note said so. They do: the second
+ * panel rose 13.95 luma and its standard deviation went 5.39 to 8.17. What the
+ * probe had actually shown was that *raising the fill light* does not reach
+ * them — the albedo does. Distinguishing those two is why this is measured
+ * rather than read off the probe.
+ */
+const MIRROR_METAL_COLOR = '#aeb6c6';
+const MIRROR_GLASS_COLOR = '#e6f2f4';
+
 /** Authored Blender model for each region landmark. */
 const LANDMARK_MODELS: Record<RegionId, string> = {
   hub: 'synthesis_tree',
@@ -401,9 +442,21 @@ export function Landmark({
       // `detail.ts` builds for the stone.
       paint={(mesh) => {
         const material = mesh.material as THREE.MeshStandardMaterial;
-        if (!material?.name || material.name !== 'water') return;
-        material.emissiveIntensity = 0.1;
-        material.roughness = 0.35;
+        if (!material?.name) return;
+        if (material.name === 'water') {
+          material.emissiveIntensity = 0.1;
+          material.roughness = 0.35;
+          material.needsUpdate = true;
+          return;
+        }
+        // Gated on the model, not on the material name. `metal` and `glass` are
+        // also the names of materials inside the loom's beams, the council
+        // workshop and the valley pump, and this painter runs on every region
+        // landmark — a name-only test would have repainted all of them.
+        if (model !== 'observer_mirrors') return;
+        if (material.name === 'metal') material.color.set(MIRROR_METAL_COLOR);
+        else if (material.name === 'glass') material.color.set(MIRROR_GLASS_COLOR);
+        else return;
         material.needsUpdate = true;
       }}
     />
