@@ -3801,41 +3801,45 @@ Found by opening the last two survey frames that had never been looked at. The
 Valley of Living Machines' ground is a deep rust brown and reads as a different
 kind of place from the other seven, which run warm sand.
 
-| island | rendered luma | rendered hue | authored `stone` | authored luma |
-| --- | --- | --- | --- | --- |
-| **valley-living-machines** | **68.2** | **17.6°** | `#8b7372` | 120.0 |
-| hub | 122.5 | 38.7° | `#a89677` | 151.6 |
-| adaptation-cloud-harbor | 115.7 | 34.4° | `#a28f7a` | 145.5 |
-| memory-council-city | 118.5 | 202.1° | `#8496ab` | 147.7 |
-| collective-gardens | 126.9 | 33.3° | `#999e79` | 154.3 |
-| flow-foundry | 116.4 | 30.0° | `#948277` | 133.0 |
+The first version of this note compared islands from frames taken at different
+distances from their centres and quoted a spread of 0.79–0.87 against the
+valley's 0.57. That comparison was confounded and has been redone. Every island
+was re-measured with the player standing at **0.45 of its own radius**, so the
+sampling band lands on the same kind of ground on each:
 
-Part of the gap is authored: `#8b7372` is the darkest of the eight and sits at
-hue 2.4°, so the red is intended. The size of the gap is the question. Rendered
-against authored, every other island lands at **0.79–0.87**; the valley lands at
-**0.57**.
+| island | rendered luma | authored `stone` | authored luma | rendered/authored | mottling predicts | rendered/predicted | macro at 0.45R |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| hub (R=34) | 134.7 | `#a89677` | 151.6 | 0.889 | 157.1 | **0.857** | 0.400 |
+| collective-gardens (R=42) | 96.8 | `#999e79` | 154.3 | 0.628 | 148.3 | **0.653** | 0.434 |
+| valley-living-machines (R=42) | 59.1 | `#8b7372` | 120.0 | 0.492 | 115.3 | **0.513** | 0.423 |
 
-What was ruled out, each by measurement:
+The valley still lands far below the others, and it is not alone in it — the
+Collective Gardens are well down too. Three candidate causes, each measured and
+each ruled out:
 
-- **Not the macro map.** The field is sampled in world space, and at the valley's
-  anchor it reads **0.471** — brighter than the hub's 0.289 and level with the
-  two brightest anchors. Whatever is darkening this island, the macro map is
-  predicting the opposite.
-- **Not the shadow box.** Fitted to the island underfoot, it sits at ±54 around
-  the valley's own anchor with the sun target on it, and the sun is at its
-  usual 2.4.
-- **Not transient.** A second capture from a clean page load is identical to the
-  first: mean absolute difference **0.297** luma over the whole frame.
+- **Not the authored palette.** `#8b7372` is the darkest of the eight and sits
+  at hue 2.4°, so the red is intended. But authored explains at most a 31-point
+  gap, and the observed gap is 76.
+- **Not the vertex mottling.** Replicating `ground-tone`'s formula exactly — the
+  per-region seed, the three sine bands, the `cool → warm` lerp — moves each
+  island's lightness by **±6** (valley −4.7, hub +5.5). The formula is not
+  biased against any island.
+- **Not the macro map.** Sampled at each island's own 0.45R position, the field
+  reads 0.400, 0.434 and 0.423 — near-identical across all three.
 
-**This is recorded rather than fixed.** A first guess — that the island is simply
-painted darker — does not survive the 0.57 against 0.79–0.87 ratio, and no
-measurement here isolates why. Two controls that would normally settle it were
-tried and both turned out to be invalid: the authored-to-rendered ratio assumes
-a lighting pipeline identical on every island, and a near-ground-to-mid-ground
-ratio inside each frame lands on different content in different frames — one of
-them returns 2.59 because both bands fall on the canal and the water rather than
-on sand. Guessing here would be exactly the kind of change that reads as an
-improvement in a screenshot and is wrong.
+One correction to the previous note: the disc's rim darkening was **not** the
+confound it was blamed as. That term starts at 0.7 of the radius and none of
+these measurements reach it. The frames were re-taken because the sampling bands
+were landing on different content, which is a different and more ordinary
+mistake.
+
+**This is recorded rather than fixed.** What remains is the lighting, and this
+round did not isolate it. Two things are worth noting for whoever picks it up.
+Both R=42 islands render darker than the R=34 one, which is suggestive of
+something that scales with island size — the shadow camera is fitted at ±54
+regardless of the island underneath it — and shadow acne would behave exactly
+that way. But the two R=42 islands differ from each other by 0.14, so radius
+alone does not account for it either. That is a hypothesis to test, not a cause.
 
 ### Assets degrade, they do not break
 
