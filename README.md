@@ -3833,13 +3833,31 @@ these measurements reach it. The frames were re-taken because the sampling bands
 were landing on different content, which is a different and more ordinary
 mistake.
 
-**This is recorded rather than fixed.** What remains is the lighting, and this
-round did not isolate it. Two things are worth noting for whoever picks it up.
-Both R=42 islands render darker than the R=34 one, which is suggestive of
-something that scales with island size — the shadow camera is fitted at ±54
-regardless of the island underneath it — and shadow acne would behave exactly
-that way. But the two R=42 islands differ from each other by 0.14, so radius
-alone does not account for it either. That is a hypothesis to test, not a cause.
+**It is not shadowing, and that kills the hypothesis this section was leaving
+open.** The two R=42 islands both rendering darker than the R=34 one looked like
+texel density — `shadowBoxFor` fits the box to the island, so the comment above
+puts the hub at 23.3 texels per world unit and the council at 18.3, and shadow
+acne behaves exactly that way. Turning `receiveShadow` off on all 21 ground
+discs, measured at the same 0.45R positions:
+
+| island | with shadows | shadows off | change |
+| --- | --- | --- | --- |
+| hub | 134.7 | 134.5 | **−0.2%** |
+| collective-gardens | 96.8 | 96.9 | **+0.1%** |
+| valley-living-machines | 59.1 | 59.1 | **+0.0%** |
+
+Nothing moves. The ground there is fully lit on all three islands, and the
+valley still renders at 0.513 of what its own vertex colours predict. So the
+darkness is not in the lighting at all — it is in the material's own colour,
+somewhere in the path from `palette.stone` to the buffer.
+
+**Recorded, not fixed.** What is left is narrower than it was: with shadows,
+the macro field, the mottling and the authored palette all ruled out by
+measurement, the next step is to read the actual vertex-colour buffer off the
+valley's disc and compare it against the replication, which this round used and
+which samples a ring rather than the mesh's real triangulation. That comparison
+is one probe away; it was not run because this round had already spent itself on
+the confound.
 
 ### Assets degrade, they do not break
 
