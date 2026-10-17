@@ -3545,24 +3545,41 @@ be for.
 
 Every earlier round measured the hub, because the hub is where a session starts.
 The other seven islands had been visited one at a time, if at all. This round
-teleported to all eight and ran the same battery on each, and the ranking it
-produced put the worst surface somewhere no one had been looking.
+teleported to all eight and ran the same battery on each.
 
-| | sand share | cell std 200px, depth-normalised | sand p02..p98 |
-| --- | --- | --- | --- |
-| valley-living-machines | 56.21% | 17.88 | 80.4 |
-| memory-council-city | 27.25% | 10.79 | 116.2 |
-| observers-mirrors | 82.94% | 10.04 | 33.0 |
-| cartographers-terrace | 25.98% | 7.98 | 97.8 |
-| flow-foundry | 63.94% | 7.56 | 89.8 |
-| hub | 65.74% | 6.28 | 66.0 |
-| observers-mirrors *(centre)* | 51.18% | 6.02 | 38.4 |
-| collective-gardens | 27.03% | 4.82 | 56.8 |
-| adaptation-cloud-harbor | 57.25% | 4.31 | 58.6 |
+**The first sweep was invalid, and the ranking built on it was wrong.**
+`__ilm.teleport` places the player directly and then collision resolution pushes
+them out of whatever geometry they landed in. Seven of the nine positions were
+displaced by 7.05 to 10.05 units; only the hub and one causeway stayed put. One
+of them put the camera *inside* a sand wall with the character nowhere in frame.
+So the whole table was rebuilt: every island now has a standing spot **verified
+after settling**, at a consistent twelve units from its centre, and every figure
+carries the cell count it was read from.
 
-Cell standard deviation alone would have sent this at adaptation-cloud-harbor.
-Looking at the frames sent it to the Mirrors instead, and the measurement that
-mattered was not on the ground at all — it was on the island's landmark.
+| | sand share | cell std 200px, depth-normalised | n | sand p02..p98 |
+| --- | --- | --- | --- | --- |
+| valley-living-machines | 48.80% | 18.69 | 40 | 79.4 |
+| cartographers-terrace | 37.01% | 14.95 | 12 | 48.2 |
+| flow-foundry | 61.86% | 12.17 | 47 | 93.3 |
+| memory-council-city | 22.87% | 11.04 | **7** | 66.1 |
+| hub | 63.88% | 9.71 | 55 | 66.1 |
+| collective-gardens | 64.02% | 9.38 | 49 | 71.5 |
+| adaptation-cloud-harbor | 64.41% | 6.65 | 54 | 58.6 |
+| observers-mirrors | 29.31% | 5.62 | 15 | 67.8 |
+| loom-causeway | 26.99% | 4.83 | 10 | 56.4 |
+
+Two rows should not be ranked at all: memory-council-city rests on seven cells,
+which is not a measurement, and the causeway frame is 27% sand with the rest of
+the picture built structure.
+
+For comparison, the invalid sweep had put adaptation-cloud-harbor last at 4.31
+and cartographers-terrace fourth at 7.98. Corrected, they are seventh at 6.65
+and second at 14.95. A ranking built on uncontrolled camera positions is not a
+ranking.
+
+That said, the ground was never where the defect was. Looking at the frames sent
+the sweep to the Mirrors instead, and the measurement that mattered was on the
+island's landmark.
 
 **The Observer's Mirrors were holes cut in the frame.** Five standing panels
 rendered at luma 15.26 against a sky at 11.17 behind them, so the separation was
@@ -3607,12 +3624,39 @@ by looking harder:
   none, which is true and did not imply what it seemed to: the note written from
   it claimed the shadowed panels would not move. They did, under the albedo
   change. The probe had shown that the *fill light* does not reach them.
-- **The sweep frames are only comparable because the camera was pinned.**
+- **The sweep frames were not comparable, and it took a second pass to notice.**
   Teleporting to the island centre landed the player somewhere else entirely on
   the Mirrors — collision pushed 7.55 units out of the plinth geometry — and the
   first capture there showed the character buried to the shoulders. Re-teleported
   to open ground, the same character stands fully visible. A teleport is not a
   camera control, and a frame captured through one is not evidence of a bug.
+  Checking all nine positions at once showed seven were displaced, which is what
+  invalidated the table above.
+
+### An instrument built for this and thrown away
+
+The obvious move was to automate the readability check: label the dark connected
+regions, measure each one's internal standard deviation and its separation from
+the ring just outside it, rank them. It was written, and it was deleted in the
+same session, twice over.
+
+The first version indexed a subsampled label map with full-resolution pixel
+coordinates and reported a standard deviation of 46.93 inside an `L < 24` mask —
+arithmetically impossible, since nothing in that range can vary that far. It had
+been measuring outside its own mask, and it said so with complete confidence.
+
+The second version fixed the indexing and then found nothing at all, on the
+frame where the panels are the subject. The cause is the rule meant to remove the
+nuisance: components touching the frame edge are background. The panels touch
+the sky along their top edge, so 4-connectivity folds them into the sky
+component and the rule then discards them. **The rule built to remove noise
+removed exactly the signal** — a dark object merging into the sky is the failure
+mode being hunted, not an artefact.
+
+Neither version passed the only check that matters: neither was shown the known
+positive. A tool that reports confident verdicts about surfaces it is not
+measuring is worse than no tool, and the defect was found by looking at a frame
+in the first place.
 
 ### Assets degrade, they do not break
 
