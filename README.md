@@ -3658,6 +3658,61 @@ positive. A tool that reports confident verdicts about surfaces it is not
 measuring is worse than no tool, and the defect was found by looking at a frame
 in the first place.
 
+### A landmark the player can stand inside, and why it is not fixed yet
+
+Found by looking at a survey frame rather than by measuring one. Standing at
+(-120, -96) — twelve units from the Cartographer's Terrace — the character is
+**not in the picture at all**. Not small, not dark: absent. The scene graph says
+it is there, and the pixels say it is not.
+
+The evidence chain, each link measured:
+
+- The character mesh reports `visible: true` and projects to screen (1298, 1168).
+  A 460×460 crop at 1:1 centred there is **pure sand**.
+- The `terrace` mesh is a **15.2-unit-radius** platform whose surface sits at
+  **y = 1.70** and whose base is at y = 0.50. The player at (-120, -96) is 12
+  units from its centre, so the terrace covers them.
+- The player's feet are at **y = 0**. They are 1.7 units below a surface that is
+  over their head.
+- The landmark collider for that island declares **radius 9**
+  (`landmarkRadii` in `Scene.tsx`), so nothing stops the player entering the
+  annulus between 9 and 15.2 — and teleporting to radius 12 lands exactly where
+  asked, un-pushed, which is the same proof in one number: collision considers
+  that spot free.
+
+So the file's own comment — *"Landmark footprints. Radii match the built
+structures"* — is not true, and the gap is not marginal. Measuring the built
+footprint of each landmark from its own vertices, in the height band a player
+could walk under (0.4–4.0), against the declared collider:
+
+| landmark | declared | built platform | surface y | uncovered band |
+| --- | --- | --- | --- | --- |
+| flow-foundry | 7 | 15.1 | 0.70 | 8.1 |
+| observers-mirrors | 7 | 13.2 | 0.80 | 6.2 |
+| cartographers-terrace | 9 | **15.2** | **1.70** | **6.2** |
+| adaptation-cloud-harbor | 7.5 | 12.8 | 1.60 | 5.3 |
+| memory-council-city | 9.5 | 14.7 | 2.90 | 5.2 |
+| valley-living-machines | 6.5 | 8.5 | 3.20 | 2.0 |
+| hub | 3.4 | 2.8 | 0.50 | none |
+
+Seven of the eight landmarks carry a raised surface wider than the collider that
+is supposed to keep the player out of it. The Cartographer's Terrace row is the
+one confirmed by pixels; the rest are read off geometry and have not been stood
+on.
+
+**Why this is not fixed here.** The obvious change is to raise each radius to its
+built footprint, and the obstacle to that is specific and unmeasured: the stage
+consoles are placed from `stagePositions`, their mesh names did not match the
+pattern used to find them, and enlarging a collider on an island whose puzzles
+sit in that annulus would strand the player outside their own puzzle. Widening a
+collider is safe when nothing is inside it and catastrophic when something is.
+That question has to be answered before the radii move, and it is a different
+measurement from the one this round performed.
+
+What this round did establish is that the character can vanish, that the cause
+is a collider that does not match the geometry it is guarding, and that the
+mismatch is systematic rather than a single typo.
+
 ### Assets degrade, they do not break
 
 `src/world/Models.tsx` loads every model through an error boundary and a
