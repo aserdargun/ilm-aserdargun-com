@@ -3774,6 +3774,14 @@ correct. The other two figures are the real argument: a third of the frame was
 dead flat and now a fifth is, and the cost is a fifth of a luma level on the
 whole image.
 
+`tools/flatness.py` is the instrument that found it, and it is kept because it
+was shown both answers: on the pre-fix frame it reports the canal's front face
+as **4.29% of the frame at std 0.03**, and on the post-fix frame that region is
+gone and only the sky remains at the same threshold. It deliberately does *not*
+auto-eliminate every dark flat region. The Observer's Mirrors panels read luma
+15–18, right inside the sky's range, and a rule that quietly dropped them would
+hide exactly the defect class it exists to find.
+
 ### Assets degrade, they do not break
 
 `src/world/Models.tsx` loads every model through an error boundary and a
