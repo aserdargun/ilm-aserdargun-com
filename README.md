@@ -3658,60 +3658,75 @@ positive. A tool that reports confident verdicts about surfaces it is not
 measuring is worse than no tool, and the defect was found by looking at a frame
 in the first place.
 
-### A landmark the player can stand inside, and why it is not fixed yet
+### A landmark the player could stand inside, and the measurement that fixed it
 
 Found by looking at a survey frame rather than by measuring one. Standing at
-(-120, -96) — twelve units from the Cartographer's Terrace — the character is
-**not in the picture at all**. Not small, not dark: absent. The scene graph says
-it is there, and the pixels say it is not.
+(-120, -96) — twelve units from the Cartographer's Terrace — the character was
+**not in the picture at all**. Not small, not dark: absent. The scene graph said
+it was there, and the pixels said it was not.
 
 The evidence chain, each link measured:
 
-- The character mesh reports `visible: true` and projects to screen (1298, 1168).
-  A 460×460 crop at 1:1 centred there is **pure sand**.
+- The character mesh reported `visible: true` and projected to screen (1298, 1168).
+  A 460×460 crop at 1:1 centred there was **pure sand** — RGB (184.6, 171.0,
+  147.1) at saturation 0.203, against 0.198 for the sand around it.
 - The `terrace` mesh is a **15.2-unit-radius** platform whose surface sits at
-  **y = 1.70** and whose base is at y = 0.50. The player at (-120, -96) is 12
-  units from its centre, so the terrace covers them.
-- The player's feet are at **y = 0**. They are 1.7 units below a surface that is
-  over their head.
-- The landmark collider for that island declares **radius 9**
-  (`landmarkRadii` in `Scene.tsx`), so nothing stops the player entering the
-  annulus between 9 and 15.2 — and teleporting to radius 12 lands exactly where
-  asked, un-pushed, which is the same proof in one number: collision considers
-  that spot free.
+  **y = 1.70** and whose base is at y = 0.50. The player at twelve units was
+  under it, with their head 1.7 units below the floor.
+- The landmark collider for that island declared **radius 9**
+  (`landmarkRadii`, now `LANDMARK_RADII`), so nothing stopped the player
+  entering the annulus between 9 and 15.2. Teleporting to radius 12 landed
+  exactly where asked, un-pushed — which is the same fact in one number:
+  collision considered the spot free.
 
-So the file's own comment — *"Landmark footprints. Radii match the built
-structures"* — is not true, and the gap is not marginal. Measuring the built
-footprint of each landmark from its own vertices, in the height band a player
-could walk under (0.4–4.0), against the declared collider:
+The comment above those numbers said *"Landmark footprints. Radii match the
+built structures"*, and it was false. Measuring each landmark from its own
+vertices in the height band a player can walk under (0.4–4.0), keeping only
+surfaces carrying real area rather than a beam's handful of points:
 
-| landmark | declared | built platform | surface y | uncovered band |
+| landmark | old | measured | object | vertices |
 | --- | --- | --- | --- | --- |
-| flow-foundry | 7 | 15.1 | 0.70 | 8.1 |
-| observers-mirrors | 7 | 13.2 | 0.80 | 6.2 |
-| cartographers-terrace | 9 | **15.2** | **1.70** | **6.2** |
-| adaptation-cloud-harbor | 7.5 | 12.8 | 1.60 | 5.3 |
-| memory-council-city | 9.5 | 14.7 | 2.90 | 5.2 |
-| valley-living-machines | 6.5 | 8.5 | 3.20 | 2.0 |
-| hub | 3.4 | 2.8 | 0.50 | none |
+| cartographers-terrace | 9 | **15.2** | terrace | 240 |
+| collective-gardens | 8 | 15.0 | terrace0 | 180 |
+| memory-council-city | 9.5 | 14.3 | podium_3 | 72 |
+| observers-mirrors | 7 | 13.2 | plinth001 | 72 |
+| valley-living-machines | 6.5 | 12.8 | pump | 432 |
 
-Seven of the eight landmarks carry a raised surface wider than the collider that
-is supposed to keep the player out of it. The Cartographer's Terrace row is the
-one confirmed by pixels; the rest are read off geometry and have not been stood
-on.
+The hub, the Flow Foundry and the Adaptation Workshop measured no raised
+platform in that band at all, so they keep the radii they had rather than being
+grown to a number nothing was measured against.
 
-**Why this is not fixed here.** The obvious change is to raise each radius to its
-built footprint, and the obstacle to that is specific and unmeasured: the stage
-consoles are placed from `stagePositions`, their mesh names did not match the
-pattern used to find them, and enlarging a collider on an island whose puzzles
-sit in that annulus would strand the player outside their own puzzle. Widening a
-collider is safe when nothing is inside it and catastrophic when something is.
-That question has to be answered before the radii move, and it is a different
-measurement from the one this round performed.
+**Widening a collider is safe until the island's own puzzle is inside it**, and
+that was checked rather than assumed. `buildStagePositions()` is
+`anchor + stage.offset`, so the console positions are plain data: every stage on
+all eight islands already sits outside these rings, the tightest by **0.03
+units** — the terrace consoles at 15.23 and 15.62 against a platform of 15.2.
+That 0.03 is also the cross-check on the measurement: the offset was clearly
+chosen to land just clear of the terrace, so the terrace really is 15.2 wide.
 
-What this round did establish is that the character can vanish, that the cause
-is a collider that does not match the geometry it is guarding, and that the
-mismatch is systematic rather than a single typo.
+After the change, the same teleports land outside, each at the collider plus a
+0.55-unit body:
+
+| landmark | asked | landed |
+| --- | --- | --- |
+| cartographers-terrace | 12 | 15.75 |
+| collective-gardens | 12 | 15.55 |
+| memory-council-city | 12 | 14.85 |
+| observers-mirrors | 10 | 13.75 |
+| valley-living-machines | 10 | 13.35 |
+
+The terrace frame now carries the character: the same box that held bare sand
+reads RGB (92.1, 78.0, 54.7) at saturation 0.478, and the closest console is
+**0.52** units away against an `INTERACT_RANGE` of 5.2 — reachable from where
+the collider now leaves the player.
+
+`tests/landmark-colliders.test.ts` pins all of it, and the radii moved to
+`src/world/landmark-colliders.ts` so a node test can import them at all:
+`Scene.tsx` touches `window` at module scope, and the numbers are the thing
+under test. Reverting the terrace to 9 fails *"covers every landmark that has a
+measured raised platform"*; pushing it to 16 fails *"leaves every stage console
+outside its island ring"* and names both stranded consoles. Both were run.
+
 
 ### Assets degrade, they do not break
 

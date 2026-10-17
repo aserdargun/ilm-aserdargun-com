@@ -52,6 +52,7 @@ import {
   preloadModels,
   type LocomotionState,
 } from './Models';
+import { LANDMARK_RADII } from './landmark-colliders';
 
 const INTERACT_RANGE = 5.2;
 
@@ -609,21 +610,8 @@ function WorldGeometry({
     clearColliders('landmarks');
     clearColliders('consoles');
 
-    // Landmark footprints. Radii match the built structures: the tree trunk,
-    // the loom frame, the council podium, the workshop, the terraces, the
-    // mirror plinth and the pump.
-    const landmarkRadii: Record<string, number> = {
-      hub: 3.4,
-      'cartographers-terrace': 9,
-      'flow-foundry': 7,
-      'memory-council-city': 9.5,
-      'adaptation-cloud-harbor': 7.5,
-      'collective-gardens': 8,
-      'observers-mirrors': 7,
-      'valley-living-machines': 6.5,
-    };
     for (const region of REGIONS) {
-      const radius = landmarkRadii[region.id] ?? 6;
+      const radius = LANDMARK_RADII[region.id] ?? 6;
       // One disc per landmark footprint. Inventing extra rings here would put
       // invisible walls in open ground, so the radius covers what is actually
       // built instead.
