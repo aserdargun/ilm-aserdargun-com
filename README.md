@@ -3127,6 +3127,28 @@ projection that reaches the horizon without a floor compresses the cloud to
 nothing in the last few degrees, which is exactly where the ridge sits and where
 aliasing would show.
 
+**The amplitude was then written at 0.5 without ever being swept** — the same
+mistake the ground macro shipped with, and worth recording as a pattern rather
+than as two coincidences. Re-swept against the real three-octave noise at 64-pixel
+lag horizontal autocorrelation, across three sky regions:
+
+| amplitude | autocorrelation at 64px | reading |
+| --- | --- | --- |
+| 0.50 | 0.568 | a ramp |
+| 0.95 | 0.481 | a pattern |
+| **1.50** | **0.471** | a pattern |
+
+The plain "horizontal neighbour difference" barely moved across that sweep — and
+that is the metric being misled, not the sky being flat. In a sky containing a
+tower, a HUD and a ridge, that statistic is set by the hard edges and says
+nothing about the clouds. The autocorrelation is the one that reads structure.
+
+Shimmer, three frames across a full pan at 1.5: **0.0000%** isolated pixels in
+all four bands including the horizon, which was the risk given that the
+projection compresses toward it. Above 1 the mix factor passes one and `mix()`
+extrapolates instead of clamping — linear, smooth across the cloud edge, and
+what lets the sky carry more than the term was budgeted for.
+
 ### The default device had never been looked at
 
 Every measurement in this section was taken on a 2596×1610 desktop frame. That is

@@ -105,6 +105,30 @@ const GROUND_NORMAL_SCALE = 2.2;
 const GROUND_NORMAL_SCALE_VECTOR = new THREE.Vector2(GROUND_NORMAL_SCALE, GROUND_NORMAL_SCALE);
 
 /**
+ * How far the cloud term is allowed to lift the sky.
+ *
+ * Written at 0.5 without ever sweeping it, which is the same mistake the ground
+ * macro amplitude was shipped with. Re-swept against the real three-octave noise
+ * — 0.50, 0.95, 1.50 — at 64-pixel-lag horizontal autocorrelation across three
+ * sky regions: **0.568 → 0.481 → 0.471**. Lower is better here: 0.6 is a ramp,
+ * below 0.5 is a pattern.
+ *
+ * The plain "horizontal neighbour difference" barely moved across the sweep, and
+ * that is the metric being misled rather than the sky being flat — in a sky that
+ * contains a tower, a HUD and a ridge, that statistic is set by the hard edges
+ * and says nothing about the clouds.
+ *
+ * Shimmer was re-checked rather than assumed: three frames across a full pan at
+ * 1.5 give 0.0000% isolated pixels in all four bands, the horizon included —
+ * which was the risk, since the projection compresses toward it.
+ *
+ * Above 1 the mix factor exceeds one, so `mix()` extrapolates rather than
+ * clamps. That is linear and smooth across the cloud edge, and it is what lets
+ * the sky carry more than the term was originally budgeted for.
+ */
+const SKY_CLOUD_AMPLITUDE = 1.5;
+
+/**
  * A vertical gradient dome.
  *
  * A flat background colour makes the world look like it is sitting inside a
@@ -226,7 +250,7 @@ export function SkyDome({ radius = 760 }: { radius?: number }) {
                 smoothstep(-0.02, 0.30, d.y) *
                 (1.0 - smoothstep(0.55, 0.98, d.y)) *
                 (0.35 + 0.65 * t);
-            colour = mix(colour, colour + uGlow * 0.55, cloud * mask * 0.5);
+            colour = mix(colour, colour + uGlow * 0.55, cloud * mask * ${SKY_CLOUD_AMPLITUDE.toFixed(2)});
 
             // A far ridge standing on the horizon.
             //
