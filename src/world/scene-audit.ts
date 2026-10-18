@@ -227,3 +227,192 @@ export function findMissingShadowCasters(root: THREE.Object3D): MissingCasterRep
   });
   return out.sort((a, b) => b.span * b.height - a.span * a.height);
 }
+/**
+ * A platform the player can stand *inside*.
+ *
+ * The one failure in this world that looks like the game has simply not loaded:
+ * the character mesh reports `visible`, projects to a real screen position, and
+ * the pixels there are bare ground. The player is between the disc and the
+ * terrace top, which is a metre or two of geometry with no hole in it to walk
+ * through.
+ *
+ * It happened twice for one reason. The landmark colliders are a hand-written
+ * table in `landmark-colliders.ts`, checked against one landmark's own meshes at
+ * a time; the Flow Foundry's canal belongs to the same island but to no group
+ * anyone was looking at, so its 15.1-unit slab sat behind a 7-unit ring. The
+ * check that finds it has to run over **the scene**, not over a group.
+ *
+ * The four thresholds separate "can swallow a 2.2-unit character" from ordinary
+ * scenery:
+ *
+ * * **base** near zero, because a platform that does not reach the ground is
+ *   something the player walks *under* — the loom's beams sit at 5.5 units and
+ *   have a footprint wider than the canal's.
+ * * **top** above 0.45 and below 6. Above 0.45 because anything shorter is a
+ *   kerb the player steps over; below 6 because a taller thing has a top to
+ *   stand on rather than a floor to disappear under.
+ * * **radius** by the 90th percentile of vertex distance from the mesh's own
+ *   centre, not by its bounding box. The bounding box of a 30-unit causeway is
+ *   30 units wide in every direction, and using it once reported the entire
+ *   bridge system as a platform.
+ */
+export const PLATFORM_BASE_MIN = -0.3;
+export const PLATFORM_BASE_MAX = 0.8;
+export const PLATFORM_TOP_MIN = 0.45;
+export const PLATFORM_TOP_MAX = 6;
+export const PLATFORM_MIN_RADIUS = 1.2;
+
+/** How far short of covered still counts as covered, in world units. */
+export const PLATFORM_COVERED_SLACK = 0.02;
+
+export interface UncoveredPlatformReport {
+  name: string;
+  x: number;
+  z: number;
+  /** 90th-percentile vertex distance from the mesh centre, in world units. */
+  radius: number;
+  /** Highest point, in world units. */
+  top: number;
+  /** Units of the footprint with no collider over them. */
+  uncoveredBy: number;
+}
+
+/**
+ * Lists surfaces tall enough to hide a standing player that no collider covers.
+ *
+ * Returns `[]` on a sound scene, which is the point: this is a standing check, so
+ * the next platform that is built past its ring is caught the day it lands rather
+ * than the day someone walks into it.
+ */
+export function findUncoveredPlatforms(
+  root: THREE.Object3D,
+  colliders: readonly { x: number; z: number; radius: number }[],
+  /**
+   * Causeway decks. They are walkable surfaces the player is meant to be
+   * standing on — `groundAt` returns the span's own height there — so no single
+   * island collider can or should cover them. Measured from the hub they read a
+   * 118-unit radius, which is how two dozen of them turned up in a list meant to
+   * find gaps between a collider and the thing it guards.
+   */
+  spans: readonly { from: [number, number]; to: [number, number]; width: number }[] = [],
+): UncoveredPlatformReport[] {
+  const out: UncoveredPlatformReport[] = [];
+
+  root.traverse((child) => {
+    const mesh = child as THREE.Mesh & { isInstancedMesh?: boolean };
+    if (!mesh.isMesh || mesh.isInstancedMesh) return;
+    const position = mesh.geometry?.getAttribute('position');
+    if (!position || position.count === 0) return;
+
+    // The player is not scenery. `NO_DETAIL_FLAG` is already the marker the
+    // scene uses for the character and its spark, and their meshes otherwise
+    // report as platforms sitting in the spawn with a twenty-unit footprint.
+    const material = mesh.material as { userData?: Record<string, unknown> } | undefined;
+    if (material?.userData?.ilmekNoDetail) return;
+
+    const m = mesh.matrixWorld.elements;
+    let base = Infinity;
+    let top = -Infinity;
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minZ = Infinity;
+    let maxZ = -Infinity;
+    for (let i = 0; i < position.count; i += 1) {
+      const x = position.getX(i);
+      const y = position.getY(i);
+      const z = position.getZ(i);
+      const wx = m[0] * x + m[4] * y + m[8] * z + m[12];
+      const wy = m[1] * x + m[5] * y + m[9] * z + m[13];
+      const wz = m[2] * x + m[6] * y + m[10] * z + m[14];
+      if (wy < base) base = wy;
+      if (wy > top) top = wy;
+      if (wx < minX) minX = wx;
+      if (wx > maxX) maxX = wx;
+      if (wz < minZ) minZ = wz;
+      if (wz > maxZ) maxZ = wz;
+    }
+    if (base < PLATFORM_BASE_MIN || base > PLATFORM_BASE_MAX) return;
+    if (top < PLATFORM_TOP_MIN || top > PLATFORM_TOP_MAX) return;
+    if (colliders.length === 0) return;
+
+    if (spans.length > 0) {
+      let onSpan = 0;
+      let sampled = 0;
+      const stride0 = Math.max(1, Math.floor(position.count / 200));
+      for (let i = 0; i < position.count; i += stride0) {
+        const x = position.getX(i);
+        const y = position.getY(i);
+        const z = position.getZ(i);
+        const wx = m[0] * x + m[4] * y + m[8] * z + m[12];
+        const wz = m[2] * x + m[6] * y + m[10] * z + m[14];
+        sampled += 1;
+        for (const sp of spans) {
+          const ax = sp.from[0];
+          const az = sp.from[1];
+          const bx = sp.to[0];
+          const bz = sp.to[1];
+          const dx = bx - ax;
+          const dz = bz - az;
+          const len2 = dx * dx + dz * dz;
+          const t = len2 > 0 ? Math.max(0, Math.min(1, ((wx - ax) * dx + (wz - az) * dz) / len2)) : 0;
+          const px = ax + dx * t;
+          const pz = az + dz * t;
+          if (Math.hypot(wx - px, wz - pz) <= sp.width / 2 + 1) {
+            onSpan += 1;
+            break;
+          }
+        }
+      }
+      if (sampled > 0 && onSpan / sampled > 0.8) return;
+    }
+
+    // The question is not how big the mesh is — it is whether any collider
+    // reaches past its edge. Measuring the radius about the mesh's own vertex
+    // centroid was the first attempt and it is wrong twice over: the centroid of
+    // a capped cylinder is not its axis (a 15-unit cylinder centred on the origin
+    // measured 0.405 off it), and a long causeway's footprint has no single centre
+    // worth naming. So every vertex is measured **from the collider** instead,
+    // and the covering collider is the one that comes closest.
+    //
+    // Sampling is strided rather than exhaustive, so the radius is an
+    // underestimate and a hair of slack is given back at the end; the shortfall
+    // printed is then a floor on the gap, not an estimate of it.
+    const stride = Math.max(1, Math.floor(position.count / 600));
+    let bestShortfall = Infinity;
+    let bestReach = 0;
+    for (const c of colliders) {
+      let reach = 0;
+      for (let i = 0; i < position.count; i += stride) {
+        const x = position.getX(i);
+        const y = position.getY(i);
+        const z = position.getZ(i);
+        const wx = m[0] * x + m[4] * y + m[8] * z + m[12];
+        const wz = m[2] * x + m[6] * y + m[10] * z + m[14];
+        const d = Math.hypot(wx - c.x, wz - c.z);
+        if (d > reach) reach = d;
+      }
+      const shortfall = reach * (position.count / (Math.ceil(position.count / stride) * stride)) - c.radius;
+      if (shortfall < bestShortfall) {
+        bestShortfall = shortfall;
+        bestReach = reach * (position.count / (Math.ceil(position.count / stride) * stride));
+      }
+    }
+    // 0.02 units is under a centimetre at character scale, and it absorbs the
+    // float error that otherwise reports the terrace and the mirror plinth —
+    // both covered to the last decimal — as uncovered.
+    if (!Number.isFinite(bestShortfall) || bestShortfall <= PLATFORM_COVERED_SLACK) return;
+
+    out.push({
+      name: mesh.name || mesh.type,
+      x: Math.round((minX + maxX) / 2),
+      z: Math.round((minZ + maxZ) / 2),
+      // Longest distance from the covering collider's centre, so the two numbers
+      // are read against the same centre.
+      radius: Math.round(bestReach * 100) / 100,
+      top: Math.round(top * 100) / 100,
+      uncoveredBy: Math.round(bestShortfall * 100) / 100,
+    });
+  });
+
+  return out.sort((a, b) => b.uncoveredBy - a.uncoveredBy);
+}

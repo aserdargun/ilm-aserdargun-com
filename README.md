@@ -3926,6 +3926,45 @@ the group you are fixing is not the same as measuring the world.** A collider
 list is a hand-written summary of a scene that is built elsewhere, and anything
 the summary forgot is invisible until something tries to walk into it.
 
+### A standing check, because the canal was in a frame the whole time
+
+The canal was found by measuring one island's own meshes. That is a per-group
+measurement, and it does not stay fixed: the next thing built on that island has
+nothing to do with the group it was checked against.
+
+`findUncoveredPlatforms` in `scene-audit.ts` runs over **the scene** instead,
+alongside `findPiledModels`, `findOrphanShadowCasters` and
+`findMissingShadowCasters`, and is exposed as `__ilm.uncoveredPlatforms()`. It
+classifies a mesh as a walkable platform — base within 0.8 of the floor, top
+between 0.45 and 6, footprint over 1.2 units — and asks the only question that
+matters: **does any collider reach past its edge?**
+
+It reports `[]` on the shipped world. Getting there took three corrections, all
+of them the audit being wrong rather than the scene:
+
+- It first measured each platform's radius about **its own vertex centroid**,
+  which is not its axis: a 15-unit cylinder centred on the origin measured its
+  centre 0.405 units off. Every vertex is now measured **from the collider**,
+  which is the thing being asked about.
+- It then reported **40 platforms** on a sound scene. Twenty-four were the
+  causeway decks, which the player is meant to be standing on and which no single
+  island collider could ever cover — `groundAt` returns the span's own height
+  there — and eight were the **player's own meshes**, the mage and her spark,
+  which carry `NO_DETAIL_FLAG` precisely so the scene can tell them apart.
+- Exact coverage was reported as uncovered, because `15.2 - 15.2` is not quite
+  zero in floating point. `PLATFORM_COVERED_SLACK` is 0.02 units, under a
+  centimetre at character scale.
+
+What it found last: the valley's `pump_3`, uncovered by **0.2** units — twenty
+centimetres of a 1.2-tall platform that the player could stand inside. Small, and
+exactly the thing this is for. The valley's radius went 12.8 → 13.1.
+
+Seven tests pin the audit, including the canal itself and the three classes it
+must ignore. They failed three times on the way: once because the fixture put a
+cylinder's centre at the origin instead of on the floor, once because the
+measurement was taken about the wrong point, and once because a radius-2 platform
+*is* inside a radius-3 collider and the test had assumed otherwise.
+
 ### Assets degrade, they do not break
 
 `src/world/Models.tsx` loads every model through an error boundary and a

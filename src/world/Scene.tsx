@@ -36,7 +36,14 @@ import {
 import { PropScatter, preloadProps } from './Props';
 import { Lighting, type ShadowRegion } from './Lighting';
 import { applySurfaceDetail, useSurfaceDetailMap } from './detail';
-import { findMissingShadowCasters, findOrphanShadowCasters, findPiledModels, isGltfRoot, placedModels } from './scene-audit';
+import {
+  findMissingShadowCasters,
+  findOrphanShadowCasters,
+  findPiledModels,
+  findUncoveredPlatforms,
+  isGltfRoot,
+  placedModels,
+} from './scene-audit';
 import { PostProcessing } from './PostProcessing';
 import { HORIZON_COLOR, SkyDome, TerrainDisc } from './Atmosphere';
 import { regionAt } from './Player';
@@ -343,6 +350,13 @@ function SceneContents() {
         // Reports the seven bridge decks and two canal steps on the shipped world,
         // every one a deliberate exception. Empty of surprises is the goal.
         missingCasters: () => findMissingShadowCasters(scene),
+        // The other direction again: a platform the player can stand inside
+        // because no collider reaches past its edge. The character's mesh reports
+        // visible and projects to a screen position where the pixels are bare
+        // ground — the terrace, and then the canal, which is on the same island
+        // but belongs to no group the earlier sweep was looking at. Empty on a
+        // sound scene.
+        uncoveredPlatforms: () => findUncoveredPlatforms(scene, getColliders(), buildBridgeSpans()),
         // Deepest overlap between the player and any collider; should stay <= 0.
         // What is holding the player: the nearest collider, and how far the
         // player is from walkable ground.

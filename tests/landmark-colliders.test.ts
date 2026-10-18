@@ -41,7 +41,7 @@ const BUILT_PLATFORM: Record<string, number | null> = {
   'adaptation-cloud-harbor': null,
   'collective-gardens': 15,
   'observers-mirrors': 13.2,
-  'valley-living-machines': 12.8,
+  'valley-living-machines': 13.0,
 };
 
 /** `buildStagePositions()` is `anchor + stage.offset`, so this is its arithmetic. */

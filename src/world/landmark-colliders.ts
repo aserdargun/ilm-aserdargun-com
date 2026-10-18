@@ -21,7 +21,7 @@
 // | collective-gardens | 8 | 15.0 | terrace0 | 180 |
 // | memory-council-city | 9.5 | 14.3 | podium_3 | 72 |
 // | observers-mirrors | 7 | 13.2 | plinth001 | 72 |
-// | valley-living-machines | 6.5 | 12.8 | pump | 432 |
+// | valley-living-machines | 6.5 | 13.1 | pump_3 | 432 |
 //
 // The Flow Foundry's is the odd one out, and a later sweep found it. Classifying
 // **every mesh in the scene**, not the landmark group — base within 0.8 of the
@@ -62,5 +62,5 @@ export const LANDMARK_RADII: Record<string, number> = {
   'adaptation-cloud-harbor': 7.5,
   'collective-gardens': 15,
   'observers-mirrors': 13.2,
-  'valley-living-machines': 12.8,
+  'valley-living-machines': 13.1,
 };
