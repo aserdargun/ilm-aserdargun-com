@@ -347,8 +347,18 @@ function SceneContents() {
         // The other direction: something standing on the ground that casts nothing,
         // and so is not attached to it. The bridge rails were one — no shadow, so
         // a turquoise stripe painted on the deck rather than a raised thing on it.
-        // Reports the seven bridge decks and two canal steps on the shipped world,
-        // every one a deliberate exception. Empty of surprises is the goal.
+        //
+        // **Three** on the shipped world at the high tier, re-measured rather than
+        // repeated: the hub's mast (bottom 1, 24 tall, 0.6 across) and two hub
+        // steps at (0, 7) and (0, 15), each 0.4 tall and 3.8 across. This comment
+        // used to say seven bridge decks and two canal steps; neither the count
+        // nor the identity survived — the decks cast now, and the two small ones
+        // are on the hub, not beside the canal at (0, -156). Empty of surprises
+        // is the goal, and a standing figure in a comment is not evidence.
+        //
+        // Measured at the high tier. At the low tier the sun casts no shadow at
+        // all (`shadowsOn = quality !== 'low'`), and every one of these is a
+        // symptom of that rather than of the mesh.
         missingCasters: () => findMissingShadowCasters(scene),
         // The other direction again: a platform the player can stand inside
         // because no collider reaches past its edge. The character's mesh reports

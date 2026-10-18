@@ -2767,13 +2767,25 @@ looking at is **not attached to the ground at all**, because the tie is missing 
 it had no home until now. `findMissingShadowCasters` in `src/world/scene-audit.ts`
 asks it, and `__ilm.missingCasters()` exposes it beside the orphan-caster screen.
 
-It reports ten meshes on the shipped world, and all ten are deliberate exceptions:
+**It reports three on the shipped world**, re-measured at the high tier rather
+than repeated:
 
 | reported | why it is right |
 | --- | --- |
-| 7 bridge decks | half a unit thick over open sky, nothing underneath to receive |
-| 2 canal steps | 0.4 tall; the shadow would be a hairline |
-| 1 synthesis-tree column | a 24-unit turquoise light shaft at the hub — a beam, not an object |
+| 1 hub mast | a 24-unit turquoise light shaft — a beam, not an object |
+| 2 hub steps, at (0, 7) and (0, 15) | 0.4 tall and 3.8 across; the shadow would be a hairline |
+
+This table used to hold ten rows, and both halves of that were wrong. The seven
+bridge decks stopped being reported when the decks began casting, and the two
+small ones were never beside the canal — they are on the hub, 163 units from it.
+The one entry that was right is still right: the 24-unit turquoise shaft is a
+beam, not something standing on the sand.
+
+Two things about re-measuring it. The audit only means anything at the high tier:
+at the low tier the sun casts no shadow at all (`shadowsOn = quality !== 'low'`),
+and the same three entries appear as a symptom of that rather than of any mesh.
+And a standing figure in a prose table is not evidence, so the counts in it are
+now the ones the scene actually reports.
 
 The band is a **full unit** above the ground rather than half, and that is a finding
 rather than a guess: a rail is two boxes. The turquoise post stands on the deck and
