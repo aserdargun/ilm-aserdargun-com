@@ -3885,6 +3885,47 @@ about per-fragment texture cost and say nothing about this, which is why it went
 unnoticed. The number to argue with, if someone wants the argument, is 6.08 luma
 and a crowd of floating rocks.
 
+### The sweep that had to include the whole scene, not just the landmarks
+
+The five radii above came from looking at each landmark's own meshes. That is a
+per-group measurement, and it missed one: the Flow Foundry's **canal** is a
+30-unit water slab, `beam_low_3`, 0.70 tall, footprint **15.1**, standing on its
+own island with a collider of **7**. Teleporting to twelve units from its centre
+landed exactly where it was asked to and left the mage **neck-deep in the canal**
+with the spark beside her — the same class of failure as the terrace, in a frame
+that had been sitting in `.shots/` since it was captured.
+
+So the measurement was redone over the scene rather than over the groups. Every
+mesh was classified as a walkable platform — base within 0.8 of the floor, top
+between 0.45 and 6, tall enough to cover the feet, radius by the 90th percentile
+of its own vertex distances rather than its bounding box — and each one's radius
+checked against the collider that should guard it:
+
+- **39** platforms found, **7** covered by a collider, **1** gap wide enough to
+  matter. `terrace` and `plinth001` also flagged, both by 0.04 units, which is
+  percentile-versus-max noise rather than a hole a player can slip through.
+- **5** more flagged on the hub: radius-3.5 pads 0.60 tall, sitting 34 units from
+  the centre — the bridge landing pads, a step at the shoreline, not something
+  that swallows a 2.2-unit character.
+
+With the radius at 15.1, the same teleports now land outside:
+
+| asked | lands at |
+| --- | --- |
+| 12 (was inside the canal) | **15.65** |
+| 10 (was inside the canal) | **15.65** |
+| 20 (already outside) | 20 |
+
+Nothing the player needs is inside it: the Flow Foundry's consoles stand at 18.44
+and 18.87, and the bridge lands at 33. `tests/landmark-colliders.test.ts` fails
+with *"covers every landmark that has a measured raised platform"* when the
+radius goes back to 7, which was run.
+
+The general point is the one the terrace should have taught first: **measuring
+the group you are fixing is not the same as measuring the world.** A collider
+list is a hand-written summary of a scene that is built elsewhere, and anything
+the summary forgot is invisible until something tries to walk into it.
+
 ### Assets degrade, they do not break
 
 `src/world/Models.tsx` loads every model through an error boundary and a

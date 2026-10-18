@@ -36,7 +36,7 @@ import { LANDMARK_RADII } from '../src/world/landmark-colliders';
 const BUILT_PLATFORM: Record<string, number | null> = {
   hub: null,
   'cartographers-terrace': 15.2,
-  'flow-foundry': null,
+  'flow-foundry': 15.1,
   'memory-council-city': 14.3,
   'adaptation-cloud-harbor': null,
   'collective-gardens': 15,

@@ -23,6 +23,16 @@
 // | observers-mirrors | 7 | 13.2 | plinth001 | 72 |
 // | valley-living-machines | 6.5 | 12.8 | pump | 432 |
 //
+// The Flow Foundry's is the odd one out, and a later sweep found it. Classifying
+// **every mesh in the scene**, not the landmark group — base within 0.8 of the
+// floor, top between 0.45 and 6, tall enough to cover the feet — gave 39
+// walkable platforms; seven were covered by a collider and one was not.
+// `beam_low_3` is the canal: a 30-unit water slab, 0.70 tall, footprint **15.1**,
+// against a collider of 7. Teleporting to twelve units from its centre landed
+// exactly where it was asked to and left the mage standing **neck-deep in the
+// canal** with the spark beside her — the same class of failure as the terrace,
+// in a frame that had been sitting in `.shots/` since it was captured.
+//
 // The Cartographer's Terrace is the one confirmed by pixels rather than by
 // geometry. Its platform surface sits at y=1.70 while the player's feet are
 // at y=0, so between radius 9 and radius 15.2 there was a ring the player
@@ -47,7 +57,7 @@
 export const LANDMARK_RADII: Record<string, number> = {
   hub: 3.4,
   'cartographers-terrace': 15.2,
-  'flow-foundry': 7,
+  'flow-foundry': 15.1,
   'memory-council-city': 14.3,
   'adaptation-cloud-harbor': 7.5,
   'collective-gardens': 15,
