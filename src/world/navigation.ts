@@ -253,3 +253,112 @@ export function distanceToWalkable(x: number, z: number): number {
   clampToWalkable(x, z, probe);
   return Math.hypot(probe.x - x, probe.z - z);
 }
+/**
+ * A stage console the player cannot walk up to.
+ *
+ * The landmark colliders were widened twice in one session — the terrace, the
+ * canal — and both times the widened ring was checked against the consoles by
+ * hand and found clear. That is a per-island reading of a per-island number, and
+ * the check existed nowhere: nothing would have failed if a radius had swallowed
+ * the console on the next island along.
+ *
+ * The question is narrow and decidable. Interaction needs the player within
+ * `INTERACT_RANGE` of the console, standing on walkable ground and outside every
+ * collider by the width of their own body. If no such point exists, the stage is
+ * unreachable — not hard, not awkward, **unreachable**, and the puzzle it holds
+ * cannot be started.
+ */
+export const PLAYER_RADIUS = 0.55;
+
+/** Angles tried around a console at each radius. Even, so no gap is missed twice. */
+export const REACH_ANGLES = 48;
+
+export interface UnreachableConsoleReport {
+  id: string;
+  x: number;
+  z: number;
+  /** The console's own collider radius, which the ring starts outside of. */
+  consoleRadius: number;
+  /** Every collider within `interactRange` of it, and how far short each falls. */
+  blockers: { owner: string; radius: number; shortfall: number }[];
+  /** True when the ring is blocked by colliders rather than by open sky. */
+  blockedByColliders: boolean;
+}
+
+/** Distance from a point to a collider's edge, positive outside. */
+function colliderGap(
+  x: number,
+  z: number,
+  colliders: readonly { x: number; z: number; radius: number; owner?: string }[],
+): { gap: number; owner: string; radius: number } | null {
+  let best: { gap: number; owner: string; radius: number } | null = null;
+  for (const c of colliders) {
+    const gap = Math.hypot(x - c.x, z - c.z) - c.radius - PLAYER_RADIUS;
+    if (!best || gap < best.gap) best = { gap, owner: c.owner ?? '?', radius: c.radius };
+  }
+  return best;
+}
+
+/**
+ * Lists the consoles with no reachable standing point inside `interactRange`.
+ *
+ * Returns `[]` on a sound world, which is the point: it is a standing check, so
+ * the next collider that is widened past a stage says so on the day it lands.
+ */
+export function findUnreachableConsoles(
+  consoles: readonly { id: string; x: number; z: number; radius: number }[],
+  colliders: readonly { x: number; z: number; radius: number; owner?: string }[],
+  interactRange: number,
+): UnreachableConsoleReport[] {
+  const out: UnreachableConsoleReport[] = [];
+
+  for (const console_ of consoles) {
+    const from = console_.radius + PLAYER_RADIUS + 0.05;
+    let reachable = false;
+
+    for (let r = from; r <= interactRange && !reachable; r += 0.15) {
+      for (let a = 0; a < REACH_ANGLES; a += 1) {
+        const t = (a / REACH_ANGLES) * Math.PI * 2;
+        const x = console_.x + Math.cos(t) * r;
+        const z = console_.z + Math.sin(t) * r;
+        const near = colliderGap(x, z, colliders);
+        if (near && near.gap < 0) continue;   // inside something
+        if (!isWalkable(x, z)) continue;        // off the islands and the spans
+        reachable = true;
+        break;
+      }
+    }
+    if (reachable) continue;
+
+    // Nothing free inside the range: say what is sitting there instead.
+    //
+    // `blockedByColliders` has to be decided against each collider's **own**
+    // position. Measuring from the world origin — which is what the first
+    // version did — says a console 163 units from the origin is inside anything
+    // it is near, and the flag came out false for a console a ring had plainly
+    // swallowed.
+    const near = colliders
+      .map((c) => ({ c, shortfall: Math.hypot(console_.x - c.x, console_.z - c.z) - c.radius }))
+      .filter((e) => e.shortfall < interactRange)
+      .sort((a, b) => a.shortfall - b.shortfall);
+
+    const blockers = near.map((e) => ({
+      owner: e.c.owner ?? '?',
+      radius: e.c.radius,
+      shortfall: Math.round(e.shortfall * 100) / 100,
+    }));
+
+    const openSky = near.length === 0;
+
+    out.push({
+      id: console_.id,
+      x: console_.x,
+      z: console_.z,
+      consoleRadius: console_.radius,
+      blockers,
+      blockedByColliders: !openSky,
+    });
+  }
+
+  return out;
+}

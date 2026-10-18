@@ -3977,6 +3977,42 @@ cylinder's centre at the origin instead of on the floor, once because the
 measurement was taken about the wrong point, and once because a radius-2 platform
 *is* inside a radius-3 collider and the test had assumed otherwise.
 
+### A stage the player cannot start, which nothing was checking for
+
+The landmark rings were widened twice in one session — the terrace, then the
+canal — and both times the widened radius was held against the console offsets
+by hand and found clear. That is a per-island reading of a per-island number,
+performed by the person who had just changed the number. The check existed
+nowhere, so nothing would have failed if the next island's ring had swallowed
+its own puzzle.
+
+`findUnreachableConsoles` in `navigation.ts` asks the decidable version of the
+question: interaction needs a standing point within `INTERACT_RANGE` (5.2) of
+the console that is on walkable ground **and** outside every collider by the
+width of the player's own body (0.55). If no such point exists, the stage cannot
+be opened at all. It is exposed as `__ilm.unreachableConsoles()` and reports
+`[]` on the shipped world.
+
+It is proved both ways. On the shipped table it is silent; widening
+`flow-foundry` from 15.1 to **24** — which puts its consoles, at 18.44 and 18.87
+from the centre, inside the ring and leaves the nearest standing point 6.11 away,
+past the reach — makes it report every stage on that island and name the ring as
+the cause. Four tests drive the real collider table and the real stage offsets,
+because the failure is exactly that those two live in different files and nothing
+compared them.
+
+Two things it got wrong on the way, both mine:
+
+- `blockedByColliders` measured each collider from the **world origin** instead
+  of from itself. A console 163 units from the origin was judged inside whatever
+  it happened to be near, and the flag came back false for a console a ring had
+  plainly swallowed — so the audit could report the console and then decline to
+  say why.
+- One of its tests asserted that a closed region is not walkable. It is. Every
+  island disc is always walkable — only the **bridge corridors** are gated on the
+  restored set, because a closed island is reachable-free, not unwalkable. The
+  test was checking a contract the module does not have, and the code was right.
+
 ### Assets degrade, they do not break
 
 `src/world/Models.tsx` loads every model through an error boundary and a

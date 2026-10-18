@@ -46,6 +46,7 @@ import {
 } from './scene-audit';
 import { PostProcessing } from './PostProcessing';
 import { HORIZON_COLOR, SkyDome, TerrainDisc } from './Atmosphere';
+import { findUnreachableConsoles } from './navigation';
 import { regionAt } from './Player';
 import { input } from '../game/input';
 import { audio, useSparkAudio } from '../game/audio';
@@ -367,6 +368,21 @@ function SceneContents() {
         // but belongs to no group the earlier sweep was looking at. Empty on a
         // sound scene.
         uncoveredPlatforms: () => findUncoveredPlatforms(scene, getColliders(), buildBridgeSpans()),
+        // A console with no standing point inside INTERACT_RANGE that is also
+        // outside every collider is a stage the player cannot start. Both
+        // landmark rings were widened in one session and both were checked by
+        // hand; this is the check that would have done it for the next island.
+        unreachableConsoles: () =>
+          findUnreachableConsoles(
+            stagePositions.map((s2) => ({
+              id: s2.id,
+              x: s2.position[0],
+              z: s2.position[2],
+              radius: 1.9,
+            })),
+            getColliders(),
+            INTERACT_RANGE,
+          ),
         // Deepest overlap between the player and any collider; should stay <= 0.
         // What is holding the player: the nearest collider, and how far the
         // player is from walkable ground.
