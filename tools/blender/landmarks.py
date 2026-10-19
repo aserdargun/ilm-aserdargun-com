@@ -135,8 +135,30 @@ def build_synthesis_tree():
         rv, rf = torus(major=r, minor=0.11, z=z, major_segments=28, minor_segments=6)
         parts.append(new_mesh(f"loomring{i}", rv, rf, ["copper"]))
 
-    # Crossbeam that the tapestry hangs from.
-    parts.append(box("crossbeam", (0.0, 0.0, 20.4), (52.0, 0.7, 0.7), ["copper_dark"]))
+    # No crossbeam here.
+    #
+    # It used to be here: a 52-unit bar at the canopy's height, 20.4 up. The
+    # tapestry hangs from a beam of exactly that size and that position, and
+    # the tapestry is drawn in code now — `UnfinishedTapestry` in
+    # `World.tsx` puts its own beam at (0, 20.4, 0) with the same 52 × 0.7 ×
+    # 0.7. So the bar was drawn twice, in the same place, and the two copies
+    # z-fought.
+    #
+    # It was also the only thing here that still cast. The tapestry's
+    # procedural copy was taken out of the shadow pass years ago, because it
+    # dropped a hard, fifty-percent-dark band straight across the middle of
+    # the hub. The copy in this model was never taken out, so the band never
+    # went: measured at the hub, the band across the sand read 94.9 luma with
+    # it and 132.6 without, at the same camera.
+    #
+    # And it was the only oversized box in this file, and it stretched the
+    # tree's bounding box to three times the width of its canopy, so the
+    # preview render framed the whole tree into a corner of the frame.
+    #
+    # (The coordinates read as `centre = (x, y, z)` with z as the height,
+    # because this project uses a game-like convention inside Blender rather
+    # than Blender's own Z-up one. The glTF exporter's rotation then puts
+    # that height into glTF's y, which is where the game reads it.)
 
     tree = join_objects(parts, "synthesis_tree")
     shade_flat(tree)

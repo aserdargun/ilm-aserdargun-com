@@ -572,6 +572,46 @@ The sand moved by 0.02%, which is nothing, and the lens moved by 40%. The
 lenses now reflect the sky in one and the sand in another, which is what a
 mirror does.
 
+### The tree had a beam the tapestry already draws
+
+The Synthesis Tree carried a 52-unit crossbeam at the canopy's height, 20.4
+up. The tapestry hangs from a beam of exactly that size and that position —
+and the tapestry is drawn in code now, so `UnfinishedTapestry` in
+`World.tsx` puts its **own** beam at `(0, 20.4, 0)`, the same
+`52 × 0.7 × 0.7`. The bar was drawn twice, in the same place, and the two
+copies z-fought.
+
+The shadow is the part that mattered. The tapestry's procedural copy was
+taken out of the shadow pass long ago, because it "dropped a hard,
+fifty-percent-dark band straight across the middle of the hub, eight units
+past wherever the player was standing". **The copy inside the tree model
+was never taken out**, so the band never went. Measured on the running
+build at one camera, with the tree's GLB swapped and nothing else changed:
+
+| | the band across the sand |
+| --- | --- |
+| with the model's beam | 94.9 luma |
+| without it | **132.6 luma** |
+
+That is the band the tapestry's own fix was supposed to have removed, still
+there — and the first thing to look for is *where it comes from*, not
+whether the thing you fixed casts.
+
+The model also stops carrying a 52-unit box that stretched its bounding box
+to three times the width of its canopy, which is why
+`tools/blender/preview/synthesis_tree.png` used to frame the whole tree into
+a corner of the picture. The tree now reads as a tree: trunk, buttress roots,
+copper loom rings, a canopy of ceramic plates.
+
+**The coordinates read wrong and were not wrong.** `box()` takes
+`centre = (x, y, z)` and this file puts the height in the third slot,
+because the project uses a game-like convention inside Blender rather than
+Blender's own Z-up one; the glTF exporter's rotation then carries that
+height into glTF's `y`. So `(0.0, 0.0, 20.4)` is a bar 20.4 **up**, not 20.4
+north. Reading it the other way round cost a detour, and the way out was to
+read the exported vertices rather than the source: the built model's bounds
+said `x -26..26, y 0..20.75, z -2.36..2.36`, and the answer was in there.
+
 ### Measuring the running game without an MCP browser
 
 `tools/cdp.mjs` drives a headless Chrome over the DevTools protocol with no
