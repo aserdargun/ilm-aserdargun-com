@@ -4055,10 +4055,11 @@ boundary of what has been looked at.
 **Looked at, frame by frame:** all eight islands from a standing position
 verified after settling, at a consistent fraction of each island's own radius;
 the hub causeway and the middle of a bridge span, which is the connective tissue
-between islands and had never been framed at all; and all three quality tiers —
-the high tier by everything above, the low tier by teleporting the renderer's
-shadow flag off and measuring what disappeared, and the medium tier by a
-controlled pair per tier.
+between islands and had never been framed at all; the hub's opening console at
+reading distance, which every player sees in the first ten seconds; and all
+three quality tiers — the high tier by everything above, the low tier by
+teleporting the renderer's shadow flag off and measuring what disappeared, and
+the medium tier by a controlled pair per tier.
 
 **Checked by standing audit, all silent on the shipped world:** piled models,
 orphan shadow casters, missing shadow casters, platforms no collider reaches
@@ -4075,9 +4076,19 @@ texture.
 **Looked at and found nothing:** the medium tier, which is the high tier with the
 bloom at 0.42 instead of 0.62; the bridge span, where the character's shadow
 lands on the deck and the copper strip, the stone walkways and the turquoise
-edges all read; and the Valley of Living Machines, whose darkness turned out to
-be its authored albedo seen through an sRGB measurement that understated it by
-nearly a factor of two.
+edges all read; the hub's opening console, whose copper ring, crystal and tree
+trunk carry the first thing every player sees; and the Valley of Living
+Machines, whose darkness turned out to be its authored albedo seen through an
+sRGB measurement that understated it by nearly a factor of two.
+
+The console frame is also where the eye was wrong twice in a row, which is worth
+recording as its own kind of result. The turquoise carpet the player stands on
+reads as a hard-edged painted stripe, and picking pixel boxes for it kept landing
+on sand, on the character, and once on a patch of near-black luma 15 — the
+displayed frame is scaled, and coordinates guessed off it are not coordinates.
+Taking every turquoise pixel instead of a box in one of them: **5.63% of the
+frame, mean luma 137.79, standard deviation 20.75**, against the 0.035 the canal
+used to read at. The stripe is not flat, and it never was.
 
 **Not looked at, and honestly open:** the low tier's missing contact shadows,
 which is a real deficiency measured at 6.08 luma of shadow and a crowd of
