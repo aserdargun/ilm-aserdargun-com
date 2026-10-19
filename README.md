@@ -4047,6 +4047,44 @@ be written: a missing post chain on a middle setting would be exactly the kind o
 defect the sweeps have been finding, and this one turned out to be a sentence in
 a comment.
 
+### What the sweep has now covered, and where it stopped finding things
+
+Written as a map rather than a result, because the useful thing to record is the
+boundary of what has been looked at.
+
+**Looked at, frame by frame:** all eight islands from a standing position
+verified after settling, at a consistent fraction of each island's own radius;
+the hub causeway and the middle of a bridge span, which is the connective tissue
+between islands and had never been framed at all; and all three quality tiers —
+the high tier by everything above, the low tier by teleporting the renderer's
+shadow flag off and measuring what disappeared, and the medium tier by a
+controlled pair per tier.
+
+**Checked by standing audit, all silent on the shipped world:** piled models,
+orphan shadow casters, missing shadow casters, platforms no collider reaches
+past, and consoles with no reachable standing point inside `INTERACT_RANGE`.
+Every one was proved on a known positive first and is a dev hook, so a test in
+CI cannot run them — the scene graph and the GLBs are not available in node.
+What CI *can* check, the landmark radii against the stage offsets, it does.
+
+**Found and fixed:** five landmarks whose rings were narrower than the platforms
+they guard, a canal that put the player neck-deep in water, a Mirrors panel that
+read as a hole in the frame, and a canal surface that no material rule could
+texture.
+
+**Looked at and found nothing:** the medium tier, which is the high tier with the
+bloom at 0.42 instead of 0.62; the bridge span, where the character's shadow
+lands on the deck and the copper strip, the stone walkways and the turquoise
+edges all read; and the Valley of Living Machines, whose darkness turned out to
+be its authored albedo seen through an sRGB measurement that understated it by
+nearly a factor of two.
+
+**Not looked at, and honestly open:** the low tier's missing contact shadows,
+which is a real deficiency measured at 6.08 luma of shadow and a crowd of
+floating rocks, left alone because the reason the tier drops them is that a 2048
+map is not affordable on a phone, and nothing here can price a phone's frame.
+That is a decision about cost, and it wants someone who can measure one.
+
 ### Assets degrade, they do not break
 
 `src/world/Models.tsx` loads every model through an error boundary and a
