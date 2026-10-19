@@ -4073,6 +4073,23 @@ they guard, a canal that put the player neck-deep in water, a Mirrors panel that
 read as a hole in the frame, and a canal surface that no material rule could
 texture.
 
+**Played, once, end to end.** Every check above is a static one, and the
+collider changes were the kind that could have stranded a stage. So: new game from
+the pause menu, walk the approach to the opening console, and watch the chain
+resolve. It does. `Yeni Oyun` resets the save from **27 stages and 7 regions to
+zero** and the objective falls to `r0-opening`; walking in puts that console at
+**1.0 units**, inside the 5.2 reach, and it is the interaction target. On a
+finished save the same approach falls through to `finale-synthesis-tree` at 6.0,
+and only lights up once the player is inside the reach — which is the completed
+stages being skipped and the next objective being picked up, both working.
+
+Two things that looked like bugs here were not. A first attempt reported that
+`Yeni Oyun` did not reset anything, because the run was sitting on the settings
+screen and neither button it looked for existed on it; the pause menu is behind
+Escape, not behind the pause button. And `r0-opening` appeared as the target from
+7.45 units on a fresh save, past the 5.2 reach, because that distance was to
+the **finale's** console at (0, 6) and not to this one's at (0, 11).
+
 **Looked at and found nothing:** the medium tier, which is the high tier with the
 bloom at 0.42 instead of 0.62; the bridge span, where the character's shadow
 lands on the deck and the copper strip, the stone walkways and the turquoise
