@@ -367,6 +367,30 @@ export function Landmark({
 }) {
   const [x, , z] = region.anchor;
 
+  /**
+   * A probe of its own for the Observer's Mirrors.
+   *
+   * The scene's probe is the world's ambient fill, and the README's own
+   * measurement is that the probe — not the hemisphere light — is what
+   * flattens the world; it is scaled to 0.6 of the exposure for that reason.
+   * Turning the sea of mist on for the whole scene lifted the sand by 3.2%
+   * and the whole frame by 4.3%, which is the wrong trade for a backdrop.
+   *
+   * The mirrors are the one thing that *should* see it. A polished panel
+   * reflects the environment, and the environment below the islands is now a
+   * luminous sea of cloud; a probe that says the world under them is dark
+   * brown earth is telling the mirror to show a lie. This one is built for
+   * them alone, so the rest of the world is untouched.
+   *
+   * Above the hub's early return, because a hook called conditionally is a
+   * hook called in a different order from one render to the next.
+   */
+  const gl = useThree((state) => state.gl);
+  const mistProbe = useMemo(
+    () => (region.id === 'observers-mirrors' ? mistEnvironment(gl) : null),
+    [region.id, gl],
+  );
+
   if (region.id === 'hub') {
     return (
       <group>
@@ -421,12 +445,6 @@ export function Landmark({
    * brown earth is telling the mirror to show a lie. This one is built for
    * them alone, so the rest of the world is untouched.
    */
-  const gl = useThree((state) => state.gl);
-  const mistProbe = useMemo(
-    () => (region.id === 'observers-mirrors' ? mistEnvironment(gl) : null),
-    [region.id, gl],
-  );
-
   const fallback = (() => {
     switch (region.id) {
       case 'cartographers-terrace':

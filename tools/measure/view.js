@@ -13,7 +13,6 @@
  *   yaw      camera heading in radians; 0 puts the camera on the +z side of
  *            the player, so the view looks towards -z
  *   quality  'low' | 'medium' | 'high'
- *   settle   milliseconds to let the camera spring settle, default 1800
  *   unlock   '1' to restore every region first
  */
 
@@ -21,7 +20,6 @@ const params = new URLSearchParams(location.hash.replace(/^#/, ''));
 const x = Number(params.get('x') ?? 0);
 const z = Number(params.get('z') ?? 0);
 const yaw = Number(params.get('yaw') ?? 0);
-const settle = Number(params.get('settle') ?? 1800);
 const quality = params.get('quality');
 const unlock = params.get('unlock') === '1';
 
