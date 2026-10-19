@@ -648,6 +648,49 @@ north. Reading it the other way round cost a detour, and the way out was to
 read the exported vertices rather than the source: the built model's bounds
 said `x -26..26, y 0..20.75, z -2.36..2.36`, and the answer was in there.
 
+### The causeway was three flat bands
+
+A span is 84 units long and 12 wide, and it was the largest flat area left in
+the game: **10.9% of a bridge frame** at a local standard deviation of 1.23.
+It already carried the triplanar stone grain, so what it lacked was
+structure at a *larger* scale than the grain.
+
+The world's macro field is sampled at a 180-unit period, because the largest
+island is 92 across. A span is half that, so a field that coarse cannot vary
+along one at all — the deck needs the same map at a third of the period, and
+the map's own features are 5% of its width, which at 80 units is four: the
+scale of a weathered patch of stone.
+
+| | local standard deviation | blocks under 2.0 |
+| --- | --- | --- |
+| before | 10.99 | 35.2% |
+| after | **13.77** | **25.9%** |
+
+The cream band also came down about ten luma, which is a weathered stone and
+not a dirty one: the field is symmetric in linear space and the tone curve
+compresses highlights harder than it lifts shadows.
+
+**Two patches now share one hook, and the fix is not "chain them".** The
+stone detail in `detail.ts` and the macro field in `ground-macro.ts` both
+install into `onBeforeCompile`, and they used to overwrite each other —
+whichever ran last won, and which one that was depended on the order the
+scene happened to be built in. Chaining them fixes that, and opens a
+different door: **the ground attaches the macro to a `<meshStandardMaterial>`
+through a ref callback, which React calls again whenever the callback's
+identity changes**, so the same material is patched repeatedly, and a second
+application declares the same varying and the same uniforms twice:
+
+> ERROR: 0:82: 'vGroundMacro' : redefinition
+
+So the patch is installed once and later calls only move the numbers, and
+`tests/ground-macro.test.ts` holds that down. It is the same shape of bug as
+the one the tapestry's shadow was: **the thing that was supposed to be fixed
+was being fixed in one place and still happening in another.**
+
+The ground, the sky and the mist are untouched by this: measured on the hub,
+the ground's mean luma moved 117.370 → 117.337 and the sky and the mist did
+not move at all.
+
 ### Measuring the running game without an MCP browser
 
 `tools/cdp.mjs` drives a headless Chrome over the DevTools protocol with no

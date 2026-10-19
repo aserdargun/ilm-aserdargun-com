@@ -50,6 +50,13 @@ export const GROUND_MACRO_PERIOD = 180;
  */
 export const GROUND_MACRO_AMPLITUDE = 0.85;
 
+const MACRO_FLAG = 'ilmekGroundMacro';
+
+interface MacroUniforms {
+  amp: { value: number };
+  period: { value: number };
+}
+
 /**
  * Multiplies the ground's diffuse by the macro field.
  *
@@ -61,15 +68,57 @@ export const GROUND_MACRO_AMPLITUDE = 0.85;
  * `needsUpdate` matters as much as the patch itself: without it a material that
  * was already compiled never recompiles, and this looks exactly like a change
  * that silently did nothing.
+ *
+ * The period and the amplitude are arguments because the field has to be
+ * sampled at the scale of the surface it is on. The ground's period is 180
+ * units because the largest island is 92 across; a bridge span is 84 units
+ * long, so a field that coarse cannot vary across one at all, and the deck
+ * needs the same map at a third of the period.
+ *
+ * Any `onBeforeCompile` already on the material is kept and called as well.
+ * The stone detail in `detail.ts` patches the same hook, and the two used to
+ * overwrite each other — whichever ran last won, and which one that was
+ * depended on the order the scene happened to be built in.
+ *
+ * **Calling this twice on one material is not an error, and must not be.**
+ * The ground attaches it to a `<meshStandardMaterial>` through a ref callback,
+ * which React calls again whenever the callback's identity changes — so the
+ * same material was patched repeatedly. Overwriting `onBeforeCompile` hid
+ * that; chaining it does not, and a second application declares the same
+ * varying and the same uniforms twice, which does not compile. So the patch
+ * is installed once and later calls only move the numbers.
  */
 export function patchGroundMacro(
   material: THREE.MeshStandardMaterial,
   map: THREE.Texture,
+  period: number = GROUND_MACRO_PERIOD,
+  amplitude: number = GROUND_MACRO_AMPLITUDE,
 ): void {
-  material.onBeforeCompile = (shader) => {
+  const installed = material.userData[MACRO_FLAG] as
+    | { uniforms: MacroUniforms }
+    | undefined;
+
+  if (installed) {
+    // Already patched: just move the numbers, and let the shared uniform
+    // objects carry them into the program.
+    installed.uniforms.amp.value = amplitude;
+    installed.uniforms.period.value = period;
+    material.needsUpdate = true;
+    return;
+  }
+
+  const uniforms: MacroUniforms = {
+    amp: { value: amplitude },
+    period: { value: period },
+  };
+  material.userData[MACRO_FLAG] = { uniforms };
+
+  const previous = material.onBeforeCompile;
+  material.onBeforeCompile = (shader, renderer) => {
+    if (previous) previous.call(material, shader, renderer);
     shader.uniforms.uGroundMacro = { value: map };
-    shader.uniforms.uGroundMacroAmp = { value: GROUND_MACRO_AMPLITUDE };
-    shader.uniforms.uGroundMacroPeriod = { value: GROUND_MACRO_PERIOD };
+    shader.uniforms.uGroundMacroAmp = uniforms.amp;
+    shader.uniforms.uGroundMacroPeriod = uniforms.period;
 
     shader.vertexShader = `varying vec2 vGroundMacro;\n${shader.vertexShader}`.replace(
       '#include <begin_vertex>',

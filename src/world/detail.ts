@@ -100,7 +100,13 @@ const TRIPLANAR_FRAGMENT = /* glsl */ `
 
 function patchMaterial(material: THREE.MeshStandardMaterial, map: THREE.Texture): void {
   material.userData[PATCH_FLAG] = true;
-  material.onBeforeCompile = (shader) => {
+  // Any `onBeforeCompile` already on the material is kept and called first.
+  // The macro field in `ground-macro.ts` patches the same hook, and the two
+  // used to overwrite each other — whichever ran last won, and which one that
+  // was depended on the order the scene happened to be built in.
+  const previous = material.onBeforeCompile;
+  material.onBeforeCompile = (shader, renderer) => {
+    if (previous) previous.call(material, shader, renderer);
     shader.uniforms.uDetailNormal = { value: map };
     shader.uniforms.uDetailTile = { value: DETAIL_TILE };
     shader.uniforms.uDetailStrength = { value: DETAIL_STRENGTH };
