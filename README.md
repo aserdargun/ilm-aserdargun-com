@@ -282,9 +282,11 @@ flat-looking ground rather than an error:
 Terrain is otherwise colour-only. Walking is solved in 2D against a flat plane
 (`navigation.ts` never reads a height), so displacing the ground would put the
 mesh where the player is not standing. For the same reason the sky dome radius
-has to stay inside the camera's far plane of 900: a dome beyond it is not drawn
-at all, and the missing wedge shows up as a hard dark triangle in the corner of
-the sky.
+has to stay inside the camera's far plane: a dome beyond it is not drawn at
+all, and the missing part shows up as a hard-edged hole in the sky. It is 760
+against a far plane of 1100, and the arithmetic that keeps it true lives in
+`src/world/sky-dome.ts` with a test beside it — see "The sky had a hole in it"
+below.
 
 ### The ground had 66 vertices
 
@@ -378,6 +380,132 @@ handful of ALU on the one surface that never writes depth, which is why this is
 in the shader instead of in a second PNG. It is masked to sit above the horizon
 and to fade out before the zenith, at deliberately low contrast: this is
 atmosphere, not a weather system.
+
+### The sky had a hole in it, and nothing at all below the horizon
+
+Two faults in the same surface, found by looking at a bridge crossing rather
+than by reading the code.
+
+**A hole.** The dome is a sphere of 760 units standing on the world origin, and
+the camera's far plane was 900. Those two numbers agree only while the camera
+is standing on the origin, and the player never does. The farthest island is
+249.3 units away once the camera's own reach behind the player is counted, so
+the far side of the dome sits at **1009.3** units — past the far plane, and
+therefore not drawn at all.
+
+What that looks like is not a thin seam. Measured at the valley, looking
+towards the hub, the dome's surface along the view axis sits at **958.1**
+units against a 900 far plane, and the sky carries a **black cap with a
+faceted edge** where the far plane cut it — the flat scene background showing
+through a hole in the backdrop, just below the horizon and towards the middle
+of the world. Painting the scene background magenta showed it filling with
+magenta, which is how it was confirmed to be missing sky rather than a dark
+object.
+
+The fix is the far plane, and the reasoning is worth keeping because the
+obvious alternative was tried first and **rejected**:
+
+| repair | clip | sky |
+| --- | --- | --- |
+| raise the far plane 900 → 1100 | gone | **unchanged** |
+| ride the dome with the camera | gone | **emptied** |
+
+The second one is the better repair in every way except one, and the exception
+is the whole point. A dome that rides with the camera is always exactly 760
+units from the lens and can never reach the far plane, whatever the world grows
+to. But the sky is a function of the *direction* of each vertex, so moving the
+dome re-anchors every cloud cell: measured at the hub's upper corners, the
+sky fell from **37.7 to 21.4 luma** and the cloud banks went with it. Raising
+the far plane changes no pixels at all, because the far plane is only a
+clipping threshold and nothing in the world is anywhere near it. The cost is
+depth precision, and it is 2%: the slope of the depth buffer depends on
+`1 / near − 1 / far`, and `1/1100` against `1/900` differs by 0.0002 out of
+9.99.
+
+**Nothing below the horizon.** The world is eight coplanar discs hanging in
+the air, and the void between them had no content: the dome's gradient
+saturates at the horizon, so everything below it was one colour.
+
+Measured on a bridge crossing — 84 of a span's 163 units, and half a minute
+of the player's life — that flat field was **32% of the frame** at a local
+luminance standard deviation of **0.17**, which is quantisation rather than
+image. The frame read as a blue wall. `tools/flatness.py` on the same frame
+put the two worst regions at std 0.17 and 0.18, covering 21.4% of the frame
+between them.
+
+What belongs down there is a sea of mist, projected the way a floor is seen:
+the view ray is intersected with a plane far below, so the cells compress
+towards the horizon on their own and the perspective is the real one rather
+than a painted ramp. The brightening is *added* to the void rather than mixed
+into it, for the same reason the sky's clouds are — the gaps between the banks
+keep the void's own tone, and that is what makes it read as cloud instead of a
+pale wash over everything.
+
+| frame | flat area (std < 2) | the void's own regions |
+| --- | --- | --- |
+| before | 43.0% | 10.84% at std 0.17, 10.59% at std 0.18 |
+| after | 27.3% | 2.05% at std 0.79, 1.49% at std 0.79 |
+
+The void's local standard deviation went from 0.17 to 0.79, and the
+quantisation-flat regions are gone from the list entirely. The largest flat
+area left in the frame is the bridge deck, which is a different problem.
+
+Three things were measured and thrown away on the way:
+
+- **The first noise scale was invisible.** At 0.0055 the noise coordinate moved
+  by less than one cell across the whole visible void, so the lower hemisphere
+  sampled a single value and came out as one flat colour again. At 0.02 it
+  runs to about five cells across the void, which is what makes banks.
+- **Mixing towards a mist colour flattened it.** The obvious formulation —
+  `mix(colour, mist, …)` — put the banks and the gaps at the same distance
+  from the void's tone, and the tone curve compressed the difference: the
+  void's local standard deviation came out at 0.58 against the additive
+  version's 0.79, on a brighter, flatter, more washed-out image. The additive
+  form was kept.
+- **The dome was moved first, and it cost the sky.** See the table above. This
+  one is worth flagging because the moved dome *did* fix the clip, and the
+  frame it produced looked fine in isolation: the cloud banks were still
+  there, in a different place. Only the measurement caught it.
+
+**Cost: nothing measurable, at either tier.** The mist is a branch on the
+lower hemisphere of one surface that never writes depth. Measured with three
+interleaved samples each, on the high tier: 87.8 / 87.6 / 83.8 frames per
+second without it and 87.7 / 88.3 / 84.1 with it. On the low tier, where
+there is no post-processing to hide the cost and the dome is a larger share of
+the frame: 102.4 / 104.5 / 104.5 without and 103.0 / 104.5 / 103.9 with. The
+shimmer check over a one-degree pan gives **0.0000%** isolated pixels in the
+horizon band and 0.0003% in the near ground, the same bar the sky's own
+clouds meet.
+
+**The shader is in `src/world/sky-dome.ts` now**, with its geometry, its
+constants and the far plane it has to fit inside. `tests/sky-dome.test.ts`
+holds the arithmetic down: the dome's far side is inside the far plane at
+every island, and would not have been with the far plane the world shipped
+with.
+
+**A GLSL type error, and the long detour it caused.** `MIST_FLOOR_DEPTH` is
+26, and it was interpolated into the shader as `26`. GLSL ES 1.00 has no
+implicit `int` to `float` conversion on the left of an operator, so
+`26 / max(down, 0.02)` **does not compile**:
+
+> ERROR: 0:197: '/' : wrong operand types - no operation '/' exists that
+> takes a left-hand operand of type 'const int' and a right-hand operand of
+> type 'highp float'
+
+A shader that does not compile does not draw. The dome's program failed to
+link, the backdrop was not rendered at all, and the sky became the flat scene
+background — with nothing in the console but a repeated warning that the
+browser eventually stopped reporting. It looks like a lighting problem and it
+is a type problem, and it cost the better part of a round: the symptoms were
+"the sky is black", "the dome is not covering the screen", and "the green
+test proves the geometry is fine", and every one of those was true and none
+of them was the cause. Every number that reaches a shader now goes through
+`glslFloat()`, and a test asserts that **no bare integer literal appears in
+either shader** — which is the invariant that would have caught it.
+
+The lesson is not about GLSL. It is that the console was read once, at the
+start, and not again after every change. A shader edit is not verified until
+the console has been read.
 
 ### An unused model, and a misleading one
 

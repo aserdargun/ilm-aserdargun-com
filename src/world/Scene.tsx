@@ -45,7 +45,8 @@ import {
   placedModels,
 } from './scene-audit';
 import { PostProcessing } from './PostProcessing';
-import { HORIZON_COLOR, SkyDome, TerrainDisc } from './Atmosphere';
+import { SkyDome, TerrainDisc } from './Atmosphere';
+import { CAMERA_FAR, HORIZON_COLOR } from './sky-dome';
 import { findUnreachableConsoles } from './navigation';
 import { regionAt } from './Player';
 import { input } from '../game/input';
@@ -109,7 +110,7 @@ export function GameCanvas() {
       shadows={quality !== 'low'}
       dpr={[1, dprCap]}
       gl={{ antialias: true, powerPreference: 'high-performance' }}
-      camera={{ fov: 58, near: 0.1, far: 900, position: [0, 8, 26] }}
+      camera={{ fov: 58, near: 0.1, far: CAMERA_FAR, position: [0, 8, 26] }}
       onCreated={({ gl }) => {
         // r186 removed PCFSoftShadowMap and silently falls back to this one,
         // so it is named explicitly rather than left to emit a warning. Soft
