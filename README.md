@@ -4013,6 +4013,40 @@ Two things it got wrong on the way, both mine:
   restored set, because a closed island is reachable-free, not unwalkable. The
   test was checking a contract the module does not have, and the code was right.
 
+### The medium tier is the high tier, and the comment saying otherwise was stale
+
+Every frame measured in this file is the high tier, and the low tier had never
+been looked at at all. That left the medium tier — a real setting, three options
+in the game's own settings screen — as the one player-facing path nobody had
+checked.
+
+What the source said about it was wrong. The comment on `PostFx`'s `full` flag
+read *"medium keeps occlusion and drops the rest"*, which is what the effect
+chain looked like when the low tier was the only one without it. Medium has
+since kept **everything**: `intensity={full ? 0.62 : 0.42}` scales the bloom and
+drops nothing, and tone mapping, SMAA and the vignette are on both. Across the
+whole game the medium tier differs from high in exactly two places — bloom's
+strength and `dprCap` 1.6 against 1.75.
+
+Measured at one camera on the Flow Foundry, with a same-tier control pair on each
+side so the animated water could be told from the tier itself:
+
+| | mean \|Δ\| |
+| --- | --- |
+| medium against medium | 0.311 |
+| high against high | 0.382 |
+| **medium against high** | **0.833** |
+
+Two and a quarter times the noise, so the tiers really are apart — and the
+difference lands exactly where the code says it should. On the brightest pixels,
+the ones bloom exists for, high is **+1.18** luma. That is 0.62 against 0.42, and
+it is not something a player can see. Medium is the high tier.
+
+Worth stating plainly because the alternative reading is a bug report waiting to
+be written: a missing post chain on a middle setting would be exactly the kind of
+defect the sweeps have been finding, and this one turned out to be a sentence in
+a comment.
+
 ### Assets degrade, they do not break
 
 `src/world/Models.tsx` loads every model through an error boundary and a

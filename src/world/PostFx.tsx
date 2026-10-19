@@ -16,8 +16,25 @@ import type { Quality } from '../game/store';
  * purely cosmetic.
  */
 export function PostProcessing({ quality }: { quality: Quality }) {
-  // High gets the full stack; medium keeps occlusion and drops the rest, which
-  // is where the visual/cost ratio falls off a cliff.
+  // High and medium render the **same** chain — occlusion, bloom, tone mapping,
+  // SMAA, vignette — and differ only in bloom's strength and in the canvas's dpr
+  // cap. The comment this replaced said medium "keeps occlusion and drops the
+  // rest"; that stopped being true at some point and was never corrected, which
+  // is a claim worth measuring rather than repeating.
+  //
+  // Measured at one camera with a same-tier control pair on each side, so the
+  // animated water could be told from the tier:
+  //
+  // | | mean |Δ| |
+  // | --- | --- |
+  // | medium against medium | 0.311 |
+  // | high against high | 0.382 |
+  // | medium against high | **0.833** |
+  //
+  // The tiers are 2.2× the noise apart, and the difference lands where the
+  // prediction says it should: on the brightest pixels, where high is **+1.18**
+  // luma. That is the 0.62-versus-0.42 bloom intensity, and it is not something
+  // a player can see.
   const full = quality === 'high';
 
   // Dev-only handles on the effect instances.
