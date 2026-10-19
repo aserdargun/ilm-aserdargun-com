@@ -507,6 +507,99 @@ The lesson is not about GLSL. It is that the console was read once, at the
 start, and not again after every change. A shader edit is not verified until
 the console has been read.
 
+### The mirrors were a hole in the frame
+
+The Observers' Mirrors island is named after five standing lenses on a round
+plinth, facing an engraved test scene. Four things were wrong with it, and
+none of them was the lighting.
+
+**The lenses were never turned.** The builder places them on a ring and
+rotates nothing: every lens stood square to the world axes, so from any
+viewpoint some were face-on and some edge-on, and none of them looked at
+anything. A ring of five was five slabs scattered around a plinth. Each lens
+is now aimed at the test scene, which is what the docstring has always said
+it was doing.
+
+**The test scene was seven units off centre.** It sat right up against the
+two lenses on that side — the nearest one 1.5 units away, inside its own
+base. A scene a lens is standing on is not a scene it can look at. It is in
+the middle of the plinth now.
+
+**The lens was inside its own frame.** The plate was placed 1.5% towards the
+origin, which put it within the 0.35-unit frame slab. Measured in the running
+build by painting the glass material emissive red and counting the pixels
+that turned: **658** of the frame's 5,155,200. A lens buried in its own
+frame is a frame. There is a plate on each face now, because a lens the
+player can only see from behind is no use.
+
+**The foot under each lens had its size tuple the wrong way round**, so
+instead of a block under the lens it was a 3.9-unit bar lying across the
+plinth, and the lens stood 1.6 units in the air above it.
+
+**And the panels were not a mirror.** The `glass` material in the GLB is 10%
+metallic, so 90% of its response is a diffuse term — and a diffuse term under
+a night sky is black. A smooth dielectric adds a narrow specular lobe on top
+of that, and there was almost nothing else to light it. At 42% alpha it was
+also a smear over whatever stood behind it. A mirror is a metal, and a mirror
+is opaque:
+
+```ts
+material.metalness = 1;
+material.roughness = 0.12;
+material.transparent = false;
+material.opacity = 1;
+```
+
+**A mirror also needs something to reflect, and the probe had the wrong
+world in it.** The scene's probe says the space below the islands is dark
+brown earth, which was true when the world had a flat blue void under it and
+is not true now that the islands hang over a sea of cloud. A mirror that
+cannot see the cloud is not a mirror.
+
+Turning the mist on for the *whole* scene was measured and rejected: it
+lifted the sand by 3.2% and the frame by 4.3%, and the scene's probe is the
+ambient fill — the README's own measurement is that the probe, not the
+hemisphere light, is what flattens the world, which is why it is scaled to
+0.6 of the exposure. The mirrors get a probe of their own instead, and the
+rest of the world is untouched:
+
+| | lens face | island sand |
+| --- | --- | --- |
+| before | 24.87 | 120.785 |
+| after | **34.95** | 120.762 |
+
+The sand moved by 0.02%, which is nothing, and the lens moved by 40%. The
+lenses now reflect the sky in one and the sand in another, which is what a
+mirror does.
+
+### Measuring the running game without an MCP browser
+
+`tools/cdp.mjs` drives a headless Chrome over the DevTools protocol with no
+dependencies at all, because Node 22 has a global `WebSocket` and the CDP
+protocol is just JSON. It exists because the project's whole measurement
+workflow — "run the real game, put the camera somewhere specific, read the
+pixels" — needs the dev-only `__ilm` hooks in `Scene.tsx`, and nothing that
+can execute JavaScript was available.
+
+```bash
+node tools/cdp.mjs --url "http://localhost:5173/#x=-146&z=112&yaw=0&unlock=1" \
+  --wait "!!window.__ilm" --run tools/measure/view.js \
+  --shot .shots/mirrors.png --size 1600x1000
+```
+
+The view is requested by the URL hash, so a measurement is reproducible by its
+URL alone, and the console is printed at the end of every run — which is the
+one thing that catches a shader that does not compile.
+
+Two things it had to get right, both of which are the same lesson in different
+clothes: **the camera has to have arrived before it is measured**, and in a
+headless browser it takes far longer than it does on a desktop, because the
+spring moves a fraction of the way each frame; and **the teleport has to be
+retried**, because starting a fresh game moves the player to the spawn a
+moment after the screen changes and undoes it. A fixed delay and a single
+teleport both produce a photograph of the wrong place, and both produce
+numbers that are plausible enough to be believed.
+
 ### An unused model, and a misleading one
 
 `spark.glb` was in the preload list and nothing ever loaded it — `Spark` in

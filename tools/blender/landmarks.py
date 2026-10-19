@@ -419,22 +419,60 @@ def build_observer_mirrors():
     pv, pf = plinth
     parts.append(new_mesh("plinth", pv, pf, ["stone"]))
 
-    # the test scene the lenses look at
+    # The test scene the lenses look at, in the middle of the plinth.
+    #
+    # It was built seven units south of the centre, which put it right up
+    # against the two lenses on that side — the nearest one 1.5 units away,
+    # inside its own base. A scene a lens is standing on is not a scene it
+    # can look at.
+    scene_centre = [0.0, 0.0]
     for i in range(7):
         x = (i % 4) * 1.9 - 2.8
         y = (i // 4) * 1.9 - 1.0
         height = 1.2 + (i % 3) * 0.7
-        parts.append(box(f"scene{i}", (x, y - 7.0, 0.8 + height / 2),
+        scene_centre[0] += x
+        scene_centre[1] += y
+        parts.append(box(f"scene{i}", (x, y, 0.8 + height / 2),
                          (1.3, 1.3, height), ["stone_dark"]))
+    scene_centre[0] /= 7
+    scene_centre[1] /= 7
 
-    # five standing mirrors on a ring
+    # Five standing lenses on a ring, each turned to look at the scene.
+    #
+    # They were not turned at all. Every lens stood square to the world
+    # axes, so from any viewpoint some were face-on and some edge-on, and
+    # none of them looked at anything: a ring of five was five slabs
+    # scattered around a plinth, and a mirror facing the wrong way is not a
+    # mirror. A lens is a slab whose thickness runs along its local x, so
+    # the face normal is local +x and a turn about z aims it.
     for i in range(5):
         angle = (i / 5) * math.tau
         x = math.cos(angle) * 9.0
         y = math.sin(angle) * 9.0
-        parts.append(box(f"frame{i}", (x, y, 3.4), (0.35, 3.6, 6.4), ["metal"]))
-        parts.append(box(f"glass{i}", (x * 0.985, y * 0.985, 3.4), (0.12, 3.2, 6.0), ["glass"]))
-        parts.append(box(f"foot{i}", (x, y, 0.3), (1.0, 3.9, 0.6), ["metal"]))
+        turn = math.atan2(scene_centre[1] - y, scene_centre[0] - x)
+        normal = (math.cos(turn), math.sin(turn))
+        parts.append(box(f"frame{i}", (x, y, 3.4), (0.35, 3.6, 6.4), ["metal"],
+                         rotation=(0.0, 0.0, turn)))
+        # The lens itself, a plate on each face of its frame.
+        #
+        # It used to be placed 1.5% towards the origin, which put it *inside*
+        # the 0.35-unit frame: 658 pixels of a five-million-pixel frame showed
+        # it at all. A lens buried in its own frame is a frame.
+        #
+        # Both faces, because a lens the player can only see from behind is
+        # no use — and a ring of lenses is meant to be walked around.
+        for side in (-1, 1):
+            offset = side * (0.35 / 2 + 0.12 / 2 - 0.01)
+            parts.append(box(f"glass{i}_{side}", (x + normal[0] * offset,
+                                                 y + normal[1] * offset, 3.4),
+                             (0.12, 3.2, 6.0), ["glass"],
+                             rotation=(0.0, 0.0, turn)))
+        # And a pedestal to stand on. The size tuple's height and depth were
+        # the wrong way round, so the "foot" was a 3.9-unit bar lying across
+        # the plinth instead of a block under the lens, and the lens stood
+        # 1.6 units in the air above it.
+        parts.append(box(f"foot{i}", (x, y, 0.8), (1.2, 1.6, 6.4), ["stone_dark"],
+                         rotation=(0.0, 0.0, turn)))
 
     mirrors = join_objects(parts, "observer_mirrors")
     shade_flat(mirrors)

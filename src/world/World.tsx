@@ -1,5 +1,5 @@
 import { useLayoutEffect, useMemo, useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { REGIONS, type RegionDef } from '../catalog/regions';
 import { makeRng } from '../systems/types';
@@ -7,6 +7,8 @@ import type { RegionId } from '../types/catalog';
 import { Asset } from './Models';
 import { PANELS_PER_REGION, TAPESTRY_PANELS, isPanelLit } from './tapestry';
 import { addCollider, clearColliders } from './collision';
+import { mistEnvironment } from './environment';
+import { applyMirrorFrameMaterial, applyMirrorMaterial } from './mirror-material';
 
 /**
  * Procedural low-poly world geometry.
@@ -339,8 +341,7 @@ function applyInstanceColours(mesh: THREE.InstancedMesh, colors: THREE.Color[]):
  * them — the albedo does. Distinguishing those two is why this is measured
  * rather than read off the probe.
  */
-const MIRROR_METAL_COLOR = '#aeb6c6';
-const MIRROR_GLASS_COLOR = '#e6f2f4';
+
 
 /** Authored Blender model for each region landmark. */
 const LANDMARK_MODELS: Record<RegionId, string> = {
@@ -404,6 +405,28 @@ export function Landmark({
   }
 
   const model = LANDMARK_MODELS[region.id];
+
+  /**
+   * A probe of its own for the Observer's Mirrors.
+   *
+   * The scene's probe is the world's ambient fill, and the README's own
+   * measurement is that the probe — not the hemisphere light — is what
+   * flattens the world; it is scaled to 0.6 of the exposure for that reason.
+   * Turning the sea of mist on for the whole scene lifted the sand by 3.2%
+   * and the whole frame by 4.3%, which is the wrong trade for a backdrop.
+   *
+   * The mirrors are the one thing that *should* see it. A polished panel
+   * reflects the environment, and the environment below the islands is now a
+   * luminous sea of cloud; a probe that says the world under them is dark
+   * brown earth is telling the mirror to show a lie. This one is built for
+   * them alone, so the rest of the world is untouched.
+   */
+  const gl = useThree((state) => state.gl);
+  const mistProbe = useMemo(
+    () => (region.id === 'observers-mirrors' ? mistEnvironment(gl) : null),
+    [region.id, gl],
+  );
+
   const fallback = (() => {
     switch (region.id) {
       case 'cartographers-terrace':
@@ -454,10 +477,9 @@ export function Landmark({
         // workshop and the valley pump, and this painter runs on every region
         // landmark — a name-only test would have repainted all of them.
         if (model !== 'observer_mirrors') return;
-        if (material.name === 'metal') material.color.set(MIRROR_METAL_COLOR);
-        else if (material.name === 'glass') material.color.set(MIRROR_GLASS_COLOR);
+        if (material.name === 'metal') applyMirrorFrameMaterial(material);
+        else if (material.name === 'glass') applyMirrorMaterial(material, mistProbe);
         else return;
-        material.needsUpdate = true;
       }}
     />
   );

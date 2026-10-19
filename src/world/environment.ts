@@ -41,13 +41,43 @@ const HORIZON = new THREE.Color('#3d4a63');
 const GROUND = new THREE.Color('#241d16');
 const SUN_TINT = new THREE.Color('#fff0d2');
 
+/** The colour of the sea of mist below the islands — the sky dome's `uGlow`. */
+const MIST = new THREE.Color('#3f6a86');
+
+/**
+ * The mean of the sky dome's two mist terms.
+ *
+ * The dome adds `uGlow * 0.85 * bank * haze * 1.15` and
+ * `uGlow * 0.30 * wisp * haze`, and the means of `bank` and `wisp` are both
+ * about 0.5, so the mean lift is `uGlow * 0.638`.
+ */
+const MIST_LIFT = 0.638;
+
+/**
+ * How far below the horizon the mist reaches full strength, in view-direction
+ * units. The same ramp the dome uses, so a probe and the sky agree.
+ */
+const MIST_HAZE_RAMP = 0.09;
+
 /**
  * Radiance along a direction, in linear space and above 1.0 for the sun.
  *
  * Values are unbounded on purpose: an environment that clips at 1.0 cannot
  * produce a highlight, it can only produce a slightly brighter grey.
+ *
+ * `mist` adds the sea of cloud that the world now stands over. It is off by
+ * default because this probe is the scene's *ambient fill*: the README's own
+ * measurement is that the probe, not the hemisphere light, is what flattens
+ * the world, and it is tuned to 0.6 of the exposure for exactly that reason.
+ * Turning the mist on for the whole scene lifted the sand by 3.2% and the
+ * frame by 4.3%, which is the wrong trade for a backdrop.
+ *
+ * It is turned on for one thing: the Observer's Mirrors. A polished panel
+ * reflects the environment, and an environment that says the world below is
+ * dark brown earth is lying to it — the islands hang over a luminous sea of
+ * cloud now, and a mirror that cannot see the cloud is not a mirror.
  */
-function skyRadiance(direction: THREE.Vector3, target: THREE.Color): THREE.Color {
+function skyRadiance(direction: THREE.Vector3, target: THREE.Color, mist: boolean): THREE.Color {
   const up = direction.y;
 
   if (up >= 0) {
@@ -60,6 +90,14 @@ function skyRadiance(direction: THREE.Vector3, target: THREE.Color): THREE.Color
     // lower hemisphere makes every downward-facing normal read as a hole.
     const t = THREE.MathUtils.clamp(-up * 3.2, 0, 1);
     target.copy(HORIZON).lerp(GROUND, t);
+    if (mist) {
+      // The sea of mist, brightest just under the horizon and present all the
+      // way down, which is what the sky dome draws.
+      const haze = THREE.MathUtils.smoothstep(-up, 0, MIST_HAZE_RAMP);
+      target.r += MIST.r * MIST_LIFT * haze;
+      target.g += MIST.g * MIST_LIFT * haze;
+      target.b += MIST.b * MIST_LIFT * haze;
+    }
   }
 
   // Sun disc plus its bloom halo.
@@ -87,7 +125,7 @@ function skyRadiance(direction: THREE.Vector3, target: THREE.Color): THREE.Color
  * glint, and clamping it away is what makes procedural environments look
  * plastic.
  */
-function buildEquirect(width = 128, height = 64): THREE.DataTexture {
+function buildEquirect(width = 128, height = 64, mist = false): THREE.DataTexture {
   const data = new Float32Array(width * height * 4);
   const direction = new THREE.Vector3();
   const radiance = new THREE.Color();
@@ -101,7 +139,7 @@ function buildEquirect(width = 128, height = 64): THREE.DataTexture {
     for (let x = 0; x < width; x += 1) {
       const theta = ((x + 0.5) / width - 0.5) * Math.PI * 2;
       direction.set(Math.sin(theta) * cosPhi, sinPhi, Math.cos(theta) * cosPhi);
-      skyRadiance(direction, radiance);
+      skyRadiance(direction, radiance, mist);
 
       const i = (y * width + x) * 4;
       data[i] = radiance.r;
@@ -128,12 +166,33 @@ function buildEquirect(width = 128, height = 64): THREE.DataTexture {
  * smooth glass and rough stone alike — the player gets correct specular at
  * every roughness for the cost of one 128x64 source image.
  */
-export function createEnvironment(renderer: THREE.WebGLRenderer): THREE.Texture {
+export function createEnvironment(
+  renderer: THREE.WebGLRenderer,
+  mist = false,
+): THREE.Texture {
   const pmrem = new THREE.PMREMGenerator(renderer);
   pmrem.compileEquirectangularShader();
-  const equirect = buildEquirect();
+  const equirect = buildEquirect(128, 64, mist);
   const target = pmrem.fromEquirectangular(equirect);
   equirect.dispose();
   pmrem.dispose();
   return target.texture;
+}
+
+/**
+ * One mist-aware probe per renderer, for the Observer's Mirrors.
+ *
+ * Cached rather than built on demand because the app runs under StrictMode,
+ * which renders every component twice: a probe built in a `useMemo` would be
+ * built twice, and the first one would never be freed. The cache is keyed on
+ * the renderer, so it goes away with it.
+ */
+const mistProbes = new WeakMap<THREE.WebGLRenderer, THREE.Texture>();
+
+export function mistEnvironment(renderer: THREE.WebGLRenderer): THREE.Texture {
+  const existing = mistProbes.get(renderer);
+  if (existing) return existing;
+  const probe = createEnvironment(renderer, true);
+  mistProbes.set(renderer, probe);
+  return probe;
 }
