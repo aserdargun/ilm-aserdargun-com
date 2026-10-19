@@ -691,6 +691,22 @@ The ground, the sky and the mist are untouched by this: measured on the hub,
 the ground's mean luma moved 117.370 → 117.337 and the sky and the mist did
 not move at all.
 
+### The rails are still flat, and the cheap fix was measured
+
+The bridge rails are the last flat thing in a bridge frame: a bar of
+perfectly uniform saturated turquoise, 84 units long, with no gradient and no
+specular. Half its brightness is self-emission, which is added after the
+lighting and therefore flattens it completely.
+
+Lowering the emissive from 0.5 to 0.2 was measured and **not shipped**: the
+rail band's local standard deviation moved from 42.30 to 43.27, which is
+nothing, and the picture barely changed. The fix that would work is a
+gradient along the rail — bright along its top and fading at its edges, so
+it reads as a glowing tube rather than a painted stripe — and that needs a
+custom rail geometry whose emissive varies along it, which is a bigger build
+than the evidence justifies yet. It is written down here so the next round
+does not spend a turn re-measuring the emissive.
+
 ### Measuring the running game without an MCP browser
 
 `tools/cdp.mjs` drives a headless Chrome over the DevTools protocol with no
