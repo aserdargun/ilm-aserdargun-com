@@ -572,6 +572,42 @@ The sand moved by 0.02%, which is nothing, and the lens moved by 40%. The
 lenses now reflect the sky in one and the sand in another, which is what a
 mirror does.
 
+### The map was a table with rocks on it
+
+The Cartographers' Terrace is named for its landmark: "a vast carved world
+map". It was a cream disc with eight small pale cones on it.
+
+The cones were the problem twice over. A **six-sided cone** is not a
+continent — a landmass wants a coastline, an irregular outline, and a flat
+top for the sun to land on. And they were **small**: between 1.4 and 3.4
+units across on a thirty-unit table, about a fifth of the surface, in a
+pale ceramic on a pale stone table, so the whole thing read as one cream
+disc with a few lumps.
+
+The landmasses are now irregular, flat-topped plateaus — the outline is two
+sine frequencies on the radius, so none of them is a regular polygon and no
+two are the same shape — and there are thirteen of them, spread across the
+whole table, because a map that leaves a third of its sea empty does not
+read as a map.
+
+The other half was the value. The table and the land were `stone` and
+`ceramic`, close enough that the continents did not separate from the sea
+at all. **The table is now the dark half of the map and the land is the
+pale half**, which is the map convention and the difference between a chart
+and a table of rocks:
+
+| | sea | land | separation |
+| --- | --- | --- | --- |
+| before | 174.7 | 189.3 | **14.7 luma** |
+| after | 139.1 | 170.3 | **31.1 luma** |
+
+**The Blender preview could not have told you this.** Its sun is at energy 4
+and its fill at 600 watts, and the top faces of both materials clip to
+white — measured on the preview, the separation between the two is 13 luma
+*before* the change and 13 luma after it. The preview is the right tool for
+a question about shape and the wrong tool for a question about value, and
+this was a question about value.
+
 ### The tree had a beam the tapestry already draws
 
 The Synthesis Tree carried a 52-unit crossbeam at the canopy's height, 20.4

@@ -227,6 +227,41 @@ def build_console():
 # ---------------------------------------------------------------------------
 
 
+def _landmass(name, cx, cy, z, rx, ry, height, sides, seed, mat):
+    """A coastline: an irregular, flat-topped plateau of raised land.
+
+    A landmass was a six-sided cone, and eight cones on a table read as
+    bread rolls rather than as continents. A map wants a coastline — an
+    irregular outline — and a flat top, so that the raised land catches the
+    light and reads as a plateau the sun is on.
+
+    The outline is two sine frequencies on the radius, so no two landmasses
+    share a shape and none of them is a regular polygon.
+    """
+    def outline(scale, phase, height_here):
+        points = []
+        for i in range(sides):
+            a = (i / sides) * math.tau + phase
+            r = (1.0
+                 + 0.20 * math.sin(a * 2.0 + seed)
+                 + 0.13 * math.sin(a * 3.0 - seed * 1.7)
+                 + 0.07 * math.sin(a * 5.0 + seed * 0.6))
+            points.append((
+                cx + math.cos(a) * rx * r * scale,
+                cy + math.sin(a) * ry * r * scale,
+                z + height_here,
+            ))
+        return points
+
+    sections = [
+        outline(1.0, seed, 0.0),
+        outline(0.96, seed + 0.05, height * 0.42),
+        outline(0.84, seed + 0.13, height),
+    ]
+    verts, faces = loft(sections)
+    return new_mesh(name, verts, faces, [mat])
+
+
 def build_terrace_map():
     """The Cartographer's Terrace: a vast carved world map."""
     parts = []
@@ -242,21 +277,46 @@ def build_terrace_map():
         (LIFT + 1.2, 14.8, 14.8),
     ], 24)
     tv, tf = terrace
-    parts.append(new_mesh("terrace", tv, tf, ["stone"]))
+    # The table is the dark half of the map and the land is the pale half.
+    #
+    # Both were `stone` and `ceramic`, which are close enough in value that
+    # the continents did not separate from the sea at all — the whole table
+    # read as one cream disc with a few pale lumps on it. A darker sea and
+    # pale land is the map convention, and it is the difference between a
+    # table with rocks on it and a chart.
+    parts.append(new_mesh("terrace", tv, tf, ["stone_dark"]))
 
     # Raised landmasses, deliberately irregular so it reads as a map.
+    #
+    # (x, y, radius, height, sides)
+    #
+    # The old list was eight cones between 1.4 and 3.4 units across on a
+    # thirty-unit table — a fifth of the surface, in pale shapes on a pale
+    # table, and they read as rocks. These are larger, flat-topped, and
+    # spread across the whole table: two big masses, a chain between them,
+    # and islands out at the edges. A map that leaves a third of its sea
+    # empty does not read as a map.
     plates = [
-        (-4.0, 2.0, 3.4, 0.9), (2.6, -1.2, 2.4, 0.7), (5.5, 3.8, 1.8, 1.1),
-        (-6.8, -4.2, 2.0, 0.6), (0.8, 5.6, 2.6, 0.8), (-2.4, -6.0, 1.6, 1.3),
-        (7.8, -2.4, 1.4, 0.5), (-8.5, 2.6, 1.5, 0.9),
+        (-5.4, 3.6, 5.0, 1.5, 9),
+        (4.6, -4.4, 4.4, 1.2, 8),
+        (-1.2, 0.4, 3.0, 1.0, 8),
+        (-9.8, -3.2, 2.6, 0.9, 7),
+        (8.8, 5.4, 2.8, 1.0, 8),
+        (2.2, 8.8, 2.2, 0.8, 7),
+        (-2.6, -9.0, 2.0, 0.8, 7),
+        (10.2, -1.2, 1.8, 0.6, 6),
+        (-10.4, 2.6, 1.7, 0.7, 6),
+        (5.4, 9.6, 1.6, 0.6, 6),
+        (-6.6, 9.2, 1.5, 0.6, 6),
+        (7.2, -9.4, 1.4, 0.6, 6),
+        (0.6, -1.0, 1.3, 0.5, 6),
     ]
-    for i, (x, y, r, h) in enumerate(plates):
-        plate = lathe([(1.15, r, r * 0.85), (1.15 + h * 0.5, r * 0.85, r * 0.72),
-                       (1.15 + h, r * 0.5, r * 0.42)], 6, rotation=i * 0.6)
-        pv, pf = plate
-        obj = new_mesh(f"plate{i}", pv, pf, ["ceramic"])
-        obj.location = (x, y, LIFT)
-        parts.append(obj)
+    for i, (x, y, r, h, sides) in enumerate(plates):
+        part = _landmass(
+            f"plate{i}", x, y, LIFT + 1.2, r, r * 0.78, h, sides,
+            seed=0.7 + i * 1.31, mat="ceramic",
+        )
+        parts.append(part)
 
     map_model = join_objects(parts, "terrace_map")
     shade_flat(map_model)
