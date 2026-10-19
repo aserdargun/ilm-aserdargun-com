@@ -4077,18 +4077,30 @@ texture.
 bloom at 0.42 instead of 0.62; the bridge span, where the character's shadow
 lands on the deck and the copper strip, the stone walkways and the turquoise
 edges all read; the hub's opening console, whose copper ring, crystal and tree
-trunk carry the first thing every player sees; and the Valley of Living
-Machines, whose darkness turned out to be its authored albedo seen through an
-sRGB measurement that understated it by nearly a factor of two.
+trunk carry the first thing every player sees; the puzzle panel, whose declared
+colours give **14.91:1** for body text, 8.94:1 for secondary and 5.02:1 for the
+muted against its own ground, all over the WCAG threshold; and the Valley of
+Living Machines, whose darkness turned out to be its authored albedo seen
+through an sRGB measurement that understated it by nearly a factor of two.
 
-The console frame is also where the eye was wrong twice in a row, which is worth
-recording as its own kind of result. The turquoise carpet the player stands on
-reads as a hard-edged painted stripe, and picking pixel boxes for it kept landing
-on sand, on the character, and once on a patch of near-black luma 15 — the
-displayed frame is scaled, and coordinates guessed off it are not coordinates.
-Taking every turquoise pixel instead of a box in one of them: **5.63% of the
-frame, mean luma 137.79, standard deviation 20.75**, against the 0.035 the canal
-used to read at. The stripe is not flat, and it never was.
+Two frames are also where the eye was wrong, which is worth recording as its own
+kind of result. The turquoise carpet the player stands on reads as a hard-edged
+painted stripe, and picking pixel boxes for it kept landing on sand, on the
+character, and once on a patch of near-black luma 15 — the displayed frame is
+scaled, and coordinates guessed off it are not coordinates. Taking every
+turquoise pixel instead of a box in one of them: **5.63% of the frame, mean luma
+137.79, standard deviation 20.75**, against the 0.035 the canal used to read at.
+The stripe is not flat, and it never was.
+
+The panel nearly joined them. Read off the screenshot it came to **4.34:1**,
+under the 4.5:1 body-text threshold and looking for all the world like a
+finding — but the threshold that produced it swept in the turquoise labels, the
+status row and the option pills along with the prose, and the glyph pixels are
+about one percent of the panel, spread over many levels by antialiasing, so the
+histogram has no second mode to find them in. The number was never the text
+colour. Read from the stylesheet, where the colour is actually declared, the
+same text measures 14.91:1. **A contrast question is answered by the
+stylesheet, not by the pixels it renders to.**
 
 **Not looked at, and honestly open:** the low tier's missing contact shadows,
 which is a real deficiency measured at 6.08 luma of shadow and a crowd of
