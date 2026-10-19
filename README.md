@@ -691,21 +691,33 @@ The ground, the sky and the mist are untouched by this: measured on the hub,
 the ground's mean luma moved 117.370 → 117.337 and the sky and the mist did
 not move at all.
 
-### The rails are still flat, and the cheap fix was measured
+### The rail is a tube now, and the cheap fix was measured first
 
-The bridge rails are the last flat thing in a bridge frame: a bar of
+The bridge rails were the last flat thing in a bridge frame: a bar of
 perfectly uniform saturated turquoise, 84 units long, with no gradient and no
 specular. Half its brightness is self-emission, which is added after the
 lighting and therefore flattens it completely.
 
 Lowering the emissive from 0.5 to 0.2 was measured and **not shipped**: the
 rail band's local standard deviation moved from 42.30 to 43.27, which is
-nothing, and the picture barely changed. The fix that would work is a
-gradient along the rail — bright along its top and fading at its edges, so
-it reads as a glowing tube rather than a painted stripe — and that needs a
-custom rail geometry whose emissive varies along it, which is a bigger build
-than the evidence justifies yet. It is written down here so the next round
-does not spend a turn re-measuring the emissive.
+nothing, and the picture barely changed. **The rail was not flat in the
+sense the metric measures — it was flat in hue**, and a change of level
+cannot fix a change of hue. The rail band's standard deviation was already
+42.
+
+What fixed it was the *shape*. A 0.3-unit box is seen edge-on from anywhere
+but directly above: its top face is a couple of pixels at any distance, so
+nearly all of what is on screen is one flat side face, evenly lit and
+evenly saturated. A cylinder of the same width shades across its own width,
+so the light falls off towards the edges and the bar reads as a tube. The
+copper cap above it goes round for the same reason, and the two of them
+then read as a balustrade rather than a plank sitting on a stripe.
+
+Measured as a luma profile across the rail, the square rail stepped from
+the deck to its full brightness in **two pixels**; the round rail takes
+**four to six** to fall off on each side. Only the shape changed — the
+positions are untouched, so the rail's shadow on the deck falls where it
+did before.
 
 ### Measuring the running game without an MCP browser
 

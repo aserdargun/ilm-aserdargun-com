@@ -829,10 +829,33 @@ function WorldGeometry({
                 boxes. The deck itself still does not cast, because it is
                 0.5 thick over open sky and has nothing underneath to receive
                 it. */}
+            {/* The rail is a round bar, not a square one.
+                *
+                * A 0.3-unit box is seen edge-on from anywhere but directly
+                * above: its top face is a couple of pixels at any distance, so
+                * nearly all of what is on screen is one flat side face, evenly
+                * lit and evenly saturated. That is why the rail read as a
+                * painted stripe however the light was set — and it is the last
+                * flat thing in a bridge frame.
+                *
+                * A cylinder of the same width shades across its own width, so
+                * the light falls off towards the edges and the bar reads as a
+                * tube. The copper cap above it goes round for the same
+                * reason, and the two of them then read as a balustrade rather
+                * than a plank sitting on a stripe.
+                *
+                * The positions are untouched: only the shape changed, so the
+                * rail's shadow on the deck falls where it did before.
+                */}
             {[-1, 1].map((side) => (
               <group key={side}>
-                <mesh castShadow position={[side * (bridge.width / 2 - 0.2), 0.5, 0]}>
-                  <boxGeometry args={[0.3, 0.6, bridge.span]} />
+                <mesh
+                  castShadow
+                  position={[side * (bridge.width / 2 - 0.2), 0.5, 0]}
+                  rotation={[Math.PI / 2, 0, 0]}
+                >
+                  {/* A cylinder is built along y; the rail runs along z. */}
+                  <cylinderGeometry args={[0.15, 0.15, bridge.span, 8, 1, false]} />
                   <meshStandardMaterial
                     color={PALETTE.turquoise}
                     emissive={PALETTE.turquoise}
@@ -841,8 +864,12 @@ function WorldGeometry({
                     roughness={0.5}
                   />
                 </mesh>
-                <mesh castShadow position={[side * (bridge.width / 2 - 0.2), 1.1, 0]}>
-                  <boxGeometry args={[0.16, 0.7, bridge.span]} />
+                <mesh
+                  castShadow
+                  position={[side * (bridge.width / 2 - 0.2), 1.1, 0]}
+                  rotation={[Math.PI / 2, 0, 0]}
+                >
+                  <cylinderGeometry args={[0.088, 0.088, bridge.span, 6, 1, false]} />
                   <meshStandardMaterial color={PALETTE.copper} metalness={0.6} roughness={0.35} />
                 </mesh>
               </group>
