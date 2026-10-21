@@ -1,4 +1,4 @@
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { REGIONS, type RegionDef } from '../catalog/regions';
@@ -7,6 +7,7 @@ import type { RegionId } from '../types/catalog';
 import { Asset } from './Models';
 import { PANELS_PER_REGION, TAPESTRY_PANELS, isPanelLit } from './tapestry';
 import { addCollider, clearColliders } from './collision';
+import { contactShadowGeometry, contactShadowMaterial } from './contact-shadow';
 import { mistEnvironment } from './environment';
 import { applyMirrorFrameMaterial, applyMirrorMaterial } from './mirror-material';
 
@@ -129,6 +130,83 @@ const PEBBLE_COLOUR = '#9a8a72';
  * Small pebbles and dry grass tufts. Cheap instanced detail that keeps large
  * ground discs from reading as empty painted planes.
  */
+/**
+ * A soft contact shadow under every scattered object.
+ *
+ * Only drawn where the shadow map is not. The low tier drops the shadow map
+ * because a 2048 map on a phone is not affordable, and what it drops with it
+ * is the only thing that said a rock was resting on the sand rather than
+ * hovering over it. This costs one instanced, blended quad per object — no
+ * depth pass, no second pass over the scene, no 2048 buffer — so it is a
+ * fraction of what the tier has already given up to buy its frame rate.
+ *
+ * Grass gets no patch. At the high tier grass does not cast either: a thin
+ * double-sided cone's shadow is a hard speck rather than form.
+ */
+export function ContactShadows({
+  items,
+  spread = 1.35,
+  y = 0.015,
+}: {
+  items: ScatterItem[];
+  /** How wide the patch is, as a multiple of the object casting it. */
+  spread?: number;
+  /** How far above the ground the patch lies. */
+  y?: number;
+}) {
+  const geometry = useMemo(() => contactShadowGeometry(), []);
+  const material = useMemo(() => contactShadowMaterial(), []);
+  useEffect(
+    () => () => {
+      geometry.dispose();
+      material.dispose();
+    },
+    [geometry, material],
+  );
+
+  const matrices = useMemo(() => {
+    const out: THREE.Matrix4[] = [];
+    const matrix = new THREE.Matrix4();
+    const quaternion = new THREE.Quaternion();
+    const position = new THREE.Vector3();
+    const scale = new THREE.Vector3();
+    const up = new THREE.Vector3(0, 1, 0);
+    for (const item of items) {
+      position.set(item.position[0], item.position[1] + y, item.position[2]);
+      quaternion.setFromAxisAngle(up, item.rotation);
+      const s = item.scale * spread;
+      scale.set(s, 1, s);
+      matrix.compose(position, quaternion, scale);
+      out.push(matrix.clone());
+    }
+    return out;
+  }, [items, spread, y]);
+
+  const ref = useRef<THREE.InstancedMesh>(null);
+  useLayoutEffect(() => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    for (let i = 0; i < matrices.length; i += 1) mesh.setMatrixAt(i, matrices[i]);
+    mesh.instanceMatrix.needsUpdate = true;
+    // The instance matrices are what the bounding sphere is computed from, and
+    // three.js caches it: a patch left over from before the instances were
+    // placed would cull the whole field.
+    mesh.computeBoundingSphere();
+  }, [matrices]);
+
+  if (matrices.length === 0) return null;
+  return (
+    <instancedMesh
+      ref={ref}
+      args={[geometry, material, matrices.length]}
+      // The patch lies on the ground, so it must not write depth: the ground
+      // under it is already drawn, and a patch that occluded it would be a
+      // hole rather than a shadow.
+      renderOrder={1}
+    />
+  );
+}
+
 export function GroundDetail({
   items,
   kind,

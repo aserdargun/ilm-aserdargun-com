@@ -719,6 +719,64 @@ the deck to its full brightness in **two pixels**; the round rail takes
 positions are untouched, so the rail's shadow on the deck falls where it
 did before.
 
+### The low tier's rocks were floating, and the answer was not a shadow map
+
+The README's own note on the low tier ends with an invitation: *"The number
+to argue with, if someone wants the argument, is 6.08 luma and a crowd of
+floating rocks."* Here is the argument.
+
+**Turning the shadow map back on is the one thing this project cannot
+price.** The tier drops shadows *because* a 2048 map on a phone is not
+affordable, and nothing here can measure a phone's frame time. But a contact
+shadow is not a shadow map: it is one instanced, blended quad per object — no
+depth pass, no second pass over the scene, no 2048×2048 buffer. **It costs a
+fraction of what the tier has already given up to buy its frame rate**, and
+it restores the one thing that giving it up broke.
+
+So the low tier now draws a soft patch of dark under every boulder and under
+the Weaver, and nothing else changes. Measured on the running build, with the
+patches toggled in one session at one camera:
+
+| | |
+| --- | --- |
+| pixels darkened by more than 4 luma | 8,756 (0.55% of the frame) |
+| the darkening where it applies | **17.3 luma** |
+| the frame's mean luma | 94.923 with, 95.013 without |
+
+**It multiplies rather than covers.** Blending a black patch over the ground
+makes a hole in it; a shadow is the ground with the sun taken out of it,
+which is the ground's own colour at a fraction of the brightness. So the
+patch is drawn with `MultiplyBlending` and its vertex colours carry the
+*multiplier*: the rim is 1.0 — untouched ground — and the centre is the
+measured fraction.
+
+**Boulders only.** The pebbles are 0.22-scale objects, a couple of pixels
+each on screen, and a patch under a pebble is a couple of blended pixels
+under a couple of pixels. They are four fifths of the patches and none of
+the reading, and on a phone the fill is the only thing that costs. Grass
+gets no patch either, for the reason the high tier gives: a thin
+double-sided cone's shadow is a hard speck rather than form.
+
+**The cost is unmeasurable here, and that is the honest answer.** At the low
+tier on this machine the frame is vsync-capped at 60 — at 3200×2000 as well,
+which is four times the pixels of a desktop frame. Three interleaved samples
+each, patches off and on, read 60.0 / 60.2 / 60.0 against 60.1 / 60.0 /
+60.1. The one number that is *not* free is the fill: a phone's blend rate
+puts the 8,756 darkened pixels at roughly a hundredth of a millisecond, which
+is a rounding error against a 16-millisecond frame. **What cannot be measured
+here is a phone's frame time, and the claim being made is only that this is
+a small, bounded amount of fill — not that it has been measured on the device
+it is for.**
+
+**A GLSL-level lesson, twice in one round.** `MultiplyBlending` in three.js
+requires `premultipliedAlpha = true`; without it the renderer refuses the
+blend and falls back to normal blending, loudly, in a console error repeated
+every frame. The symptom was not a missing shadow — it was an **opaque white
+square** under the Weaver, because normal blending with a white source and an
+alpha of one *is* an opaque white square. It was found by reading the
+console, which is the same place the GLSL type error was found, and the same
+lesson: **a change is not verified until the console has been read.**
+
 ### Measuring the running game without an MCP browser
 
 `tools/cdp.mjs` drives a headless Chrome over the DevTools protocol with no

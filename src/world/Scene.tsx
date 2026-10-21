@@ -3,6 +3,7 @@ import { useGLTF, useTexture } from '@react-three/drei';
 import { Suspense, useCallback, useEffect, useMemo, useRef } from 'react';
 import * as THREE from 'three';
 import {
+  ContactShadows,
   GroundDetail,
   Landmark,
   PALETTE,
@@ -63,6 +64,7 @@ import { patchGroundMacro } from './ground-macro';
 const DECK_MACRO_PERIOD = 80;
 const DECK_MACRO_AMPLITUDE = 0.55;
 import { CAMERA_FAR, HORIZON_COLOR } from './sky-dome';
+import { contactShadowGeometry, contactShadowMaterial } from './contact-shadow';
 import { findUnreachableConsoles } from './navigation';
 import { regionAt } from './Player';
 import { input } from '../game/input';
@@ -535,6 +537,7 @@ function SceneContents() {
         stagePositions={stagePositions}
         objectiveStageId={nextObjectiveStage(game)}
         openRegions={openRegionIds(game)}
+        contactShadows={game.settings.quality === 'low'}
       />
 
       <PlayerRig
@@ -544,6 +547,7 @@ function SceneContents() {
         cameraPitch={cameraPitch}
         enabled={game.screen === 'playing'}
         reducedMotion={game.settings.reducedMotion}
+        contactShadow={game.settings.quality === 'low'}
         onInteract={callbacks.onInteract}
         onCycleTool={callbacks.onCycleTool}
         onPause={callbacks.onPause}
@@ -608,12 +612,18 @@ function WorldGeometry({
   stagePositions,
   objectiveStageId,
   openRegions,
+  contactShadows,
 }: {
   completedRegions: Set<string>;
   completedStages: Set<string>;
   stagePositions: StagePosition[];
   objectiveStageId: string | null;
   openRegions: Set<string>;
+  /**
+   * Whether the shadow map is off, and the scattered objects need a contact
+   * shadow of their own.
+   */
+  contactShadows: boolean;
 }) {
   const rocks = useMemo(
     () =>
@@ -728,6 +738,14 @@ function WorldGeometry({
         </group>
       ))}
 
+      {contactShadows && (
+        // Boulders only. The pebbles are 0.22-scale objects — a couple of
+        // pixels each on screen — and a patch under a pebble is a couple of
+        // blended pixels under a couple of pixels. They are four fifths of
+        // the patches and none of the reading, and on a phone the fill is the
+        // only thing that costs.
+        <ContactShadows items={rocks} />
+      )}
       <RockField items={rocks} color={PALETTE.stone} />
       <GroundDetail items={pebbles} kind="pebble" />
       <GroundDetail items={grass} kind="grass" />
@@ -971,6 +989,7 @@ function PlayerRig({
   cameraPitch,
   enabled,
   reducedMotion,
+  contactShadow,
   ...rest
 }: {
   state: React.MutableRefObject<PlayerState>;
@@ -979,6 +998,10 @@ function PlayerRig({
   cameraPitch: React.MutableRefObject<number>;
   enabled: boolean;
   reducedMotion: boolean;
+  /**
+   * Whether the shadow map is off, and the Weaver needs a patch of her own.
+   */
+  contactShadow: boolean;
   onInteract: () => void;
   onCycleTool: () => void;
   onPause: () => void;
@@ -994,7 +1017,7 @@ function PlayerRig({
     ...rest,
   });
   void mesh;
-  return <Weaver state={state} />;
+  return <Weaver state={state} contactShadow={contactShadow} />;
 }
 
 /**
@@ -1024,7 +1047,16 @@ function shortestAngle(delta: number): number {
   return Math.atan2(Math.sin(delta), Math.cos(delta));
 }
 
-function Weaver({ state }: { state: React.MutableRefObject<PlayerState> }) {
+function Weaver({
+  state,
+  contactShadow,
+}: {
+  state: React.MutableRefObject<PlayerState>;
+  /**
+   * Whether the shadow map is off and the Weaver needs a patch of her own.
+   */
+  contactShadow: boolean;
+}) {
   const group = useRef<THREE.Group>(null);
   const gltf = useWeaverModel();
   // A ref, not state: the mixer identity can change between renders, and the
@@ -1107,8 +1139,36 @@ function Weaver({ state }: { state: React.MutableRefObject<PlayerState> }) {
     }
   });
 
+  // The patch under her feet, drawn only where the shadow map is off.
+  //
+  // Without it the Weaver hovers: the low tier measures the missing contact at
+  // 6.08 luma on the sand, and the character is the one thing on screen in
+  // every frame of the game. The patch is a single blended quad that multiplies
+  // the ground by a fraction of its brightness — it darkens the sand without
+  // putting a hole in it — and it costs one draw call.
+  const shadowGeometry = useMemo(() => contactShadowGeometry(), []);
+  const shadowMaterial = useMemo(() => contactShadowMaterial(), []);
+  useEffect(
+    () => () => {
+      shadowGeometry.dispose();
+      shadowMaterial.dispose();
+    },
+    [shadowGeometry, shadowMaterial],
+  );
+
   return (
     <group ref={group}>
+      {contactShadow && (
+        <mesh
+          geometry={shadowGeometry}
+          material={shadowMaterial}
+          // The Weaver is 1.80 units tall; the patch is about the width of her
+          // stance, which is what a cast shadow of her would be.
+          position={[0, 0.015, 0]}
+          scale={[1.35, 1, 1.35]}
+          renderOrder={1}
+        />
+      )}
       <Asset
         name="weaver"
         position={[0, CHARACTER_Y_OFFSET, 0]}

@@ -79,11 +79,12 @@ const chromeArgs = [
   '--disable-extensions',
   '--hide-scrollbars',
   '--mute-audio',
-  // Software GL, so the frame is deterministic and the page does not need a
-  // real GPU to produce pixels. Slow, but this is a measurement tool.
-  '--use-gl=angle',
-  '--use-angle=swiftshader',
-  '--enable-unsafe-swiftshader',
+  // The GPU is used by default. Forcing SwiftShader makes the renderer
+  // software, and a frame rate measured there is not a frame rate: blending
+  // and noise cost orders of magnitude more, so a cost measured under it
+  // answers a different question. `--software` asks for it explicitly, for the
+  // cases that want determinism rather than numbers.
+  ...(args.software ? ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] : []),
   'about:blank',
 ];
 if (!args.headful) chromeArgs.unshift('--headless=new');
