@@ -424,14 +424,21 @@ def build_council_city():
     parts.append(new_mesh("dome", dv, df, ["glass"]))
 
     # archive towers
+    #
+    # They were six-sided lathes: a hexagonal prism, so each of its six faces
+    # was one flat quad taking one tone, and the towers were the flattest big
+    # surfaces in the world — a **median local standard deviation of 3.9**
+    # against the ground's 9.1, measured with a grid of small windows over
+    # each surface. They are ten-sided and their rings vary in radius now, so
+    # the faces have a surface and the silhouettes are not machined.
     for i in range(8):
         angle = (i / 8) * math.tau
         height = 6.0 + (i % 3) * 2.2
-        tower = lathe([
-            (0.0, 1.9, 1.9), (height, 1.7, 1.7), (height + 0.4, 1.4, 1.4),
-        ], 6)
-        tv, tf = tower
-        obj = new_mesh(f"tower{i}", tv, tf, ["stone"])
+        obj = wavy_lathe(
+            f"tower{i}",
+            [(0.0, 1.9), (height, 1.7), (height + 0.4, 1.4)],
+            sides=10, phase=0.7 + i * 1.31, amp=0.09, mat="stone",
+        )
         obj.location = (math.cos(angle) * 13.0, math.sin(angle) * 13.0, 0)
         parts.append(obj)
 
@@ -476,32 +483,47 @@ def _wavy_ring(radius, z, sides, phase, amp):
 
     A lathe's rings are perfect circles, and a face lofted between two of them
     is a smooth cone: every point on it has the same normal within a facet, so
-    the whole face takes one tone. Measured on the Collective Gardens, the
-    terrace face came out at a luma standard deviation of **3.5** against the
-    sand's 9.7 — a wall with no surface on it.
+    the whole face takes one tone. Measured with a grid of small windows over
+    the surface, the Collective Gardens' terrace face came out at a **median
+    local standard deviation of 3.5** against the sand's 9.1 — a wall with no
+    surface on it — and the Council's archive towers at **3.9**.
 
     The radius here varies with the angle, and each ring carries its own
     phase, so the wall undulates around its circumference as well as up it.
     That is what a face needs to break a tone: not a texture, which a low sun
     barely modulates, but normals that are not all the same.
+
+    `amp` is in world units, not a fraction: a tenth of a unit is a tenth of
+    a unit on a two-unit tower and on a fifteen-unit terrace alike, and a
+    fraction of the radius would give the tower nothing at all.
     """
     points = []
     for i in range(sides):
         a = (i / sides) * math.tau
-        r = radius * (
-            1.0
-            + amp * (0.62 * math.sin(a * 3.0 + phase) + 0.38 * math.sin(a * 5.0 - phase * 1.7))
-        )
+        r = radius + amp * (0.62 * math.sin(a * 3.0 + phase) + 0.38 * math.sin(a * 5.0 - phase * 1.7))
         points.append((math.cos(a) * r, math.sin(a) * r, z))
     return points
+
+
+def wavy_lathe(name, profile, sides=10, phase=0.0, amp=0.08, mat="stone"):
+    """A lathe whose rings vary in radius, so the faces between them are not flat.
+
+    `profile` is a sequence of (z, radius) pairs, the same shape `lathe` takes.
+    """
+    sections = [
+        _wavy_ring(r, z, sides, phase + i * 1.9, amp)
+        for i, (z, r) in enumerate(profile)
+    ]
+    verts, faces = loft(sections)
+    return new_mesh(name, verts, faces, [mat])
 
 
 def build_garden_terrace(name, z0, z1, r0, r1, sides=28, seed=0.0, mat="stone_dark"):
     """One terraced bed's retaining wall: three rings, and none of them flat."""
     sections = [
-        _wavy_ring(r0, z0, sides, seed, 0.012),
-        _wavy_ring(r0 - (r0 - r1) * 0.55, z0 + (z1 - z0) * 0.55, sides, seed + 1.7, 0.017),
-        _wavy_ring(r1, z1, sides, seed + 3.1, 0.010),
+        _wavy_ring(r0, z0, sides, seed, 0.18),
+        _wavy_ring(r0 - (r0 - r1) * 0.55, z0 + (z1 - z0) * 0.55, sides, seed + 1.7, 0.26),
+        _wavy_ring(r1, z1, sides, seed + 3.1, 0.15),
     ]
     verts, faces = loft(sections)
     return new_mesh(name, verts, faces, [mat])

@@ -288,6 +288,50 @@ against a far plane of 1100, and the arithmetic that keeps it true lives in
 `src/world/sky-dome.ts` with a test beside it — see "The sky had a hole in it"
 below.
 
+### The flattest big surface in the world was a council tower
+
+Measuring one surface's texture is easy to get wrong, because a single
+bright edge in the middle of a region can carry the whole number. What the
+eye reads as "this surface has grain" is the variation from one small patch
+to the next, so that is what is measured: a grid of small windows over the
+surface, and the median and the top decile of their standard deviations.
+The median is the surface; the top decile is the best-lit patch of it; and
+the ground beside it is the control, because a number means nothing without
+the surface it is standing next to. `tools/measure_surface.py` does it.
+
+Run over the world's big faces, with the ground beside each as its control:
+
+| surface | median local std | the ground beside it |
+| --- | --- | --- |
+| **the Council's archive towers** | **3.94** | 9.06 |
+| the Collective Gardens' terrace faces | 3.50 | 9.08 |
+| the loom's mast | 5.65 | 9.62 |
+| the harbour's workshop wall | 7.18 | 10.47 |
+
+The Council's towers were the flattest big surface in the world, and they
+were flat for a structural reason: each tower was a **six-sided lathe**, and
+a hexagonal prism's face is one flat quad that takes one tone. Eight of
+them, each a slab of pale stone around the dome, and the city's climax —
+the region the whole game walks towards — had nothing on its surfaces.
+
+They are ten-sided now, and their rings vary in radius, so the faces carry
+the same surface the ground does and the silhouettes are not machined. The
+median local standard deviation went from **3.94 to 8.74**, and the ground
+beside them did not move (9.06 both sides — the camera did not move).
+
+**The same measurement, the same fix, and it is now a tool rather than a
+story.** The gardens' terraces were the second flattest, and they were
+fixed the same way, one round earlier: the ring's radius varies with the
+angle, and each ring carries its own phase, so a wall undulates around its
+circumference as well as up it. A texture would not have done it — the
+measurement that settled the water says a low sun gives a tangent-space
+normal map almost nothing to modulate, so the surface has to be geometry.
+`wavy_lathe()` in `tools/blender/landmarks.py` is that piece of geometry,
+and its amplitude is in world units rather than a fraction of the radius:
+a tenth of a unit is a tenth of a unit on a two-unit tower and on a
+fifteen-unit terrace alike, and a fraction of the radius would have given
+the towers nothing at all.
+
 ### Twelve of the gardens' sixteen flowers were in the ground
 
 The Collective Gardens read as a wedding cake: four pale terraces, two
