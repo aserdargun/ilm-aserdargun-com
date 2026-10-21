@@ -8,6 +8,7 @@ import { Asset } from './Models';
 import { PANELS_PER_REGION, TAPESTRY_PANELS, isPanelLit } from './tapestry';
 import { addCollider, clearColliders } from './collision';
 import { contactShadowGeometry, contactShadowMaterial } from './contact-shadow';
+import { RESTORATION_GLOW } from './restoration';
 import { mistEnvironment } from './environment';
 import { applyMirrorFrameMaterial, applyMirrorMaterial } from './mirror-material';
 
@@ -546,6 +547,9 @@ export function Landmark({
     <Asset
       name={model}
       fallback={fallback}
+      // The region's light is switched on and off by the progression, so the
+      // painter has to run again when that changes.
+      paintKey={restored}
       // The water channel under the Great Loom is the only thing in the
       // landmarks using the `water` material, and it is baked with a strong
       // flat emission. Measured from the frame, that left it with a luminance
@@ -572,7 +576,38 @@ export function Landmark({
         // also the names of materials inside the loom's beams, the council
         // workshop and the valley pump, and this painter runs on every region
         // landmark — a name-only test would have repainted all of them.
-        if (model !== 'observer_mirrors') return;
+        if (model !== 'observer_mirrors') {
+          // The region's own light, switched on when it is restored.
+          //
+          // The glow is *added* to whatever the material already carries, and
+          // it is the region's accent colour, so the effect belongs to the
+          // region rather than being the same turquoise everywhere.
+          const glow = RESTORATION_GLOW[region.id];
+          if (!glow || material.name !== glow.material) return;
+          // The material's own light is kept, not thrown away. Some of them
+          // already glow — the gardens' coral is emissive at 0.252 — and a
+          // region that has *not* been restored must look exactly as it did.
+          const key = 'ilmekRestorationLight';
+          if (!material.userData[key]) {
+            material.userData[key] = {
+              colour: material.emissive.clone(),
+              intensity: material.emissiveIntensity,
+            };
+          }
+          const original = material.userData[key] as {
+            colour: THREE.Color;
+            intensity: number;
+          };
+          if (restored) {
+            material.emissive.set(region.palette.accent);
+            material.emissiveIntensity = glow.emissive;
+          } else {
+            material.emissive.copy(original.colour);
+            material.emissiveIntensity = original.intensity;
+          }
+          material.needsUpdate = true;
+          return;
+        }
         if (material.name === 'metal') applyMirrorFrameMaterial(material);
         else if (material.name === 'glass') applyMirrorMaterial(material, mistProbe);
         else return;

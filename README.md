@@ -777,6 +777,51 @@ alpha of one *is* an opaque white square. It was found by reading the
 console, which is the same place the GLSL type error was found, and the same
 lesson: **a change is not verified until the console has been read.**
 
+### Seven of the eight regions had no restoration effect at all
+
+Every region in the catalogue promises a visible change when it is restored —
+light spreading along a branch, routes drawn as light across a map, the
+canals filling, the council light becoming a steady ring, the harbour's
+lights burning, flowers opening, the mirrors sharpening, the pump coming to
+life. **Seven of the eight had none of it.** Only the hub did anything, and
+only because the tree's crown was wired up separately.
+
+Measured on the running build, restoring the Memory Council City moved its
+own landmark by **0.4 luma**: the region was restored, the counter moved,
+the stage was marked complete, and the landmark looked exactly as it had.
+The game's own line is that every connection brings the world to life, and
+for seven regions it did not.
+
+Each region now lights the part its effect is *about* — the council's
+turquoise light, the gardens' flowers, the terrace's landmasses, the loom's
+water, the mirrors' glass, the valley's moving parts, the harbour's lit
+metal — in the region's own accent colour, from the palette the region was
+designed around, so the effect belongs to the region rather than being the
+same turquoise everywhere.
+
+| | pixels brightened by more than 6 luma |
+| --- | --- |
+| the Memory Council City | 22,500 (1.41% of the frame) |
+| the Cartographers' Terrace | 66,850 (4.18% of the frame) |
+
+**The unrestored state is untouched**, and that is a claim worth measuring
+rather than assuming: the council's landmark, before this change and after
+it, differs by a mean of 0.19 and by more than 8 luma on 0.385% of the
+frame — the character and the spark moving, nothing else. The painter
+*restores* each material's own light rather than switching it off, because
+some of them already glow: the gardens' coral is emissive at 0.252, and a
+region that has not been restored must look exactly as it did.
+
+`tests/restoration.test.ts` pins the effect to the models, because a glow
+that names a material the model does not have is a glow that does nothing —
+and that failure is invisible in a screenshot. The landmark still loads, the
+stage still completes, the frame count is healthy, and the region is
+restored. **The test opens each region's GLB and asks what materials it
+actually has.**
+
+The hub is absent from the table on purpose: it already has an effect, and
+it does it better than a lamp.
+
 ### Measuring the running game without an MCP browser
 
 `tools/cdp.mjs` drives a headless Chrome over the DevTools protocol with no
