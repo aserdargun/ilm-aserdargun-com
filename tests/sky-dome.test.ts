@@ -180,17 +180,24 @@ describe('the mist below the horizon', () => {
     expect(mist).toContain('cameraPosition.xz');
   });
 
-  it('drifts the sea, and leaves the sky still', () => {
-    // The sea moves; the clouds above do not. The sky's cloud pattern is
-    // three octaves at a frequency the horizon compresses, and a moving
-    // pattern that fine crawls rather than drifts — so the time term is
-    // given to the lower hemisphere only.
+  it('drifts the sea in world units and the clouds in their own space', () => {
+    // Two different kinds of motion, for two different kinds of thing.
+    //
+    // The sea is a *place* — a floor of cloud a long way down — so its drift
+    // is in world units and it parallaxes when the player walks.
+    //
+    // The clouds are a *projection* painted on the dome, not a place, so
+    // their drift is in the noise's own space. That is what keeps them from
+    // crawling: the drift is uniform in pattern space, so the coarse octave
+    // and the fine one move together and the fine detail never slides
+    // against the cloud it belongs to.
     const body = SKY_FRAGMENT_SHADER.slice(SKY_FRAGMENT_SHADER.indexOf('void main()'));
     const mistStart = body.indexOf('if (d.y < 0.0)');
     const mist = body.slice(mistStart);
     const sky = body.slice(0, mistStart);
     expect(mist).toContain('uTime');
-    expect(sky).not.toContain('uTime');
+    expect(sky).toContain('uTime');
+    expect(mist).toContain('cameraPosition.xz');
   });
 });
 

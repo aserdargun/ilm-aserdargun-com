@@ -865,21 +865,40 @@ It also never moved. The dome is a backdrop that never writes depth, so it is
 the one place in the world where a frame-rate-independent clock is nearly
 free — and the sea now has one.
 
+**The clouds above drift too, and for a different reason.** The sea is a
+*place* — a floor of cloud a long way down — so its drift is in world units
+and it parallaxes. The clouds are a *projection* painted on the dome, not a
+place, so their drift is in the noise's own space. That is what keeps them
+from crawling: the drift is uniform in pattern space, so the coarse octave
+and the fine one move together and the fine detail never slides against the
+cloud it belongs to. The fear — that a pattern the horizon compresses would
+crawl exactly where the eye looks — was worth measuring rather than
+believing, and the measurement says it does not:
+
+| | mean change | pixels over 4 luma | isolated pixels |
+| --- | --- | --- | --- |
+| the sky, high band | 2.560 luma | 23.0% | **0.0003%** |
+| the sky, near the horizon | 0.670 luma | 4.4% | **0.0000%** |
+
+The drift is uniform in pattern space, so a cloud's size and its motion
+shrink together near the horizon — the same reason the sky's clouds were left
+still in the first place no longer applies, because what made them risky was
+the *pattern's* compression, and the compression of the *motion* cancels it.
+
 Measured with the same camera, eight seconds apart:
 
 | | mean change | pixels over 4 luma |
 | --- | --- | --- |
-| the sky, top band | **0.000 luma** | 0.00% |
 | the sea, left of the bridge | 4.605 luma | 44.8% |
 | the sea, right of the bridge | 3.115 luma | 29.4% |
 
-**The sky's zero is the control that makes the rest of it mean anything**:
-the two frames are pixel-identical everywhere the world is not animated, so
-the sea's movement is the drift and not the camera. The sky's own clouds stay
-still on purpose — their pattern is three octaves at a frequency the horizon
-compresses, and a moving pattern that fine crawls rather than drifts. The
-shimmer check over the same pair gives 0.0000% to 0.0054% isolated pixels,
-which is the bar the sky's clouds already meet.
+**The control that makes this mean anything was the sky, reading exactly
+0.000.** That measurement was taken before the clouds were given a clock of
+their own, and the sky's clouds were the one thing in the frame that could
+not move — so a zero there says the camera did not move between the two
+frames, and the sea's movement is the drift and not the camera. The shimmer
+check over the same pair gives 0.0000% to 0.0054% isolated pixels, which is
+the bar the sky's clouds already meet.
 
 ### Measuring the running game without an MCP browser
 

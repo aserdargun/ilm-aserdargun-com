@@ -310,7 +310,14 @@ export const SKY_FRAGMENT_SHADER = /* glsl */ `
     // outright: a plane projection that reaches the horizon without a
     // floor compresses the cloud to nothing in the last few degrees,
     // exactly where the ridge is and where aliasing would show.
-    vec2 cloudUv = d.xz * (14.0 / (0.35 + d.y * 2.0));
+    // The clouds drift, on a clock of their own.
+    //
+    // The drift is uniform in the noise's own space, and the projection
+    // compresses near the horizon, so a cloud's size and its motion shrink
+    // together: the feature and the drift stay in the same proportion and
+    // nothing crawls. It is the reason the sea's drift is in world units and
+    // this one is not.
+    vec2 cloudUv = d.xz * (14.0 / (0.35 + d.y * 2.0)) + vec2(uTime * 0.03, uTime * 0.012);
     float band = skyFbm(cloudUv);
     float cloud = smoothstep(0.42, 0.72, band);
     // Present above the horizon, gone before the zenith, brightest where
