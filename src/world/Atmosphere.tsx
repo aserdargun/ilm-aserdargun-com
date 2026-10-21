@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo } from 'react';
+import { useFrame } from '@react-three/fiber';
 import { useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import { buildDisc } from './disc';
@@ -138,6 +139,19 @@ export function SkyDome({ radius = SKY_DOME_RADIUS }: { radius?: number }) {
       }),
     [],
   );
+
+  // The clock the sea drifts on.
+  //
+  // The dome is a backdrop and it never writes depth, so this is the one
+  // place in the world where a frame-rate-independent time is nearly free.
+  // It is the sea's drift only: the sky's own clouds stay still, because
+  // their pattern is three octaves at a frequency the horizon compresses, and
+  // a moving pattern that fine crawls rather than drifts.
+  useFrame((_frame, delta) => {
+    const uniforms = material.uniforms;
+    if (!uniforms.uTime) return;
+    uniforms.uTime.value += delta;
+  });
 
   return (
     <mesh material={material} renderOrder={-1000} frustumCulled={false}>

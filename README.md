@@ -852,6 +852,35 @@ islands, the causeway's three bands, the rail, the mirrors' panels, the
 landmasses — are all measured above, and every one of them is now carrying
 something.
 
+### The sea is a place now, and it drifts
+
+The sea of mist under the islands was painted on the camera. Its pattern was
+the view direction and nothing else, which meant two things were true at
+once and neither of them was right: it never parallaxed when the player
+walked, and it never changed as they looked around — it turned with them. A
+floor of cloud a long way down is a *place*, and a place is found by adding
+the camera's own position to the point the ray strikes.
+
+It also never moved. The dome is a backdrop that never writes depth, so it is
+the one place in the world where a frame-rate-independent clock is nearly
+free — and the sea now has one.
+
+Measured with the same camera, eight seconds apart:
+
+| | mean change | pixels over 4 luma |
+| --- | --- | --- |
+| the sky, top band | **0.000 luma** | 0.00% |
+| the sea, left of the bridge | 4.605 luma | 44.8% |
+| the sea, right of the bridge | 3.115 luma | 29.4% |
+
+**The sky's zero is the control that makes the rest of it mean anything**:
+the two frames are pixel-identical everywhere the world is not animated, so
+the sea's movement is the drift and not the camera. The sky's own clouds stay
+still on purpose — their pattern is three octaves at a frequency the horizon
+compresses, and a moving pattern that fine crawls rather than drifts. The
+shimmer check over the same pair gives 0.0000% to 0.0054% isolated pixels,
+which is the bar the sky's clouds already meet.
+
 ### Measuring the running game without an MCP browser
 
 `tools/cdp.mjs` drives a headless Chrome over the DevTools protocol with no

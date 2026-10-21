@@ -167,6 +167,31 @@ describe('the mist below the horizon', () => {
   it('keeps the vertex shader free of the same trap', () => {
     expect(bareIntegers(SKY_VERTEX_SHADER)).toEqual([]);
   });
+
+  it('anchors the sea in the world, not on the camera', () => {
+    // The sea was the view direction alone, which means it was painted on
+    // the camera: it never parallaxed when the player walked, and it turned
+    // with them. A floor of cloud a long way down is a place, and the place
+    // is found by adding the camera's own position to the point the ray
+    // strikes.
+    const mist = SKY_FRAGMENT_SHADER.slice(
+      SKY_FRAGMENT_SHADER.indexOf('if (d.y < 0.0)'),
+    );
+    expect(mist).toContain('cameraPosition.xz');
+  });
+
+  it('drifts the sea, and leaves the sky still', () => {
+    // The sea moves; the clouds above do not. The sky's cloud pattern is
+    // three octaves at a frequency the horizon compresses, and a moving
+    // pattern that fine crawls rather than drifts — so the time term is
+    // given to the lower hemisphere only.
+    const body = SKY_FRAGMENT_SHADER.slice(SKY_FRAGMENT_SHADER.indexOf('void main()'));
+    const mistStart = body.indexOf('if (d.y < 0.0)');
+    const mist = body.slice(mistStart);
+    const sky = body.slice(0, mistStart);
+    expect(mist).toContain('uTime');
+    expect(sky).not.toContain('uTime');
+  });
 });
 
 /**

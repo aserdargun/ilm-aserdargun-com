@@ -246,6 +246,7 @@ export const SKY_FRAGMENT_SHADER = /* glsl */ `
   uniform vec3 uGlow;
   uniform vec3 uSun;
   uniform vec3 uSunColour;
+  uniform float uTime;
   varying float vHeight;
   varying vec3 vDir;
 
@@ -378,7 +379,18 @@ export const SKY_FRAGMENT_SHADER = /* glsl */ `
       // How far the ray travels to reach the floor. Grazing angles travel
       // further, which is what compresses the cells towards the horizon.
       float travel = ${glslFloat(MIST_FLOOR_DEPTH)} / max(down, 0.02);
-      vec2 seaUv = d.xz * travel * ${glslFloat(MIST_SCALE)};
+      // The floor point, in world units, and then the pattern on it.
+      //
+      // The projection used to be the view direction alone, which means the
+      // sea was painted on the camera: it never parallaxed when the player
+      // walked, and it never changed as they looked around — it turned with
+      // them. Adding the camera's own position makes it a place instead, a
+      // floor of cloud a long way down that the world moves across.
+      vec2 floorXZ = cameraPosition.xz + d.xz * travel;
+      // And it drifts, the way weather does. The speed is a fraction of a
+      // cloud's own width: a feature is about two and a half units across and
+      // takes six seconds to move one of its own widths.
+      vec2 seaUv = floorXZ * ${glslFloat(MIST_SCALE)} + vec2(uTime * 0.008, uTime * 0.003);
       float sea = skyFbm(seaUv);
       // The mist is not there at the horizon and thickens as the eye looks
       // further down, which is what keeps the two halves of the dome
@@ -399,7 +411,10 @@ export const SKY_FRAGMENT_SHADER = /* glsl */ `
 `;
 
 /** The dome's uniforms, built once from the palette and the shared sun. */
-export function skyDomeUniforms(): Record<string, { value: THREE.Color | THREE.Vector3 }> {
+export function skyDomeUniforms(): Record<
+  string,
+  { value: THREE.Color | THREE.Vector3 | number }
+> {
   return {
     uZenith: { value: new THREE.Color(PALETTE.midnight) },
     uHorizon: { value: HORIZON_COLOR.clone() },
@@ -411,5 +426,6 @@ export function skyDomeUniforms(): Record<string, { value: THREE.Color | THREE.V
     // at all. Same constant, so the three agree by construction.
     uSun: { value: SUN_DIRECTION.clone() },
     uSunColour: { value: SUN_COLOR.clone() },
+    uTime: { value: 0 },
   };
 }
