@@ -8,7 +8,6 @@
  * the patches.
  */
 
-const params = new URLSearchParams(location.hash.replace(/^#/, ''));
 const THREE = await import('/node_modules/.vite/deps/three.js');
 
 const scene = window.__ilm.three.scene;
