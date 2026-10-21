@@ -288,7 +288,7 @@ against a far plane of 1100, and the arithmetic that keeps it true lives in
 `src/world/sky-dome.ts` with a test beside it — see "The sky had a hole in it"
 below.
 
-### The loom's arms were hanging from the air
+### The loom had a spine, and then it had threads
 
 The Flow Foundry's landmark is a many-armed machine where each arm weaves
 its own job, and it was a post with six sticks on it. The reason is
@@ -299,19 +299,20 @@ machine had no spine.
 
 It does now. A column stands on the weaving beam and rises to a crown, and
 the crown is what the arms come out of — with a copper collar at the joint,
-so it reads as a joint rather than as two shapes that happen to touch. The
-arms did not move; what changed is that they are attached to something.
+so it reads as a joint rather than as two shapes that happen to touch.
 
-**What it costs: 148 triangles and 9 KB of GLB.** The loom's model was 844
-triangles in 58 KB; it is 992 in 67 KB.
+**And then the arms had nothing to weave.** They radiated from the crown
+like a star, which put their tips seven to nine units out in six
+directions, where there is no thread and no beam to land on. A loom's arms
+arch over the warp and come down on it, each at its own place along it, and
+that is what *"each arm weaves its own job"* means. The six arms arch now,
+and the **warp the region promised and the model never had** — fifteen
+copper strands along the weaving beam — is there with the shuttles riding
+over it.
 
-**What is still missing, and it is the next thing on the list:** the threads.
-The region promises *"thread beams"* and the model has none. The arms are
-supposed to be weaving, and there is nothing between an arm and the beam
-below it. That needs a frame that ties the arms' tips to the weaving beam —
-the bar is a sixteen-unit beam along one axis while the arms reach out in
-six directions, so the threads have nothing to land on — and that is a
-rebuild of the frame rather than a part added to it.
+**What it costs: 252 triangles and 20 KB of GLB** for the threads and the
+arching arms, on top of the 148 the spine cost. The loom's model is 1,244
+triangles in 86 KB.
 
 ### The flattest big surface in the world was a council tower
 

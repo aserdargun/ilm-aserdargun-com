@@ -352,26 +352,40 @@ def build_great_loom():
     cv, cf = collar
     parts.append(new_mesh("collar", cv, cf, ["copper"]))
 
-    # six arms, each weaving its own job
+    # Six arms, each weaving its own job.
+    #
+    # They used to radiate from the crown like a star, which put their tips
+    # seven to nine units out in six directions — where there is no thread to
+    # weave and nothing to land on. A loom's arms arch over the warp and come
+    # down on it, each at its own place along it, and that is what "each arm
+    # weaves its own job" means.
     for i in range(6):
-        angle = (i / 6) * math.tau
-        length = 7.0 + (i % 3) * 2.0
+        span = 6.4 - abs(i - 2.5) * 1.15
+        side = 1 if i % 2 == 0 else -1
+        # Where this arm's shuttle lands on the warp.
+        tip = (span * (-1 if i < 3 else 1), side * 0.82, 4.35)
         sections = []
-        for t in (0.0, 0.5, 1.0):
-            sections.append(ring(
-                math.cos(angle) * length * t,
-                math.sin(angle) * length * t,
-                8.0 - t * 2.2,
-                0.55 - t * 0.18, 0.55 - t * 0.18, 6,
-            ))
+        for t in (0.0, 0.35, 0.72, 1.0):
+            # Out slowly, down faster: the shape of an arm reaching over.
+            reach = t ** 1.6
+            z = 8.0 + (tip[2] - 8.0) * (t ** 0.75)
+            r = 0.62 - t * 0.36
+            sections.append(ring(tip[0] * reach, tip[1] * reach, z, r, r, 6))
         av, af = loft(sections)
         parts.append(new_mesh(f"arm{i}", av, af, ["copper"]))
 
-        # shuttle at the tip of each arm
-        parts.append(
-            box(f"shuttle{i}", (math.cos(angle) * length, math.sin(angle) * length, 5.8),
-                (1.1, 0.7, 0.5), ["copper_dark"])
-        )
+        # the shuttle at the tip of each arm
+        parts.append(box(f"shuttle{i}", tip, (1.0, 0.62, 0.46), ["copper_dark"]))
+
+    # The threads: what the loom is for.
+    #
+    # The region promises "thread beams" and the model had none — there was
+    # nothing between an arm and the beam below it. A warp of copper strands
+    # now runs the length of the weaving beam, and the six shuttles ride over
+    # it, which is the whole of what the region says the machine does.
+    for j in range(15):
+        y = -0.90 + j * 0.1285
+        parts.append(box(f"thread{j}", (0.0, y, 3.85), (15.2, 0.055, 0.055), ["copper"]))
 
     # The water channel running beneath the loom.
     #
