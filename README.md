@@ -932,6 +932,34 @@ is one everywhere**, so a material that was already glowing — the gardens'
 coral is emissive at 0.252 — keeps exactly the light it had; a region that
 has not been restored looks precisely as it did.
 
+### The title screen had the world's worst camera
+
+The title screen has always shown the world at the spawn point. The spawn
+point is where the Weaver stands, and the camera there looks *down* at the
+Weaver — so the Synthesis Tree's crown, thirteen to seventeen units above the
+sand, is forty degrees over the top of the frame and never seen at all.
+
+What the title screen had behind it, therefore, was a blurred brown field
+and the foot of a trunk. For a game whose first line is *"her bağlantı
+dünyaya yeniden hayat verir"*, the first thing a player saw was dirt.
+
+So the title gets its own camera: a slow arc around the tree, on the sun's
+side so the tree is lit from the front rather than reduced to a silhouette,
+high enough to see the crown and the sea of cloud under it, and far enough
+back that the tapestry's forty-four units of cloth are a rhythm above the
+tree rather than a wall across it. It looks a little to the left of the
+trunk, so the tree stands in the right third of the frame and the wordmark
+has the left.
+
+It runs after the player controller's frame callback — the controller is a
+child component, and a child's frame callback is registered before its
+parent's — so the title camera has the last word, and the moment the game
+starts the controller takes the camera back.
+
+The title is blurred, which is what made the composition worth getting right:
+a blur of dirt is a blur of dirt, and a blur of a sea of cloud under a
+lit tree reads as a world even before it resolves.
+
 ### Measuring the running game without an MCP browser
 
 `tools/cdp.mjs` drives a headless Chrome over the DevTools protocol with no

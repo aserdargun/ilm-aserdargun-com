@@ -182,6 +182,42 @@ function nextObjectiveStage(game: ReturnType<typeof useGame>): string | null {
 function SceneContents() {
   const game = useGame();
   const cameraYaw = useRef(0);
+
+  /**
+   * The title screen's camera.
+   *
+   * The title screen has always shown the world at the spawn point, and the
+   * spawn point is where the Weaver stands, and the camera there looks
+   * *down* at the Weaver — so the Synthesis Tree's crown, thirteen to
+   * seventeen units above the sand, is forty degrees over the top of the
+   * frame and never seen at all. What the title screen had behind it was a
+   * blurred brown field and the foot of a trunk.
+   *
+   * So the title gets its own camera: a slow arc around the tree, high
+   * enough to see the crown and the sea of cloud under it, looking a little
+   * to the left of the trunk so the tree stands in the right third of the
+   * frame and the wordmark has the left.
+   *
+   * It runs here, after the player controller's frame callback — the
+   * controller is a child component, and a child's frame callback is
+   * registered before its parent's — so this one has the last word.
+   */
+  useFrame(({ camera, clock }) => {
+    if (game.screen !== 'title') return;
+    const t = clock.elapsedTime * 0.045;
+    // The sun is at +x, so the camera stands on that side: the tree is lit
+    // from the front rather than reduced to a silhouette against the sky.
+    camera.position.set(
+      56 + Math.sin(t) * 5,
+      26 + Math.sin(t * 0.7) * 1.4,
+      23 + Math.cos(t) * 4,
+    );
+    // Looking a little to the left of the trunk, so the tree stands in the
+    // right third of the frame and the wordmark has the left. Far enough back
+    // that the tapestry's forty-four units of cloth are a rhythm above the
+    // tree rather than a wall across it.
+    camera.lookAt(-3, 9, 0);
+  });
   const cameraPitch = useRef(0);
   const player = useRef<PlayerState>(createPlayerState(new THREE.Vector3(...SPAWN)));
   const stagePositions = useMemo(() => buildStagePositions(), []);
