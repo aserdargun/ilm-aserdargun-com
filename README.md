@@ -991,6 +991,28 @@ mechanism is a fraction of what the tier already gave up to buy its frame
 rate, and the part that can be measured — the fill, the draw calls, the
 frame time — was.
 
+### The low tier holds up, once it is measured
+
+The low tier is the tier a phone opens on, and it is the one this project has
+deliberately left alone. With the contact shadows in, the two tiers were put
+side by side at the same camera and measured, rather than judged:
+
+| | ground mean | ground spread | frame mean |
+| --- | --- | --- | --- |
+| high | 133.28 | 35.50 | 104.77 |
+| low | 130.06 | 39.81 | 96.77 |
+
+**They are closer than they look.** The ground's mean is 2.4% apart — the
+exposure claim in this README holds — and the low tier's raw texture spread
+is actually *higher*, because the high tier's ambient occlusion flattens the
+fine variation it sits on. What the eye was reading as a washed-out tier is
+the frame being eight luma darker, which is the bloom and the tone curve,
+not a different world.
+
+**The one difference that is real is the shadow**, and it is the one the
+contact patches were added for: a cast shadow at the high tier, a soft pool
+under the feet at the low one.
+
 ### Measuring the running game without an MCP browser
 
 `tools/cdp.mjs` drives a headless Chrome over the DevTools protocol with no
