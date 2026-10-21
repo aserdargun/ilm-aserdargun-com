@@ -30,7 +30,6 @@ const readRegion = (x0, y0, x1, y1) => {
   renderer.setRenderTarget(null);
   renderer.render(scene, camera);
   const w = gl.drawingBufferWidth;
-  const h = gl.drawingBufferHeight;
   const dpr = w / window.innerWidth;
   const bx0 = Math.round(x0 * dpr);
   const bx1 = Math.round(x1 * dpr);
