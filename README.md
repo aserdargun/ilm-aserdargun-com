@@ -960,6 +960,37 @@ The title is blurred, which is what made the composition worth getting right:
 a blur of dirt is a blur of dirt, and a blur of a sea of cloud under a
 lit tree reads as a world even before it resolves.
 
+### The whole round, measured
+
+The goal asks for the world to look its best *and* for it to be cheap, and
+this round added a great deal: a sea of mist under the islands, a sky whose
+clouds drift, a wave of light that crosses a landmark when its region is
+restored, contact shadows on the low tier, round rails, three rebuilt
+landmarks and a camera of its own for the title screen.
+
+**None of it costs anything measurable.** Measured against the commit this
+round started from, on the same machine, in the same harness, at 3840×2160 —
+where the frame is GPU-bound rather than vsync-capped, which is the only
+resolution at which a cost is visible at all:
+
+| tier | before | after |
+| --- | --- | --- |
+| high | 46.4 fps (21.6 ms) | **46.4 fps (21.6 ms)** |
+| low | 60.0 fps | **60.0 fps** |
+
+The low tier carries two extra meshes — the contact-shadow fields — and
+costs nothing either. At 1600×1000 every tier sits on the vsync cap at 60,
+which is why the measurement was taken at 3840×2160: at the smaller size the
+cap hides whatever the frame is really doing.
+
+**What this does not say.** It says the work is free *on this machine*, and
+the numbers that would matter on a phone are still not measured here. That
+is the same gap the low tier's shadow map was left in, and it is the reason
+the contact shadows were built as two blended quads rather than a map: the
+mechanism is a fraction of what the tier already gave up to buy its frame
+rate, and the part that can be measured — the fill, the draw calls, the
+frame time — was.
+
 ### Measuring the running game without an MCP browser
 
 `tools/cdp.mjs` drives a headless Chrome over the DevTools protocol with no
