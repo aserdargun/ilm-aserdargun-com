@@ -288,6 +288,54 @@ against a far plane of 1100, and the arithmetic that keeps it true lives in
 `src/world/sky-dome.ts` with a test beside it — see "The sky had a hole in it"
 below.
 
+### Twelve of the gardens' sixteen flowers were in the ground
+
+The Collective Gardens read as a wedding cake: four pale terraces, two
+green slabs and a couple of glowing diamonds. The catalogue says the region
+is *"mossy turbines, pale ceramic pots, copper pipes"* and that its effect
+is *"slowly turning swarms, mechanical flowers opening and closing"* — and
+the model had the turbines, four of the flowers, and nothing else of it.
+
+**The cause was one line.** `bed_height(distance)` is the height of the
+terrace surface at a radius, and the terraces are four nested frusta, each
+leaving a 1.3-wide annular bed. The function returned the *first* frustum
+whose radius covered the distance, so every flower was placed at the height
+of the **lowest** bed — and the three inner rings of the mound are three
+and a half to five and a half units higher.
+
+Measured against the stack, the sixteen flowers were placed:
+
+| distance from the centre | the builder put it at | the surface is at | buried by |
+| --- | --- | --- | --- |
+| 5.0 | 2.50 | 8.20 | **5.70** |
+| 7.6 | 2.50 | 6.30 | **3.80** |
+| 10.2 | 2.50 | 4.40 | **1.90** |
+| 12.8 | 2.50 | 2.50 | 0.00 |
+
+Twelve of the sixteen were inside the mound. **The region's restoration
+effect is the flowers opening**, so three quarters of the payoff of
+restoring the Collective Gardens was underground, and the effect had been
+measured on a bloom nobody could see.
+
+The rule is the last match, not the first: the surface at a radius is the
+height of the **highest** frustum whose top disc covers it, and each top
+disc has a radius of 15.0 − 1.3 − i·2.6, not 15.0 − i·2.6.
+
+**And the beds themselves were missing.** A terrace with a flower standing
+on it is still a pale cone; a garden has soil. Each terrace now carries a
+band of moss on its exposed ring, eight ceramic pots stand on the beds, and
+two copper pipes run around them — the three things the region says it has
+and had none of. Measured on the running build, from the same camera: the
+pots read at 151.8 luma and the soil at 71.4 against the terrace's 128.0,
+so the mound is no longer one tone; nothing is blown out (0.0% of the
+pipes' pixels at 250 or above — they are a strong specular, not a clipped
+one).
+
+**What it costs: 1,344 triangles and 90 KB of GLB.** The gardens' model was
+1,248 triangles in 83 KB; it is 2,592 in 173 KB. The pipes are the bulk of
+it — two rings of twenty-eight segments each — and they are the thing that
+makes the terraces read as built rather than carved.
+
 ### The water under the Great Loom was a plank, and the README had already said why
 
 The Flow Foundry's channel is a thirty-unit bar of turquoise lying on the

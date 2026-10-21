@@ -491,12 +491,69 @@ def build_collective_gardens():
         parts.append(new_mesh(f"terrace{i}", tv, tf, ["stone_dark"]))
 
     def bed_height(distance):
-        """Height of the terrace surface at a given radius."""
+        """Height of the terrace surface at a given radius.
+
+        The terraces are four nested frusta, and each one leaves an annular
+        bed behind: the frustum's *top disc* sits at BASE + (i+1)*STEP with a
+        radius of 15.0 - 1.3 - i*2.6, and the next frustum stands on it. So
+        the surface at a radius is the height of the **highest** frustum whose
+        top disc covers that radius — the last match, not the first.
+
+        It was the first match, and it put everything at the height of the
+        lowest bed. Measured against the stack: the flowers at radii 5.0, 7.6
+        and 10.2 were placed 5.70, 3.80 and 1.90 units **under** the surface
+        they were meant to stand on, and only the four on the outer bed were
+        ever visible. The gardens' restoration effect is the flowers opening,
+        and three quarters of them were in the ground.
+        """
+        height = BASE
         for i in range(4):
-            r = 15.0 - i * 2.6
+            r = 15.0 - 1.3 - i * 2.6
             if distance <= r:
-                return BASE + (i + 1) * STEP
-        return BASE + 4 * STEP
+                height = BASE + (i + 1) * STEP
+        return height
+
+    # The beds themselves: a band of soil on each terrace's top ring, so the
+    # mound is a garden and not one pale mass with a few flowers on it. The
+    # ring a terrace leaves exposed is exactly 1.3 wide, because the next
+    # frustum stands on it.
+    for i in range(4):
+        r_outer = 15.0 - 1.3 - i * 2.6
+        z = BASE + (i + 1) * STEP
+        if i == 3:
+            # The innermost bed is a disc, not a ring.
+            soil = lathe([(z + 0.02, r_outer, r_outer), (z + 0.16, 0.5, 0.5)], 20)
+        else:
+            soil = lathe([(z + 0.02, r_outer, r_outer), (z + 0.16, r_outer - 1.3, r_outer - 1.3)], 20)
+        sv, sf = soil
+        parts.append(new_mesh(f"bed{i}", sv, sf, ["moss"]))
+
+    # Pots and a pipe run, which is what the region says it has: "mossy
+    # turbines, pale ceramic pots, copper pipes". Only the turbines were in the
+    # model, so the description was a promise the island did not keep.
+    pot_spots = [
+        (12.4, 0.0), (12.4, 2.1), (9.8, 1.3), (9.8, 4.4),
+        (7.2, 2.8), (7.2, 5.5), (3.0, 0.9), (3.0, 3.7),
+    ]
+    for i, (distance, angle) in enumerate(pot_spots):
+        x = math.cos(angle) * distance
+        y = math.sin(angle) * distance
+        z = bed_height(distance) + 0.16
+        pot = lathe([
+            (z, 0.42, 0.42), (z + 0.55, 0.60, 0.60), (z + 0.78, 0.66, 0.66), (z + 0.92, 0.58, 0.58),
+        ], 8)
+        pv, pf = pot
+        p_obj = new_mesh(f"pot{i}", pv, pf, ["ceramic"])
+        p_obj.location = (x, y, 0)
+        parts.append(p_obj)
+
+    # A copper pipe following the outer bed, and one following the second.
+    for i in (0, 1):
+        r = 15.0 - 1.3 - i * 2.6 - 0.65
+        z = BASE + (i + 1) * STEP + 0.3
+        pipe = torus(major=r, minor=0.13, z=z, major_segments=28, minor_segments=5)
+        tv, tf = pipe
+        parts.append(new_mesh(f"pipe{i}", tv, tf, ["copper"]))
 
     # flowers: stem, bud, petals
     for i in range(16):
