@@ -307,6 +307,9 @@ Run over the world's big faces, with the ground beside each as its control:
 | the Collective Gardens' terrace faces | 3.50 | 9.08 |
 | the loom's mast | 5.65 | 9.62 |
 | the harbour's workshop wall | 7.18 | 10.47 |
+| the Cartographer's table top | 20.26 | 8.30 |
+| the table's rim | 11.92 | 8.30 |
+| the Observer's Mirrors' plinth | 12.01 | 9.51 |
 
 The Council's towers were the flattest big surface in the world, and they
 were flat for a structural reason: each tower was a **six-sided lathe**, and
@@ -318,6 +321,15 @@ They are ten-sided now, and their rings vary in radius, so the faces carry
 the same surface the ground does and the silhouettes are not machined. The
 median local standard deviation went from **3.94 to 8.74**, and the ground
 beside them did not move (9.06 both sides — the camera did not move).
+
+**The two that are still below the ground are metals, and they are read a
+different way.** The loom's mast and the harbour's workshop are metal, and
+a metal's face is read by what it reflects rather than by its own relief —
+which is why the loom's frame is *supposed* to be a dark silhouette, and
+why the README's own note on it says that a landmark is built to read as a
+strong silhouette from a distance. The sweep's remaining work is therefore
+done: **no stone surface in the world is flatter than the ground beside
+it.**
 
 **The same measurement, the same fix, and it is now a tool rather than a
 story.** The gardens' terraces were the second flattest, and they were
