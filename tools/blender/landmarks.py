@@ -471,6 +471,42 @@ def build_cloud_harbour():
     return harbour
 
 
+def _wavy_ring(radius, z, sides, phase, amp):
+    """One ring whose radius is modulated, so a face built from it is not flat.
+
+    A lathe's rings are perfect circles, and a face lofted between two of them
+    is a smooth cone: every point on it has the same normal within a facet, so
+    the whole face takes one tone. Measured on the Collective Gardens, the
+    terrace face came out at a luma standard deviation of **3.5** against the
+    sand's 9.7 — a wall with no surface on it.
+
+    The radius here varies with the angle, and each ring carries its own
+    phase, so the wall undulates around its circumference as well as up it.
+    That is what a face needs to break a tone: not a texture, which a low sun
+    barely modulates, but normals that are not all the same.
+    """
+    points = []
+    for i in range(sides):
+        a = (i / sides) * math.tau
+        r = radius * (
+            1.0
+            + amp * (0.62 * math.sin(a * 3.0 + phase) + 0.38 * math.sin(a * 5.0 - phase * 1.7))
+        )
+        points.append((math.cos(a) * r, math.sin(a) * r, z))
+    return points
+
+
+def build_garden_terrace(name, z0, z1, r0, r1, sides=28, seed=0.0, mat="stone_dark"):
+    """One terraced bed's retaining wall: three rings, and none of them flat."""
+    sections = [
+        _wavy_ring(r0, z0, sides, seed, 0.012),
+        _wavy_ring(r0 - (r0 - r1) * 0.55, z0 + (z1 - z0) * 0.55, sides, seed + 1.7, 0.017),
+        _wavy_ring(r1, z1, sides, seed + 3.1, 0.010),
+    ]
+    verts, faces = loft(sections)
+    return new_mesh(name, verts, faces, [mat])
+
+
 def build_collective_gardens():
     """The Collective Gardens: terraced beds and mechanical flowers."""
     parts = []
@@ -483,12 +519,15 @@ def build_collective_gardens():
     BASE = 0.6
     STEP = 1.9
     for i in range(4):
-        terrace = lathe([
-            (BASE + i * STEP, 15.0 - i * 2.6, 15.0 - i * 2.6),
-            (BASE + (i + 1) * STEP, 15.0 - i * 2.6 - 1.3, 15.0 - i * 2.6 - 1.3),
-        ], 20)
-        tv, tf = terrace
-        parts.append(new_mesh(f"terrace{i}", tv, tf, ["stone_dark"]))
+        terrace = build_garden_terrace(
+            f"terrace{i}",
+            BASE + i * STEP,
+            BASE + (i + 1) * STEP,
+            15.0 - i * 2.6,
+            15.0 - i * 2.6 - 1.3,
+            seed=1.3 + i * 2.7,
+        )
+        parts.append(terrace)
 
     def bed_height(distance):
         """Height of the terrace surface at a given radius.
@@ -518,7 +557,7 @@ def build_collective_gardens():
     # ring a terrace leaves exposed is exactly 1.3 wide, because the next
     # frustum stands on it.
     for i in range(4):
-        r_outer = 15.0 - 1.3 - i * 2.6
+        r_outer = 15.0 - 1.3 - i * 2.6 - 0.25
         z = BASE + (i + 1) * STEP
         if i == 3:
             # The innermost bed is a disc, not a ring.

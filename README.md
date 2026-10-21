@@ -331,8 +331,23 @@ so the mound is no longer one tone; nothing is blown out (0.0% of the
 pipes' pixels at 250 or above — they are a strong specular, not a clipped
 one).
 
-**What it costs: 1,344 triangles and 90 KB of GLB.** The gardens' model was
-1,248 triangles in 83 KB; it is 2,592 in 173 KB. The pipes are the bulk of
+**And the walls themselves were flat, which is the same lesson the water
+taught.** A lathe's rings are perfect circles, so a face lofted between two
+of them is a smooth cone: every point on it shares a normal within a
+facet, and the whole face takes one tone. Measured, the terrace face came
+out at a luma standard deviation of **3.5** against the sand's 9.7 — a
+retaining wall with no surface on it.
+
+The terraces are built from rings whose radius varies with the angle, each
+ring carrying its own phase, so the wall undulates around its circumference
+as well as up it. The face's standard deviation went from **3.5 to 8.5**,
+and the mound's silhouette is irregular instead of lathe-turned. A texture
+would not have done it: the same measurement that settled the water says a
+low sun gives a tangent-space normal map almost nothing to modulate, so
+the surface has to be geometry.
+
+**What it costs: 1,696 triangles and 112 KB of GLB.** The gardens' model was
+1,248 triangles in 83 KB; it is 2,944 in 196 KB. The pipes are the bulk of
 it — two rings of twenty-eight segments each — and they are the thing that
 makes the terraces read as built rather than carved.
 
