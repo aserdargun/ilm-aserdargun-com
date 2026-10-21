@@ -288,6 +288,30 @@ against a far plane of 1100, and the arithmetic that keeps it true lives in
 `src/world/sky-dome.ts` with a test beside it — see "The sky had a hole in it"
 below.
 
+### The contact patch was a rectangle, and the boulders had no shadow at all
+
+The low tier's contact shadows were measured this round against the thing
+they are supposed to imitate — the high tier's own shadow — and **three
+defects turned up, none of which looked like a missing shadow**.
+
+The Weaver's patch was a **rectangle**: its rim was meant to be a
+multiplier of exactly one — untouched ground — and the renderer's tone
+mapping turned that into 0.91, so every patch darkened its own square by
+twelve to fourteen luma and stopped dead at the border. The falloff was a
+**cone**, darkest at the centre, which is under the object where nobody can
+see it. And the patch was **narrower than the boulder it was shadowing**:
+it had never been under one at all, which is why the boulders floated.
+
+All three are fixed. The falloff lives in the fragment shader now, where
+its rim is exactly one and the patch is two triangles instead of
+eighty-one; the patch is wider than the object it shadows; and the Weaver's
+is sized to her footprint. The boulders have a contact shadow: **11,858
+pixels above four luma** where they had **none**, and the patch's border is
+a gradient of three luma a pixel where it was a step of twelve to fourteen.
+
+The measurements, the reference they are measured against and the one thing
+that still remains are in **"The low tier's rocks were floating"** below.
+
 ### The ground had 66 vertices
 
 Measured on the running build, not guessed: the terrain disc was a
@@ -733,49 +757,135 @@ depth pass, no second pass over the scene, no 2048×2048 buffer. **It costs a
 fraction of what the tier has already given up to buy its frame rate**, and
 it restores the one thing that giving it up broke.
 
-So the low tier now draws a soft patch of dark under every boulder and under
-the Weaver, and nothing else changes. Measured on the running build, with the
-patches toggled in one session at one camera:
+So the low tier draws a soft patch of dark under every boulder and under the
+Weaver, and nothing else changes.
 
-| | |
-| --- | --- |
-| pixels darkened by more than 4 luma | 8,756 (0.55% of the frame) |
-| the darkening where it applies | **17.3 luma** |
-| the frame's mean luma | 94.923 with, 95.013 without |
+**And then the patch itself turned out to be three different defects, none of
+which looked like "a missing shadow".** All three were found by measuring the
+patch against the thing it is supposed to imitate, not by looking at it.
+
+**One: the rim was not a no-op, so every patch was a rectangle.** The patch
+multiplies the ground by a number: 1.0 at the rim — untouched ground — and the
+measured fraction at the middle. A multiplier of 1.0 is only a no-op if it
+reaches the framebuffer as 1.0, and the renderer's tone mapping stood between
+the two: a linear 1.0 comes out of the ACES curve at about 0.80 and lands in
+the framebuffer as **225 out of 255**.
+
+So the rim was not the rim. Every patch darkened the whole of its own square
+by about nine per cent — **12 to 14 luma** on sand — and then stopped dead at
+the square's border, which is a hard step, not a shadow. Measured with the
+patch toggled in one session at one camera: the border stepped by −12 to −14
+luma and the interior was flat. The patch's multiplier is written to the
+framebuffer as it is now, and the same border is a **gradient**.
+
+**Two: the falloff was a cone, and a cone is darkest where nobody can see.**
+The multiplier was a smoothstep from the centre out, so the darkest point was
+under the object — hidden — and all of the darkness was spent there. The
+visible margin, the part that says an object is resting on the sand, was left
+almost untouched. The dark part is a **plateau** now: it holds its value out
+to the object's own edge and ramps to nothing across the margin.
+
+**Three: the patch was narrower than the thing it shadows.** A boulder is an
+icosahedron of radius one scaled by its size, so a boulder of scale 0.5 has a
+radius of 0.5 units — and the patch's half-width was 0.34 units. The patch was
+*inside the rock*. Measured with the patch alone on the sand and the boulders
+hidden, the boulders' patches darkened **no pixel by more than four luma**:
+the boulders were floating, and the patch had never been under them at all.
+
+**The falloff cannot live in vertex colours either.** The plateau and the
+ramp need several rings of vertices to be a curve; on an eight-by-eight grid
+the ramp fell across one and a third of a segment and the colours came out
+non-monotonic — dark, light, dark, light — a zigzag ring around every object,
+**3,851 hard edges across the rock field**, each one a step of up to 52 luma
+between neighbours. The falloff is in the fragment shader now, where the radius
+is a number per pixel: the rim is exactly 1.0, and the patch is two triangles
+instead of eighty-one vertices — which matters, because there are three
+hundred and fourteen of them drawn at once.
+
+Measured on the running build, with the patches toggled in one session at one
+camera, at the low tier:
+
+| | as shipped | the rectangle fixed | as shipped now |
+| --- | --- | --- | --- |
+| pixels darkened by more than 4 luma | 8,246 (0.52%) | 3,116 (0.19%) | 6,615 (0.41%) |
+| the darkening where it applies | 16.5 luma | 15.2 luma | **24.0 luma** |
+| the darkest pixel | 33.7 luma | 40.5 luma | **61.3 luma** |
+| the patch's border, as a step | **12 to 14 luma** | 1 to 2 luma | **3 luma** |
+| the boulders' patches, alone on the sand | 130 pixels above 4 luma | **0** | **11,858** |
+
+The middle column is the honest one to read on its own: with the rectangle
+fixed and nothing else changed, the boulders had **no contact at all**. The
+patch had been a rectangle painted on the sand, and removing the rectangle
+removed the patch.
+
+**The reference the patch is measured against is the high tier's own shadow.**
+Measured on the same sand at the same spot, a boulder's cast shadow is worth
+**50 luma** at its edge — the median of the shadowed ground is 69 against the
+lit sand's 120 — and its core reaches 88 luma of darkening. The patch's
+plateau is 61 luma at its darkest and 24 where it applies, which is the soft,
+centred, ambient-occlusion version of that hard, offset shadow.
 
 **It multiplies rather than covers.** Blending a black patch over the ground
 makes a hole in it; a shadow is the ground with the sun taken out of it,
 which is the ground's own colour at a fraction of the brightness. So the
-patch is drawn with `MultiplyBlending` and its vertex colours carry the
-*multiplier*: the rim is 1.0 — untouched ground — and the centre is the
-measured fraction.
+patch is drawn with `MultiplyBlending` and it carries the *multiplier*: the
+rim is exactly 1.0 — untouched ground — and the middle is the measured
+fraction. One patch is per object, and it is sized to the object: the Weaver's
+to her footprint — the two boots together span 0.35 units, measured off her
+own rig, and the patch is 0.52 across — and a boulder's to its own radius,
+with a margin of half that radius for the shadow to fade out over.
 
-**Boulders only.** The pebbles are 0.22-scale objects, a couple of pixels
-each on screen, and a patch under a pebble is a couple of blended pixels
-under a couple of pixels. They are four fifths of the patches and none of
-the reading, and on a phone the fill is the only thing that costs. Grass
-gets no patch either, for the reason the high tier gives: a thin
-double-sided cone's shadow is a hard speck rather than form.
+**The edge, measured on one patch alone on bare sand.** Along a row through
+it, the shadow arrives over fourteen pixels at 2.9 luma a pixel and leaves
+over ten at 3.3. It is a gradient, which is what a shadow is, and there is no
+line anywhere around it.
+
+**What remains, and it is not nothing: two patches that overlap compound.**
+Two boulders whose shadows meet darken the sand twice — the multiplication is
+the multiplication — and the seam between them is steeper than either
+patch's own falloff. It is the price of a shadow that is wide enough to be
+seen at all: the patches have to reach past the boulders, and boulders are
+scattered at random. The alternative is the middle column above.
+
+**The fill is 7,214 pixels, 0.45% of the frame**, measured with every covered
+pixel made to change. That is the number a phone's blend rate has to swallow,
+and it is the reason the pebbles still get no patch: they are 0.22-scale
+objects, a couple of pixels each on screen, and a patch under a pebble is a
+couple of blended pixels under a couple of pixels. They are four fifths of
+the patches and none of the reading, and on a phone the fill is the only
+thing that costs. Grass gets no patch either, for the reason the high tier
+gives: a thin double-sided cone's shadow is a hard speck rather than form.
 
 **The cost is unmeasurable here, and that is the honest answer.** At the low
 tier on this machine the frame is vsync-capped at 60 — at 3200×2000 as well,
 which is four times the pixels of a desktop frame. Three interleaved samples
 each, patches off and on, read 60.0 / 60.2 / 60.0 against 60.1 / 60.0 /
 60.1. The one number that is *not* free is the fill: a phone's blend rate
-puts the 8,756 darkened pixels at roughly a hundredth of a millisecond, which
+puts the 7,214 covered pixels at roughly a hundredth of a millisecond, which
 is a rounding error against a 16-millisecond frame. **What cannot be measured
 here is a phone's frame time, and the claim being made is only that this is
 a small, bounded amount of fill — not that it has been measured on the device
-it is for.**
+it is for.** The frame's own mean luma moves by 0.10 with the patches on:
+91.801 against 91.902, and nothing in the frame is brightened by more than
+four luma.
 
-**A GLSL-level lesson, twice in one round.** `MultiplyBlending` in three.js
-requires `premultipliedAlpha = true`; without it the renderer refuses the
-blend and falls back to normal blending, loudly, in a console error repeated
-every frame. The symptom was not a missing shadow — it was an **opaque white
-square** under the Weaver, because normal blending with a white source and an
-alpha of one *is* an opaque white square. It was found by reading the
-console, which is the same place the GLSL type error was found, and the same
-lesson: **a change is not verified until the console has been read.**
+**A GLSL-level lesson, three times in one round.** `MultiplyBlending` in
+three.js requires `premultipliedAlpha = true`; without it the renderer refuses
+the blend and falls back to normal blending, loudly, in a console error
+repeated every frame. The symptom was not a missing shadow — it was an
+**opaque white square** under the Weaver, because normal blending with a white
+source and an alpha of one *is* an opaque white square. It was found by
+reading the console, which is the same place the GLSL type error was found,
+and the same lesson: **a change is not verified until the console has been
+read.**
+
+The second and third lessons in the same round are the ones above, and
+neither of them said anything in the console: **a multiplier of one is only a
+no-op if it reaches the framebuffer as one** (tone mapping took it to 0.91),
+and **a falloff that needs more rings than the mesh has cannot live in the
+mesh** (the ramp fell across one and a third of a segment and came out
+non-monotonic). Both were found by reading the pixels, and neither would have
+been found by looking.
 
 ### Seven of the eight regions had no restoration effect at all
 
@@ -999,19 +1109,37 @@ side by side at the same camera and measured, rather than judged:
 
 | | ground mean | ground spread | frame mean |
 | --- | --- | --- | --- |
-| high | 133.28 | 35.50 | 104.77 |
-| low | 130.06 | 39.81 | 96.77 |
+| high | 133.07 | 35.38 | 104.41 |
+| low | 130.37 | 39.66 | 96.90 |
 
-**They are closer than they look.** The ground's mean is 2.4% apart — the
+**They are closer than they look.** The ground's mean is 2.5% apart — the
 exposure claim in this README holds — and the low tier's raw texture spread
 is actually *higher*, because the high tier's ambient occlusion flattens the
 fine variation it sits on. What the eye was reading as a washed-out tier is
-the frame being eight luma darker, which is the bloom and the tone curve,
-not a different world.
+the frame being seven and a half luma darker, which is the bloom and the tone
+curve, not a different world.
 
 **The one difference that is real is the shadow**, and it is the one the
 contact patches were added for: a cast shadow at the high tier, a soft pool
 under the feet at the low one.
+
+**The runner is a different surface and a different scale, and the same field
+cannot serve both.** The runner is four and a third units of dark brown
+across, and the macro field is sampled at an eighty-unit period: across the
+runner that is **0.054 of a period**, which is to say the field is all but
+constant there, and a forty-by-forty screen block only ever sees a few
+hundredths of a period along the length. Putting the deck's field on the
+runner was measured — the flat area on a bridge frame fell from 19.0% to
+17.7% — and it was **not shipped**, because it is not visible and the rule
+here is that an ineffective change is not shipped. The runner already has the
+structure that does read on it, the fine triplanar grain; a broad field
+cannot help a narrow band.
+
+**Which is the rule the field has to obey: a field's period has to suit the
+surface it is on.** The ground's is 180 units because the largest island is
+92 across. The deck's is 80 because a span is 84. The runner's would have to
+be under twenty to read across four units, and a second field at a second
+scale on one causeway is a worse answer than the grain that is already there.
 
 ### Measuring the running game without an MCP browser
 

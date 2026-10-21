@@ -63,8 +63,18 @@ import { patchGroundMacro } from './ground-macro';
  */
 const DECK_MACRO_PERIOD = 80;
 const DECK_MACRO_AMPLITUDE = 0.55;
+
+/**
+ * The width of the Weaver's contact patch, in world units.
+ *
+ * Her footprint, measured off her own rig: the two boots together span x
+ * from −0.173 to 0.173. The patch is the footprint plus the margin the
+ * contact shadow fades out over, and the margin is the same for everything
+ * that casts one.
+ */
+const WEAVER_PATCH_WIDTH = 0.173 * 2 * CONTACT_SHADOW_SPREAD;
 import { CAMERA_FAR, HORIZON_COLOR } from './sky-dome';
-import { contactShadowGeometry, contactShadowMaterial } from './contact-shadow';
+import { contactShadowGeometry, contactShadowMaterial, CONTACT_SHADOW_SPREAD } from './contact-shadow';
 import { findUnreachableConsoles } from './navigation';
 import { regionAt } from './Player';
 import { input } from '../game/input';
@@ -281,7 +291,7 @@ function SceneContents() {
   );
 
   const targetRef = useRef<string | null>(null);
-  const { scene } = useThree();
+  const { scene, gl } = useThree();
   const gameRef = useRef(game);
   gameRef.current = game;
   const { camera } = useThree();
@@ -488,7 +498,12 @@ function SceneContents() {
         })(),
         // Raw handles, so a question like "what is that slab?" can be answered
         // with a raycast instead of by guessing from a screenshot. Dev only.
-        three: { scene, camera },
+        //
+        // The renderer is here so a probe can render a frame and read the
+        // pixels back out of the drawing buffer: a number about a patch is
+        // worth more than a picture of it, and a screenshot of a blended quad
+        // cannot say whether it multiplied or covered the ground.
+        three: { scene, camera, renderer: gl },
         scene: (() => {
           let instanced = 0;
           let meshes = 0;
@@ -1198,10 +1213,16 @@ function Weaver({
         <mesh
           geometry={shadowGeometry}
           material={shadowMaterial}
-          // The Weaver is 1.80 units tall; the patch is about the width of her
-          // stance, which is what a cast shadow of her would be.
+          // The patch is sized to her footprint, not to her silhouette.
+          //
+          // Measured off her own rig, the two boots together span x from
+          // −0.173 to 0.173 — a footprint of 0.35 units, against a silhouette
+          // of 1.35. The old patch was as wide as the silhouette, which put
+          // its dark centre under the hem of her coat rather than under her
+          // boots, and left the margin — the part that says she is standing
+          // on the sand — a faint wash 0.5 units away from her feet.
           position={[0, 0.015, 0]}
-          scale={[1.35, 1, 1.35]}
+          scale={[WEAVER_PATCH_WIDTH, 1, WEAVER_PATCH_WIDTH]}
           renderOrder={1}
         />
       )}

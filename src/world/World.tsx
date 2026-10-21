@@ -7,7 +7,7 @@ import type { RegionId } from '../types/catalog';
 import { Asset } from './Models';
 import { PANELS_PER_REGION, TAPESTRY_PANELS, isPanelLit } from './tapestry';
 import { addCollider, clearColliders } from './collision';
-import { contactShadowGeometry, contactShadowMaterial } from './contact-shadow';
+import { contactShadowGeometry, contactShadowMaterial, CONTACT_SHADOW_SPREAD } from './contact-shadow';
 import {
   RESTORATION_GLOW,
   advanceRestorationWave,
@@ -152,11 +152,18 @@ const PEBBLE_COLOUR = '#9a8a72';
  */
 export function ContactShadows({
   items,
-  spread = 1.35,
+  spread = CONTACT_SHADOW_SPREAD,
   y = 0.015,
 }: {
   items: ScatterItem[];
-  /** How wide the patch is, as a multiple of the object casting it. */
+  /**
+   * How wide the patch is, as a multiple of the object's own radius.
+   *
+   * The patch is a unit plane, so its width is the instance scale and its
+   * half-width is half of that. A boulder is an icosahedron of radius one
+   * scaled by `item.scale`, so its radius is `item.scale` and the patch has
+   * to be **more than twice** that to reach past the boulder at all.
+   */
   spread?: number;
   /** How far above the ground the patch lies. */
   y?: number;
@@ -181,7 +188,9 @@ export function ContactShadows({
     for (const item of items) {
       position.set(item.position[0], item.position[1] + y, item.position[2]);
       quaternion.setFromAxisAngle(up, item.rotation);
-      const s = item.scale * spread;
+      // The plane is one unit wide and the patch's half-width is half of the
+      // instance scale, so the scale is twice the spread times the radius.
+      const s = item.scale * spread * 2;
       scale.set(s, 1, s);
       matrix.compose(position, quaternion, scale);
       out.push(matrix.clone());
