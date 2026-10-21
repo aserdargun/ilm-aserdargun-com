@@ -8,7 +8,13 @@ import { Asset } from './Models';
 import { PANELS_PER_REGION, TAPESTRY_PANELS, isPanelLit } from './tapestry';
 import { addCollider, clearColliders } from './collision';
 import { contactShadowGeometry, contactShadowMaterial } from './contact-shadow';
-import { RESTORATION_GLOW } from './restoration';
+import {
+  RESTORATION_GLOW,
+  advanceRestorationWave,
+  patchRestorationWave,
+  setRestorationWave,
+  type RestorationWave,
+} from './restoration';
 import { mistEnvironment } from './environment';
 import { applyMirrorFrameMaterial, applyMirrorMaterial } from './mirror-material';
 
@@ -446,6 +452,17 @@ export function Landmark({
 }) {
   const [x, , z] = region.anchor;
 
+  // The wave of light on each lit material, and whether that material was
+  // already lit the last time the painter ran.
+  const waveRef = useRef<RestorationWave | null>(null);
+  const waveRestored = useRef(new Map<THREE.Material, boolean>());
+
+  useFrame((_frame, delta) => {
+    const wave = waveRef.current;
+    if (!wave) return;
+    advanceRestorationWave(wave, delta);
+  });
+
   /**
    * A probe of its own for the Observer's Mirrors.
    *
@@ -584,6 +601,19 @@ export function Landmark({
           // region rather than being the same turquoise everywhere.
           const glow = RESTORATION_GLOW[region.id];
           if (!glow || material.name !== glow.material) return;
+          // The wave of light that spreads across the landmark, centred on the
+          // region's own middle. It is only started when the region is
+          // *newly* restored, so a landmark that was already lit when the
+          // game loaded does not light up again in front of the player.
+          const wave = patchRestorationWave(
+            material,
+            new THREE.Vector2(region.anchor[0], region.anchor[2]),
+          );
+          // The frame loop advances it. The material is shared between the
+          // landmark's parts, so the wave is the same object for all of them.
+          waveRef.current = wave;
+          const wasRestored = waveRestored.current.get(material) ?? false;
+          waveRestored.current.set(material, restored);
           // The material's own light is kept, not thrown away. Some of them
           // already glow — the gardens' coral is emissive at 0.252 — and a
           // region that has *not* been restored must look exactly as it did.
@@ -601,9 +631,11 @@ export function Landmark({
           if (restored) {
             material.emissive.set(region.palette.accent);
             material.emissiveIntensity = glow.emissive;
+            setRestorationWave(wave, true, !wasRestored);
           } else {
             material.emissive.copy(original.colour);
             material.emissiveIntensity = original.intensity;
+            setRestorationWave(wave, false, false);
           }
           material.needsUpdate = true;
           return;

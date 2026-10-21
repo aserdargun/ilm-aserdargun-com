@@ -900,6 +900,38 @@ frames, and the sea's movement is the drift and not the camera. The shimmer
 check over the same pair gives 0.0000% to 0.0054% isolated pixels, which is
 the bar the sky's clouds already meet.
 
+### The light spreads now, instead of coming on
+
+The catalogue's language is about process, not switches: light *spreads*
+along a branch, routes *draw* as light across a map, the council light
+becomes a *steady ring*, flowers *open*. A lamp that comes on all at once
+says the region was switched on; a wave that travels across it says the
+region woke up.
+
+So the light is a wave, and it is one wave for all seven regions, because
+none of them needed a different one: a ring spreading out from the middle
+of the island is the shape all seven of them describe. The front is measured
+in world units from the region's own centre, and the material's emissive is
+multiplied by a mask that is one inside the front and zero outside it.
+
+Measured on the running build, by restoring the Memory Council City and
+reading the front as it travels:
+
+| | the wave's front |
+| --- | --- |
+| before | 30 (the mask is open: the material's own light) |
+| just after | **3.41** |
+| +1.1 s | **15.69** |
+| +2.7 s | 30 (the front has arrived) |
+
+Two details that are easy to get wrong. **The wave only starts when a region
+is *newly* restored** — a landmark that was already lit when the game loaded
+does not light up again in front of the player, which is why the painter
+keeps track of what it last saw. And **the front at its reach means the mask
+is one everywhere**, so a material that was already glowing — the gardens'
+coral is emissive at 0.252 — keeps exactly the light it had; a region that
+has not been restored looks precisely as it did.
+
 ### Measuring the running game without an MCP browser
 
 `tools/cdp.mjs` drives a headless Chrome over the DevTools protocol with no
