@@ -332,6 +332,26 @@ def build_great_loom():
     for side in (1, -1):
         parts.append(box(f"post{side}", (7.6 * side, 0.0, 6.0), (1.4, 1.4, 8.0), ["metal"]))
 
+    # The crown the six arms hang from, and the column that carries it.
+    #
+    # Every arm converges on the axis at eight units, and there was nothing
+    # there: no crown, no column, nothing. The arms hung from the air, and the
+    # region that promises "a many-armed machine where each arm weaves its own
+    # job" read as a post with six sticks on it. The column stands on the
+    # weaving beam and the crown sits on the column, so the machine has a
+    # spine: a thing that carries the arms has to be carried by something.
+    parts.append(
+        wavy_lathe("column", [(2.6, 1.75), (7.0, 1.45)], sides=10, phase=2.2, amp=0.05, mat="metal")
+    )
+    parts.append(
+        wavy_lathe("crown", [(6.9, 2.15), (8.1, 2.85), (9.0, 2.30)], sides=12, phase=0.4, amp=0.06, mat="metal")
+    )
+    # A copper collar where the crown meets the column, so the joint reads as
+    # a joint rather than as two shapes that happen to touch.
+    collar = lathe([(6.85, 1.85, 1.85), (7.15, 1.85, 1.85)], 12)
+    cv, cf = collar
+    parts.append(new_mesh("collar", cv, cf, ["copper"]))
+
     # six arms, each weaving its own job
     for i in range(6):
         angle = (i / 6) * math.tau
