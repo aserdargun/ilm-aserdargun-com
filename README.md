@@ -308,7 +308,13 @@ arch over the warp and come down on it, each at its own place along it, and
 that is what *"each arm weaves its own job"* means. The six arms arch now,
 and the **warp the region promised and the model never had** — fifteen
 copper strands along the weaving beam — is there with the shuttles riding
-over it.
+over it. Thirteen strands and a quarter of a unit across, not a hair: at the
+closest the player can stand to the loom — fifteen units, because the
+landmark's collider keeps them out — a hair-thin strand is two pixels wide
+and fifteen of them merge into one line. Measured on the running build, the
+warp reads as a bright copper line along the top of the beam, six to seven
+pixels tall, against the sand's 130: which is what a warp looks like from
+the side, because from the side you are looking along the threads.
 
 **What it costs: 252 triangles and 20 KB of GLB** for the threads and the
 arching arms, on top of the 148 the spine cost. The loom's model is 1,244

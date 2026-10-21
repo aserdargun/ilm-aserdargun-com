@@ -383,9 +383,14 @@ def build_great_loom():
     # nothing between an arm and the beam below it. A warp of copper strands
     # now runs the length of the weaving beam, and the six shuttles ride over
     # it, which is the whole of what the region says the machine does.
-    for j in range(15):
-        y = -0.90 + j * 0.1285
-        parts.append(box(f"thread{j}", (0.0, y, 3.85), (15.2, 0.055, 0.055), ["copper"]))
+    # Thirteen strands, not fifteen, and thicker than a thread: at the
+    # closest the player can stand to the loom — fifteen units, because the
+    # landmark's collider keeps them out — a hair-thin strand is two pixels
+    # wide and fifteen of them merge into one line. At a quarter of a unit
+    # across they are a comb.
+    for j in range(13):
+        y = -0.90 + j * 0.15
+        parts.append(box(f"thread{j}", (0.0, y, 3.87), (15.2, 0.085, 0.085), ["copper"]))
 
     # The water channel running beneath the loom.
     #
