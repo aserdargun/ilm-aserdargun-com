@@ -822,6 +822,36 @@ actually has.**
 The hub is absent from the table on purpose: it already has an effect, and
 it does it better than a lamp.
 
+### Where the world stands after a sweep of every region
+
+The flatness tool (`tools/flatness.py`) was run over one frame from each of the
+seven landmarks and the bridge, and the result is the clearest summary of this
+round there is:
+
+| region | flat area (std < 2) |
+| --- | --- |
+| the Flow Foundry | **0.0%** |
+| the Adaptation Cloud Harbor | **0.0%** |
+| the Collective Gardens | **0.0%** |
+| the Living Valley | **0.0%** |
+| the Cartographers' Terrace | 0.2% |
+| the Observers' Mirrors | 0.9% |
+| the Memory Council City | 12.2% |
+| a bridge crossing | 19.0% |
+
+**The two figures that are not zero are the sky.** The tool marks the sky
+separately for exactly this reason — a sky is meant to be flat, and a tool
+that counted it would have buried the canal, which once read a standard
+deviation of 0.035 across 72,000 pixels and was the largest flat area in the
+frame. What is left on the bridge is the runner's dark brown, at a standard
+deviation of 1.43, which is a low-contrast surface rather than a dead one.
+
+**Which means there is no flat surface left in the world to find.** The
+things that read as flat when this round started — the void under the
+islands, the causeway's three bands, the rail, the mirrors' panels, the
+landmasses — are all measured above, and every one of them is now carrying
+something.
+
 ### Measuring the running game without an MCP browser
 
 `tools/cdp.mjs` drives a headless Chrome over the DevTools protocol with no
