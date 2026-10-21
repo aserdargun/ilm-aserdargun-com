@@ -408,7 +408,13 @@ function SceneContents() {
         // Casters lifted so high that the shadow they drop lands where the player
         // cannot see what threw it. The hub's tapestry was one: a hard band at
         // half the ground's brightness, with its caster 57 degrees up and outside
-        // the frame. Empty on a sound scene.
+        // the frame.
+        //
+        // **One on the shipped world, and it is accepted**: the synthesis tree's
+        // canopy, twenty across at thirteen units, whose shadow falls eleven
+        // units away onto a tree the player is looking straight at. The check's
+        // own notes say so; this says it here too, so the list is not read as a
+        // defect that has not been looked at.
         orphanCasters: () => findOrphanShadowCasters(scene),
         // The other direction: something standing on the ground that casts nothing,
         // and so is not attached to it. The bridge rails were one — no shadow, so

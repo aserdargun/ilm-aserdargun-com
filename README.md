@@ -288,6 +288,67 @@ against a far plane of 1100, and the arithmetic that keeps it true lives in
 `src/world/sky-dome.ts` with a test beside it — see "The sky had a hole in it"
 below.
 
+### The water under the Great Loom was a plank, and the README had already said why
+
+The Flow Foundry's channel is a thirty-unit bar of turquoise lying on the
+sand, and it was the least water-like surface in the game. The README had
+already measured it, and had already tried four ways to give it relief: the
+triplanar stone patch at its own strength and at eight times it, the same
+patch with the surface turned into a rough dielectric, and an ordinary UV
+normal map at scale 2.5. All four left the top face's local standard
+deviation under one luma, and the README said why: *a flat horizontal
+surface lit by a low sun gives a tangent-space normal map almost nothing to
+modulate.*
+
+It also named the three things that would work: **a raking light, a glossier
+environment, or geometry that is not flat.** The first is the scene's, the
+second is a material, and the third is a model — and the third is the one a
+Blender file can supply.
+
+**The channel is a built trough now.** The water is a body with a *surface*
+rather than a lid: a forty-by-four grid whose top face is displaced by a
+crossing pair of waves, with a skirt down to the sand and no bottom, because
+the ground is always under it. It runs between two stone lips and stops at
+two end walls, so the water is *in* something rather than a turquoise
+rectangle painted on the sand.
+
+Measured on the running build, from the same settled camera, with the
+channel's top face sampled in a clean patch of it and the sand a few metres
+to the side as the control:
+
+| | before | after |
+| --- | --- | --- |
+| the channel top, mean luma | 146.62 | 131.70 |
+| **the channel top, local standard deviation** | **7.91** | **25.91** |
+| the sand beside it, mean | 110.28 | 110.18 |
+| the sand beside it, standard deviation | 12.58 | 12.51 |
+
+The control did not move, so the camera did not move, so the change is the
+channel. The surface now carries more variation than the sand does, and it
+does it from geometry: the shadow of the loom's mast crossing the water
+reads on it, which it could not do on a flat lid.
+
+**One trap, and it was the end of the channel.** The end walls stand at
+14.6 and the water originally ended at 15.0, so the wall's inner face and
+the water's own cross-section were *in the same plane*, and the end of the
+channel z-fought into a broken mottle of turquoise and black. The water now
+runs a little past the walls, so the wall's face is inside the water instead
+of beside it. Two surfaces that share a plane z-fight, and a face that is
+meant to be hidden is better hidden *inside* something than next to it.
+
+**The footprint grew, so the ring that keeps the player off it grew with
+it.** The stone lips reach 15.13 from the anchor, which the old ring of
+15.1 did not cover: `__ilm.uncoveredPlatforms()` reported the new lip as a
+walkable platform the player could stand on, uncovered by 0.03. The
+Flow Foundry's ring is **15.2** now, and the check is empty again. The
+foundry's three consoles are 18.44 and 18.87 from the anchor, so nothing
+the player needs is inside the larger ring.
+
+**What it costs: 532 triangles and 34 KB of GLB.** The channel was 12
+triangles in a 23 KB file; the model is 844 triangles in 58 KB. It is one
+landmark's geometry, drawn once, and it is the difference between a plank
+and a river.
+
 ### The contact patch was a rectangle, and the boulders had no shadow at all
 
 The low tier's contact shadows were measured this round against the thing
@@ -2432,6 +2493,10 @@ because that is a Blender material and changing it would mean regenerating the G
 It is the same recipe the canal uses, applied to the one mesh whose material is
 called `water`. The channel is no longer a blown-out plank; it is a flat plank that
 sits correctly in the light, which is what this round could honestly deliver.
+
+**And the flatness was solved later, in the model rather than in the material** —
+the channel is a built trough with a rippled surface now. See "The water under the
+Great Loom was a plank" at the top of this log.
 
 ### Comparing two frames, and refusing to compare the wrong ones
 

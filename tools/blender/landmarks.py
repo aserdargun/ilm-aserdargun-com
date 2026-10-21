@@ -7,7 +7,7 @@ weathered copper, dark metal and translucent glass.
 
 import math
 
-from common import box, join_objects, lathe, loft, new_mesh, ring, shade_flat, torus, tube
+from common import box, join_objects, lathe, loft, new_mesh, ring, rippled_slab, shade_flat, torus, tube
 
 
 def _boulder(name, centre, radius, height, mat, seed=0):
@@ -353,8 +353,51 @@ def build_great_loom():
                 (1.1, 0.7, 0.5), ["copper_dark"])
         )
 
-    # the water channel running beneath the loom
-    parts.append(box("channel", (0.0, 0.0, 0.35), (30.0, 3.2, 0.7), ["water"]))
+    # The water channel running beneath the loom.
+    #
+    # It was a box: a flat turquoise slab lying on the sand, thirty units long,
+    # and the README measured its top face's local standard deviation at under
+    # one luma. Four different mechanisms could not move it — the triplanar
+    # stone patch at its own strength and at eight times it, the same patch
+    # with the surface turned into a rough dielectric, and an ordinary UV
+    # normal map — because a flat horizontal surface under a low sun gives a
+    # tangent-space normal map almost nothing to modulate. The relief is in
+    # the geometry now, which is the one of the three conditions the README
+    # names that a model can actually supply.
+    def water_surface(x, y):
+        """The height of the water's surface, in the block's local space."""
+        return (
+            0.062 * math.sin(x * 1.15 + 0.4)
+            + 0.034 * math.sin(x * 2.05 - 1.1)
+            + 0.018 * math.sin(y * 0.9 + 0.7 + x * 0.33)
+        )
+
+    parts.append(
+        rippled_slab(
+            # 29.4, not 30: the end walls stand at 14.6 and the water runs a
+            # little past them, so the wall's inner face is *inside* the water
+            # rather than in the same plane as the water's own end. Coplanar
+            # faces z-fight, and the end of the channel was the one place the
+            # water showed its cross-section.
+            "channel", (0.0, 0.0, 0.2), (29.4, 3.2, 0.7), ["water"],
+            water_surface, segments=(40, 4),
+        )
+    )
+    # The stone banks the water runs between. The channel used to end in a
+    # cut edge on the sand, which is what a painted slab looks like; a lip of
+    # stone says the water is *in* something.
+    for side in (1, -1):
+        parts.append(
+            box(f"bank{side}", (0.0, 1.78 * side, 0.39), (30.0, 0.36, 0.78), ["stone_dark"])
+        )
+    # And the trough is closed at both ends, so the water does not end in a
+    # cut face of turquoise. The walls sit *inside* the channel's length, so
+    # the landmark's footprint does not grow and the collider that keeps the
+    # player out of it stays the number it was measured to be.
+    for side in (1, -1):
+        parts.append(
+            box(f"endwall{side}", (14.8 * side, 0.0, 0.39), (0.4, 3.2, 0.78), ["stone_dark"])
+        )
 
     loom = join_objects(parts, "great_loom")
     shade_flat(loom)

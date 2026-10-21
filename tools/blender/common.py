@@ -240,6 +240,88 @@ def box(name, centre, size, mat_names, rotation=(0.0, 0.0, 0.0), collection=None
     return obj
 
 
+def rippled_slab(
+    name,
+    centre,
+    size,
+    mat_names,
+    surface,
+    segments=(40, 4),
+    collection=None,
+):
+    """
+    A block whose top face is a displaced surface rather than a lid.
+
+    **Why a block and not a plane.** A plane with relief in it has no sides,
+    and a water channel has to have sides: it is a body of water with a
+    surface, not a sheet of paper. So this is a closed block — a grid on top,
+    a skirt down to the floor, and no bottom face, because the ground is
+    always under it and the camera is never below it.
+
+    **Why the relief is in the geometry.** The README measured this surface
+    and could not move it: four separate mechanisms — the triplanar stone
+    patch at its own strength and at eight times it, the same patch with the
+    surface turned into a rough dielectric, and an ordinary UV normal map —
+    all left the top face's local standard deviation under one luma. A flat
+    horizontal surface under a low sun gives a tangent-space normal map
+    almost nothing to modulate, because `N·L` barely moves when the normal
+    is already pointing up. The README names the three things that would
+    work: a raking light, a glossier environment, or geometry that is not
+    flat. This is the third one, and it is the one a model can supply.
+
+    `surface` is called as `surface(x, y)` in the block's own local space and
+    returns the height of the top face at that point.
+    """
+    cx, cy, cz = centre
+    sx, sy, sz = size
+    nx, ny = segments
+    hx, hy = sx / 2, sy / 2
+    top = cz + sz / 2
+    floor = cz - sz / 2
+
+    verts = []
+    for j in range(ny + 1):
+        for i in range(nx + 1):
+            x = -hx + sx * i / nx
+            y = -hy + sy * j / ny
+            verts.append((cx + x, cy + y, top + surface(x, y)))
+
+    def index(i, j):
+        return j * (nx + 1) + i
+
+    faces = []
+    # The surface.
+    for j in range(ny):
+        for i in range(nx):
+            faces.append([
+                index(i, j), index(i + 1, j), index(i + 1, j + 1), index(i, j + 1),
+            ])
+
+    # The skirt: the perimeter of the surface dropped to the floor. The
+    # perimeter runs the four edges in order, so the skirt is four strips.
+    perimeter = (
+        [index(i, 0) for i in range(nx + 1)]
+        + [index(nx, j) for j in range(1, ny + 1)]
+        + [index(i, ny) for i in range(nx - 1, -1, -1)]
+        + [index(0, j) for j in range(ny - 1, 0, -1)]
+    )
+    base = len(verts)
+    for k in perimeter:
+        x, y, _ = verts[k]
+        verts.append((x, y, floor))
+    count = len(perimeter)
+    for k in range(count):
+        a = perimeter[k]
+        b = perimeter[(k + 1) % count]
+        c = base + ((k + 1) % count)
+        d = base + k
+        # Wound so the skirt faces outwards: the perimeter runs counter-
+        # clockwise seen from above, and the floor is below.
+        faces.append([a, d, c, b])
+
+    return new_mesh(name, verts, faces, mat_names, collection)
+
+
 def join_objects(objects, name):
     """Merge meshes into one object so the export stays tidy."""
     objects = [o for o in objects if o is not None]

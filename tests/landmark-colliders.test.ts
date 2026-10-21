@@ -36,7 +36,10 @@ import { LANDMARK_RADII } from '../src/world/landmark-colliders';
 const BUILT_PLATFORM: Record<string, number | null> = {
   hub: null,
   'cartographers-terrace': 15.2,
-  'flow-foundry': 15.1,
+  // The Flow Foundry's channel is a built trough now — a stone lip on each
+  // side — and the lip's corners reach 15.13 from the anchor, so the ring
+  // that keeps the player off it has to reach past that.
+  'flow-foundry': 15.2,
   'memory-council-city': 14.3,
   'adaptation-cloud-harbor': null,
   'collective-gardens': 15,

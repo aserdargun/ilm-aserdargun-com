@@ -51,13 +51,24 @@
 // terrace really is 15.2 wide. With `INTERACT_RANGE` at 5.2 and the consoles
 // a further 1.9-radius collider each, every one stays reachable from outside.
 //
-// The hub, the Flow Foundry and the Adaptation Workshop measured no raised
-// platform at all in that band, so they keep their radii rather than being
-// grown to a number nothing was measured against.
+// The hub and the Adaptation Workshop measured no raised platform at all in
+// that band, so they keep their radii rather than being grown to a number
+// nothing was measured against.
+//
+// The Flow Foundry's grew by a tenth of a unit, and for a measured reason: its
+// channel is a built trough now — a stone lip on each side of the water — and
+// the lip's corners reach 15.13 from the anchor, which a ring of 15.1 did not
+// cover. The uncovered-platform check said so before the number was changed,
+// which is what that check is for.
 export const LANDMARK_RADII: Record<string, number> = {
   hub: 3.4,
   'cartographers-terrace': 15.2,
-  'flow-foundry': 15.1,
+  // The Flow Foundry's channel is a built trough now — a stone lip on each
+  // side of the water — and the lip's corners reach 15.13 from the anchor.
+  // The ring has to reach past them, or the player can stand on a corner of
+  // the trough's own wall. The console offsets are 18.44 and 18.87, so
+  // nothing the player needs is inside the larger ring.
+  'flow-foundry': 15.2,
   'memory-council-city': 14.3,
   'adaptation-cloud-harbor': 7.5,
   'collective-gardens': 15,
