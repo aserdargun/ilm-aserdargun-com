@@ -5408,7 +5408,7 @@ Details that carry weight:
 
 ## Tests performed
 
-`npm run test` — **320 tests across 28 files, all passing.**
+`npm run test` — **385 tests across 35 files, all passing.**
 
 | Suite | Tests | What it proves |
 | --- | --- | --- |
@@ -5427,7 +5427,7 @@ Details that carry weight:
 | `i18n` | 11 | Key parity, no empty strings, no untranslated prose, Turkish diacritics |
 | `nav` | 8 | Walkable world, island discs, span crossing, boundary containment |
 | `touch` | 27 | Staff strip clear of the sightline, home button, pointer capture, tap targets sized for a phone |
-| `audio` | 12 | Chord voicing has a third, tremolo depth is proportional, no phase inversion, headroom |
+| `audio` | 22 | **The bed is measured, not guessed**: no two voices beat against each other, one modulator and no noise floor, a chime that chimes, and a melody that stays clear of the pad |
 | `spark` | 20 | Every moment line exists in both languages and reaches the player |
 | `playtime` | 5 | The stated playtime estimate is derived, not guessed |
 | `scene-audit` | 10 | A model drawn N times occupies N places, and the check reports a pile in both directions |
@@ -5724,6 +5724,60 @@ arithmetic that has to hold (`DECK_CENTER_Y + DECK_THICKNESS / 2 === DECK_TOP_Y`
 the shoreline-to-shoreline extent, and a sweep asserting that no walkable point in
 the world lacks stone under it.
 
+### The sound was measured, not guessed
+
+The bed is synthesised, so nothing about it is visible and no test can fail
+because of it. It had to be measured like everything else. `npm run
+audio:measure` starts the dev server, renders the shipping engine through an
+`OfflineAudioContext` in headless Chrome, and reads the result: the envelope's
+wander and the period it repeats on, the flutter between voices, the spectrum,
+and the chime's attacks. The engine it replaced is kept frozen in
+`tools/audio/baseline-engine.ts`, so the comparison is reproducible rather than
+remembered.
+
+| | Before | After |
+| --- | --- | --- |
+| Flutter between voices | 50–69 Hz | 130–196 Hz |
+| Chime | 6 attacks, 60 ms apart | 2 attacks, 435 ms apart |
+| Energy from 500 Hz to 1 kHz | −29.75 dB | −9.67 dB |
+| Bed level (RMS) | −28.76 dB | −31.54 dB |
+| Bed peak | −17.76 dB | −18.95 dB |
+
+Four defects, four numbers:
+
+1. **The voices beat against each other.** C4 and E4 sat 68 Hz apart at almost
+   the same level, so their sum swung from 0.007 to 0.165 in amplitude — a
+   flutter at 68 Hz, in the band the ear reads as a buzz rather than as
+   motion. Measured, the old bed's flutter sat at **50–69 Hz**; the new bed's
+   sits at **130–196 Hz**, where it reads as shimmer. Every pair of voices is
+   now at least 130 Hz apart, and `tests/audio.test.ts` refuses any chord that
+   breaks it.
+2. **Ten oscillators moved the bed at once** — five breath oscillators between
+   0.023 Hz and 0.043 Hz and five detune oscillators between 0.009 Hz and
+   0.021 Hz, none of them sharing a period with any other, so the swell never
+   repeated and never settled. There is one modulator now, at 0.02 Hz, and it
+   sits on the bus rather than on the voices.
+3. **The chime was an alert.** Four notes in 340 ms, climbing an octave,
+   measures as six attacks 60 ms apart. It is two bells 420 ms apart now, and
+   measures as two attacks 435 ms apart.
+4. **There was no music.** Five tones and a filter is a pad, and the pad's
+   energy between 500 Hz and 1 kHz measured −29.75 dB below its total. The
+   bell melody moved that band to −9.67 dB.
+
+Two more decisions came out of the measurement rather than out of taste. The
+melody sits above the pad and never within 120 Hz of a note the pad is
+holding, because two tones that close beat against each other at their
+difference, and a bell ringing over a bed it roughs up is worse than no bell
+at all. And the noise floor is gone entirely: a bandpassed hiss at 1.8 kHz ran
+for the whole game, in the band the ear is most sensitive to.
+
+| File | Purpose |
+| --- | --- |
+| `tools/audio/measure.mjs` | Renders the engine offline and measures it |
+| `tools/audio/probe.html` | The page the measurement runs in |
+| `tools/audio/analysis.js` | Envelope, flutter, spectrum and chime analysis |
+| `tools/audio/baseline-engine.ts` | The engine this one replaced, frozen for comparison |
+
 ## Known limitations
 
 Reported honestly rather than presented as finished:
@@ -5741,10 +5795,11 @@ Reported honestly rather than presented as finished:
    This is a deliberate readability and precision trade-off.
 4. **Voice is text-only.** Spark uses short authored lines with deterministic
    behaviour; there is no speech synthesis or voice acting.
-5. **Audio is a synthesised ambient pad, not a score.** Every voice is tuned to
-   one chord (root, fifth, octave, twelfth) and passes through a lowpass and a
-   generated reverb; each restored region adds one more voice. There is no
-   melodic writing, no recorded sound and no adaptive scoring.
+5. **Audio is synthesised, not recorded.** The bed is four chords of sine, a
+   sparse bell melody and a generated reverb, all built in the browser with the
+   Web Audio API. There are no sound files, no recordings and no adaptive
+   scoring: the melody is a fixed eight-note phrase that repeats, and the
+   chord cycle is a fixed four.
 6. **Source-application descriptions are quoted verbatim** from the published
    pages, so the journal's factual descriptions retain those sites' own wording
    about hardware and pricing. Gameplay itself uses only fictional units and

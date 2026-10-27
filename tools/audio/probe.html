@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>ILMEK audio probe</title>
+    <style>
+      body {
+        font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+        background: #101014;
+        color: #d8d8e0;
+        padding: 24px;
+      }
+      h1 {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #8f8fa8;
+      }
+      pre {
+        white-space: pre-wrap;
+        color: #b9b9c8;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>ILMEK · audio probe</h1>
+    <pre id="out">idle</pre>
+    <script type="module">
+      import './probe.js';
+      document.getElementById('out').textContent = 'ready';
+    </script>
+  </body>
+</html>
